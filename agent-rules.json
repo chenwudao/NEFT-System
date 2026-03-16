@@ -1,0 +1,5 @@
+{
+    "rules": [
+        "the python should be run by LLM env in conda"
+    ]
+}
