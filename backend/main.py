@@ -124,6 +124,7 @@ async def websocket_endpoint(websocket: WebSocket):
     if not hasattr(app.state, 'websocket_handler'):
         return
 
+    await websocket.accept()
     await app.state.websocket_handler.connect(websocket)
     try:
         while True:
