@@ -33,10 +33,10 @@ let canvasOffsetY = 0;
 // 地图坐标转换（模拟坐标到真实地图坐标）
 function simulateToRealCoords(x, y) {
     // 将模拟坐标（0-1000）转换为真实地图坐标
-    // 这里以北京市中心为基准
-    const baseLng = 116.404;
-    const baseLat = 39.915;
-    const scale = 0.001; // 缩放因子
+    // 这里以华南理工大学广州国际校区为基准
+    const baseLng = 113.406388; // 华南理工大学广州国际校区经度（番禺区南村镇兴业大道东777号）
+    const baseLat = 23.011545;  // 华南理工大学广州国际校区纬度
+    const scale = 0.0001; // 缩放因子，调整为适合校区周围范围
     
     // 确保坐标是有效的数字
     if (isNaN(x) || isNaN(y)) {
@@ -207,8 +207,8 @@ function createMap() {
     try {
         // 初始化地图
         map = new AMap.Map('mapContainer', {
-            zoom: 14,
-            center: [116.404, 39.915], // 北京市中心
+            zoom: 15, // 增大缩放级别，更清晰地显示校区和周边
+            center: [113.406388, 23.011545], // 华南理工大学广州国际校区（番禺区南村镇兴业大道东777号，距离板桥地铁站约1.3km）
             viewMode: '2D',
             pitch: 0,
             mapStyle: 'amap://styles/normal'
@@ -648,7 +648,7 @@ function drawRealMapScene(state) {
                         position: [realPos.lng, realPos.lat],
                         icon: new AMap.Icon({
                             size: new AMap.Size(25, 25),
-                            image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/car.png',
+                            image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png',
                             imageSize: new AMap.Size(25, 25)
                         }),
                         title: `充电站${s.id}`,
