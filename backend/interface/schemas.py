@@ -5,6 +5,14 @@ from datetime import datetime
 class PositionModel(BaseModel):
     x: float
     y: float
+    gcj_lng: Optional[float] = None
+    gcj_lat: Optional[float] = None
+
+class PathPointModel(BaseModel):
+    x: float
+    y: float
+    gcj_lng: Optional[float] = None
+    gcj_lat: Optional[float] = None
 
 class TaskModel(BaseModel):
     id: int
@@ -36,9 +44,9 @@ class VehicleModel(BaseModel):
     speed: float = 0.1
     status: str
     assigned_task_ids: List[int] = []
-    current_path: List[tuple] = []
+    current_path: List[PathPointModel] = []
     charging_station_id: Optional[str] = None
-    complete_path: List[tuple] = []
+    complete_path: List[PathPointModel] = []
     path_progress: float = 0.0
     energy_consumption: float = 0.0
     total_distance_traveled: float = 0.0
@@ -96,6 +104,10 @@ class SystemStatusResponse(BaseModel):
     total_charging_stations: int
     active_commands: int
     current_strategy: str
+    current_strategy_reason: Optional[str] = None
+    strategy_scores: Dict[str, Dict[str, float]] = {}
+    completion_rate: float = 0.0
+    vehicle_utilization: float = 0.0
 
 class PerformanceMetricsResponse(BaseModel):
     completion_rate: float
@@ -110,19 +122,26 @@ class SimulationStateResponse(BaseModel):
     tasks: List[TaskModel]
     charging_stations: List[ChargingStationModel]
     total_score: float
-    map_nodes: List[Dict[str, float]]
-    map_edges: List[List[int]]
+    map_nodes: List[Dict[str, Any]]
+    map_edges: List[List[Any]]
 
 class CommandResponse(BaseModel):
     vehicle_id: int
     action_type: str
     assigned_tasks: List[int]
-    path: List[tuple]
+    path: List[PathPointModel]
     charging_station_id: Optional[str]
     estimated_time: int
-    complete_path: List[tuple] = []
+    complete_path: List[PathPointModel] = []
     total_distance: float = 0.0
     energy_consumption: float = 0.0
+
+
+class SchedulingResultResponse(BaseModel):
+    selected_strategy: str
+    selection_reason: str
+    strategy_scores: Dict[str, Dict[str, float]] = {}
+    commands: List[CommandResponse] = []
 
 class CompletePathRequest(BaseModel):
     task_id: int
@@ -150,3 +169,10 @@ class TaskCompletionInfo(BaseModel):
     score: float
     is_on_time: bool
     total_distance: float
+
+class SimulationSpeedRequest(BaseModel):
+    speed_factor: int = Field(..., ge=1, le=600, description="模拟速度倍率：1-600，每现实秒推进的仿真秒数")
+
+class SimulationSpeedResponse(BaseModel):
+    speed_factor: int
+    message: str

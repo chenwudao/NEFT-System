@@ -1,19 +1,44 @@
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Sequence
 from datetime import datetime
 from backend.data.data_manager import DataManager
 from backend.data.task import Task, TaskStatus, Position
 from backend.data.vehicle import Vehicle, VehicleStatus
 from backend.data.charging_station import ChargingStation
 from backend.decision.decision_manager import DecisionManager
+from backend.data.geo_display import wgs84_to_gcj02
 from .schemas import (
     PositionModel, TaskModel, VehicleModel, ChargingStationModel,
     CreateTaskRequest, CreateVehicleRequest, CreateChargingStationRequest,
     UpdateVehicleRequest, SchedulingRequest,
     SystemStatusResponse, PerformanceMetricsResponse,
-    SimulationStateResponse, CommandResponse
+    SimulationStateResponse, CommandResponse, PathPointModel
 )
 
 class DataTransformer:
+    @staticmethod
+    def _positions_to_models(positions: Sequence[Position]) -> List[PositionModel]:
+        out: List[PositionModel] = []
+        for p in positions:
+            glng, glat = wgs84_to_gcj02(p.x, p.y)
+            out.append(PositionModel(x=p.x, y=p.y, gcj_lng=glng, gcj_lat=glat))
+        return out
+
+    @staticmethod
+    def _to_path_point_models(path_data: List[Any]) -> List[PathPointModel]:
+        points: List[PathPointModel] = []
+        for p in path_data:
+            if isinstance(p, tuple) or isinstance(p, list):
+                x, y = float(p[0]), float(p[1])
+            elif isinstance(p, dict):
+                x, y = float(p["x"]), float(p["y"])
+            elif hasattr(p, "x") and hasattr(p, "y"):
+                x, y = float(p.x), float(p.y)
+            else:
+                continue
+            glng, glat = wgs84_to_gcj02(x, y)
+            points.append(PathPointModel(x=x, y=y, gcj_lng=glng, gcj_lat=glat))
+        return points
+
     @staticmethod
     def task_to_dict(task: Task) -> Dict:
         return task.to_dict()
@@ -72,9 +97,10 @@ class DataTransformer:
 
     @staticmethod
     def task_to_model(task: Task) -> TaskModel:
+        glng, glat = wgs84_to_gcj02(task.position.x, task.position.y)
         return TaskModel(
             id=task.id,
-            position=PositionModel(x=task.position.x, y=task.position.y),
+            position=PositionModel(x=task.position.x, y=task.position.y, gcj_lng=glng, gcj_lat=glat),
             weight=task.weight,
             create_time=task.create_time,
             deadline=task.deadline,
@@ -83,7 +109,7 @@ class DataTransformer:
             assigned_vehicle_id=task.assigned_vehicle_id,
             start_time=task.start_time,
             complete_time=task.complete_time,
-            complete_path=[PositionModel(x=p.x, y=p.y) for p in task.complete_path],
+            complete_path=DataTransformer._positions_to_models(task.complete_path),
             complete_path_distance=task.complete_path_distance,
             estimated_completion_time=task.estimated_completion_time,
             score=task.score,
@@ -92,9 +118,12 @@ class DataTransformer:
 
     @staticmethod
     def vehicle_to_model(vehicle: Vehicle) -> VehicleModel:
+        vglng, vglat = wgs84_to_gcj02(vehicle.position.x, vehicle.position.y)
         return VehicleModel(
             id=vehicle.id,
-            position=PositionModel(x=vehicle.position.x, y=vehicle.position.y),
+            position=PositionModel(
+                x=vehicle.position.x, y=vehicle.position.y, gcj_lng=vglng, gcj_lat=vglat
+            ),
             battery=vehicle.battery,
             max_battery=vehicle.max_battery,
             battery_percentage=vehicle.get_battery_percentage(),
@@ -105,9 +134,9 @@ class DataTransformer:
             speed=vehicle.speed,
             status=vehicle.status.value,
             assigned_task_ids=vehicle.assigned_task_ids,
-            current_path=vehicle.current_path,
+            current_path=DataTransformer._to_path_point_models(vehicle.current_path),
             charging_station_id=vehicle.charging_station_id,
-            complete_path=vehicle.complete_path,
+            complete_path=DataTransformer._to_path_point_models(vehicle.complete_path),
             path_progress=vehicle.path_progress,
             energy_consumption=vehicle.energy_consumption,
             total_distance_traveled=vehicle.total_distance_traveled
@@ -115,13 +144,16 @@ class DataTransformer:
 
     @staticmethod
     def charging_station_to_model(station: ChargingStation) -> ChargingStationModel:
+        sglng, sglat = wgs84_to_gcj02(station.position.x, station.position.y)
         return ChargingStationModel(
             id=station.id,
-            position=PositionModel(x=station.position.x, y=station.position.y),
+            position=PositionModel(
+                x=station.position.x, y=station.position.y, gcj_lng=sglng, gcj_lat=sglat
+            ),
             capacity=station.capacity,
             queue_count=station.queue_count,
             charging_vehicles=station.charging_vehicles,
             load_pressure=station.load_pressure,
             charging_rate=station.charging_rate,
-            available_capacity=station.get_available_capacity()
+            available_capacity=station.get_available_slots()
         )

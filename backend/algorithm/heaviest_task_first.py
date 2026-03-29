@@ -8,12 +8,11 @@ class HeaviestTaskFirstStrategy(SchedulingStrategy):
         return sorted(feasible_tasks, key=lambda t: t.weight, reverse=True)
 
     def execute(self) -> List[Dict]:
-        current_timestamp = self.global_params.get("timestamp", 0)
-        for task in self.pending_tasks:
-            if task.deadline < current_timestamp:
-                task.update_status(TaskStatus.TIMEOUT)
-
-        sorted_tasks = sorted(self.pending_tasks, key=lambda t: t.weight, reverse=True)
+        sorted_tasks = sorted(
+            [t for t in self.pending_tasks if t.status == TaskStatus.PENDING],
+            key=lambda t: t.weight,
+            reverse=True,
+        )
         for task in sorted_tasks:
             if task.id in self.assigned_task_ids:
                 continue

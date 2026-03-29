@@ -1,19 +1,19 @@
 from .solution import Solution
 from .mip_solver import MIPSolver
 from .genetic_algorithm import GeneticAlgorithm
-from .clustering_algorithm import ClusteringAlgorithm
 from .scheduling_strategy import SchedulingStrategy
 from .shortest_task_first import ShortestTaskFirstStrategy
-from .heaviest_task_first import HeaviestTaskFirstStrategy
+from .priority_based_strategy import PriorityBasedStrategy
+from .composite_score_strategy import CompositeScoreStrategy
 from .algorithm_manager import AlgorithmManager
 
 __all__ = [
     'Solution',
     'MIPSolver',
     'GeneticAlgorithm',
-    'ClusteringAlgorithm',
     'SchedulingStrategy',
     'ShortestTaskFirstStrategy',
-    'HeaviestTaskFirstStrategy',
+    'PriorityBasedStrategy',
+    'CompositeScoreStrategy',
     'AlgorithmManager'
 ]

@@ -1,5 +1,5 @@
-from typing import Optional
-from dataclasses import dataclass
+from typing import Optional, List
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from .position import Position
@@ -9,8 +9,9 @@ class VehicleStatus(Enum):
     TRANSPORTING_TO_TASK = "transporting_to_task"
     DELIVERING = "delivering"
     RETURNING_TO_WAREHOUSE = "returning_to_warehouse"
-    TRANSPORTING = "transporting"  # 保留向后兼容
-    CHARGING = "charging"
+    TRANSPORTING = "transporting"       # 通用运输状态（向后兼容）
+    CHARGING = "charging"               # 正在充电
+    WAITING_CHARGE = "waiting_charge"   # 排队等待充电桩（新增）
     MAINTENANCE = "maintenance"
 
 @dataclass
@@ -22,7 +23,9 @@ class Vehicle:
     current_load: float
     max_load: float
     unit_energy_consumption: float
-    speed: float = 0.1
+    speed: float = 10.0                 # m/s（已修正：原为0.1度/s，单位错误）
+    vehicle_type: str = "medium"        # 车型：small/medium/large（新增）
+    charging_power: float = 0.022       # 充电功率 kWh/s（新增，medium默认）
     status: VehicleStatus = VehicleStatus.IDLE
     assigned_task_ids: list = None
     current_path: list = None
@@ -54,6 +57,19 @@ class Vehicle:
 
     def get_load_percentage(self) -> float:
         return (self.current_load / self.max_load) * 100 if self.max_load > 0 else 0
+
+    def get_remaining_load(self) -> float:
+        """剩余可载重（kg）"""
+        return max(0.0, self.max_load - self.current_load)
+
+    def is_waiting_for_charge(self) -> bool:
+        return self.status == VehicleStatus.WAITING_CHARGE
+
+    def is_charging(self) -> bool:
+        return self.status == VehicleStatus.CHARGING
+
+    def is_idle(self) -> bool:
+        return self.status == VehicleStatus.IDLE
 
     def update_position(self, position: Position):
         self.position = position
@@ -87,6 +103,8 @@ class Vehicle:
             "load_percentage": self.get_load_percentage(),
             "unit_energy_consumption": self.unit_energy_consumption,
             "speed": self.speed,
+            "vehicle_type": self.vehicle_type,
+            "charging_power": self.charging_power,
             "status": self.status.value,
             "assigned_task_ids": self.assigned_task_ids,
             "current_path": self.current_path,

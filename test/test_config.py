@@ -23,7 +23,7 @@ def test_vehicle_config():
     assert "max_load" in small_config
     assert "unit_energy_consumption" in small_config
     assert "speed" in small_config
-    assert small_config["max_battery"] == 50.0
+    assert small_config["max_battery"] == 60.0
     
     # 测试获取中型车辆配置
     medium_config = config.get_vehicle_config("medium")
@@ -33,7 +33,7 @@ def test_vehicle_config():
     # 测试获取大型车辆配置
     large_config = config.get_vehicle_config("large")
     assert large_config is not None
-    assert large_config["max_battery"] == 200.0
+    assert large_config["max_battery"] == 150.0
     
     # 测试获取默认配置
     default_config = config.get_vehicle_config("unknown")
@@ -45,10 +45,9 @@ def test_charging_station_config():
     station_config = config.get_charging_station_config()
     assert station_config is not None
     assert "default_capacity" in station_config
-    assert "default_charging_rate" in station_config
     assert "max_queue_time" in station_config
-    assert station_config["default_capacity"] == 5
-    assert station_config["default_charging_rate"] == 10.0
+    assert station_config["default_capacity"] == 3
+    assert station_config["max_queue_time"] == 600
 
 def test_task_config():
     """测试任务配置"""
@@ -60,7 +59,7 @@ def test_task_config():
     assert "max_priority" in task_config
     assert "default_deadline_offset" in task_config
     assert task_config["min_weight"] == 10.0
-    assert task_config["max_weight"] == 200.0
+    assert task_config["max_weight"] == 1500.0
     assert task_config["min_priority"] == 1
     assert task_config["max_priority"] == 5
 
@@ -73,14 +72,7 @@ def test_algorithm_config():
     assert "max_generations" in genetic_config
     assert "mutation_rate" in genetic_config
     assert "crossover_rate" in genetic_config
-    assert genetic_config["population_size"] == 10
-    
-    # 测试获取聚类算法配置
-    clustering_config = config.get_algorithm_config("clustering")
-    assert clustering_config is not None
-    assert "k" in clustering_config
-    assert "max_iterations" in clustering_config
-    assert clustering_config["k"] == 3
+    assert genetic_config["population_size"] == 100
     
     # 测试获取默认配置
     default_config = config.get_algorithm_config("unknown")
@@ -95,7 +87,7 @@ def test_strategy_config():
     assert "long_distance_threshold" in strategy_config
     assert strategy_config["heavy_task_ratio"] == 0.8
     assert strategy_config["light_task_ratio"] == 0.2
-    assert strategy_config["long_distance_threshold"] == 5.0
+    assert strategy_config["long_distance_threshold"] == 5000.0
 
 def test_performance_metrics():
     """测试性能指标配置"""

@@ -35,7 +35,7 @@ def test_dynamic_scheduling(dynamic_scheduling_module, data_manager):
         current_load=0, max_load=100, unit_energy_consumption=0.1
     )
     task = Task(
-        id=1, position=Position(x=10, y=10), weight=10, create_time=1000, 
+        id=1, position=Position(x=100, y=100), weight=10, create_time=1000, 
         deadline=2000, priority=1, status=TaskStatus.PENDING
     )
     station = ChargingStation(
@@ -57,6 +57,14 @@ def test_dynamic_scheduling(dynamic_scheduling_module, data_manager):
         assert "action_type" in command
         assert "vehicle_id" in command
         assert "assigned_tasks" in command or "station_id" in command
+
+    # 验证点 0-1：下发运输命令后，任务应进入进行中，车辆应具备完整路径并进入运输状态。
+    if commands and commands[0]["action_type"] == "transport":
+        updated_task = data_manager.get_task(task.id)
+        updated_vehicle = data_manager.get_vehicle(vehicle.id)
+        assert updated_task.status == TaskStatus.IN_PROGRESS
+        assert updated_vehicle.status == VehicleStatus.TRANSPORTING
+        assert len(updated_vehicle.complete_path) >= 2
 
 def test_dynamic_scheduling_with_low_battery(dynamic_scheduling_module, data_manager):
     """测试低电量车辆的动态调度"""

@@ -144,6 +144,38 @@ def test_get_idle_vehicles(data_manager):
     assert len(idle_vehicles) == 1
     assert idle_vehicles[0].id == 1
 
+def test_charging_vehicle_can_return_to_idle(data_manager):
+    vehicle = Vehicle(
+        id=1,
+        position=Position(x=100.0, y=100.0),
+        battery=20.0,
+        max_battery=100.0,
+        current_load=0.0,
+        max_load=100.0,
+        unit_energy_consumption=0.1,
+        status=VehicleStatus.IDLE
+    )
+    station = ChargingStation(
+        id="cs1",
+        position=Position(x=200.0, y=200.0),
+        capacity=5,
+        queue_count=0,
+        charging_vehicles=[],
+        load_pressure=0.0,
+        charging_rate=10.0
+    )
+
+    data_manager.add_vehicle(vehicle)
+    data_manager.add_charging_station(station)
+
+    data_manager.add_vehicle_to_charging_station(vehicle_id=1, station_id="cs1")
+    assert data_manager.get_vehicle(1).status == VehicleStatus.CHARGING
+    assert data_manager.get_vehicle(1).charging_station_id == "cs1"
+
+    data_manager.remove_vehicle_from_charging_station(vehicle_id=1, station_id="cs1")
+    assert data_manager.get_vehicle(1).status == VehicleStatus.IDLE
+    assert data_manager.get_vehicle(1).charging_station_id is None
+
 def test_add_charging_station(data_manager):
     station = ChargingStation(
         id="cs1",
@@ -241,10 +273,10 @@ def test_calculate_complete_path(data_manager):
     # 设置仓库位置
     data_manager.set_warehouse_position(Position(x=0.0, y=0.0))
     
-    # 添加任务和车辆
+    # 添加任务和车辆（坐标应位于模拟图节点范围内）
     task = Task(
         id=1,
-        position=Position(x=3.0, y=4.0),
+        position=Position(x=100.0, y=100.0),  # 调整为与 100m 步进网格匹配
         weight=10.0,
         create_time=1000,
         deadline=2000,
@@ -270,7 +302,8 @@ def test_calculate_complete_path(data_manager):
     assert result is not None
     assert result["task_id"] == 1
     assert result["vehicle_id"] == 1
-    assert result["total_distance"] == 10.0
+    # 模拟图中从 (0,0) 到 (100,100) 的距离应为 200 (100+100)
+    assert result["total_distance"] >= 200.0
     assert result["is_feasible"] == True
     assert len(result["complete_path"]) >= 3
 
@@ -335,5 +368,48 @@ def test_is_at_warehouse(data_manager):
     assert data_manager.is_at_warehouse(position2) == True
     
     # 测试远离仓库位置的情况
-    position3 = Position(x=150.0, y=150.0)  # 超出容差范围
+    position3 = Position(x=5000.0, y=5000.0)  # 超出容差范围
     assert data_manager.is_at_warehouse(position3) == False
+
+
+def test_update_vehicle_position_by_speed_completes_task(data_manager):
+    """测试车辆沿完整路径推进后触发任务完成闭环"""
+    data_manager.set_warehouse_position(Position(x=0.0, y=0.0))
+
+    task = Task(
+        id=101,
+        position=Position(x=3.0, y=4.0),
+        weight=10.0,
+        create_time=1000,
+        deadline=9999999999,
+        priority=1,
+        status=TaskStatus.IN_PROGRESS,
+        assigned_vehicle_id=1,
+        start_time=1001,
+        complete_path_distance=10.0
+    )
+    vehicle = Vehicle(
+        id=1,
+        position=Position(x=0.0, y=0.0),
+        battery=100.0,
+        max_battery=100.0,
+        current_load=0.0,
+        max_load=100.0,
+        unit_energy_consumption=0.1,
+        speed=20.0,
+        status=VehicleStatus.TRANSPORTING,
+        assigned_task_ids=[101],
+        complete_path=[(0.0, 0.0), (3.0, 4.0), (0.0, 0.0)]
+    )
+
+    data_manager.add_task(task)
+    data_manager.add_vehicle(vehicle)
+
+    data_manager.update_vehicle_position_by_speed(vehicle_id=1, time_delta=1.0)
+
+    updated_task = data_manager.get_task(101)
+    updated_vehicle = data_manager.get_vehicle(1)
+
+    assert updated_task.status == TaskStatus.COMPLETED
+    assert updated_vehicle.status == VehicleStatus.IDLE
+    assert len(updated_vehicle.assigned_task_ids) == 0

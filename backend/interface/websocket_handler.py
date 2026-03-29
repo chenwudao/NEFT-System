@@ -4,6 +4,7 @@ import json
 from fastapi import WebSocket, WebSocketDisconnect
 from datetime import datetime
 from backend.data.data_manager import DataManager
+from backend.data.geo_display import enrich_wgs84_point_dict
 from backend.data.task import Task
 from backend.data.vehicle import Vehicle
 from backend.data.charging_station import ChargingStation
@@ -107,9 +108,11 @@ class WebSocketHandler:
 
     async def broadcast_warehouse_position_update(self, position):
         """广播中央仓库位置更新"""
+        wh = {"x": position.x, "y": position.y}
+        enrich_wgs84_point_dict(wh)
         message = {
             "type": "warehouse_position_update",
-            "data": {"x": position.x, "y": position.y},
+            "data": wh,
             "timestamp": int(datetime.now().timestamp())
         }
         await self._broadcast_to_subscribers(message, ["warehouse_update", "all"])

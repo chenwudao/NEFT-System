@@ -53,16 +53,90 @@ class StaticPlanningModule:
 
         return predicted_tasks
 
-    def generate_global_plan(self) -> Optional[Plan]:
-        tasks = self.data_manager.get_pending_tasks()
+    def generate_global_plan(self, algorithm: str = "ortools") -> Optional[Plan]:
+        """生成全局规划方案
+        
+        Args:
+            algorithm: 使用的算法，"mip" 或 "genetic"
+        """
+        import logging
+        import time
+        
+        current_timestamp = int(time.time())
+        
+        # 获取所有待处理任务，但只考虑已经出现（create_time <= current_timestamp）的任务
+        all_pending_tasks = self.data_manager.get_pending_tasks()
+        tasks = [
+            task for task in all_pending_tasks
+            if task.create_time <= current_timestamp
+        ]
+        
+        # 记录被过滤的未来任务
+        future_tasks = [
+            task for task in all_pending_tasks
+            if task.create_time > current_timestamp
+        ]
+        if future_tasks:
+            logging.info(f"[StaticPlanning] Filtered {len(future_tasks)} future tasks (not yet available)")
+        
         vehicles = self.data_manager.get_vehicles()
         charging_stations = self.data_manager.get_charging_stations()
         warehouse_pos = self.data_manager.warehouse_position
 
         if not tasks or not vehicles:
+            logging.warning(f"[StaticPlanning] No available tasks or vehicles (filtered {len(future_tasks)} future tasks)")
             return None
 
-        task_clusters = self.algorithm_manager.cluster_tasks(tasks, method="kmeans")
+        logging.info(f"[StaticPlanning] Generating plan with {algorithm} for {len(tasks)} tasks ({len(future_tasks)} future tasks filtered), {len(vehicles)} vehicles")
+
+        # 求解策略：OR-Tools(免费) -> MIP(Gurobi) -> GA(启发式)
+        solution = None
+        
+        # 1. 首先尝试 OR-Tools（完全免费，无限制）
+        try:
+            solution = self.algorithm_manager.solve_ortools(
+                tasks, vehicles, charging_stations,
+                (warehouse_pos.x, warehouse_pos.y)
+            )
+            if solution and solution.vehicle_assignments:
+                logging.info(f"[StaticPlanning] OR-Tools solution: {len(solution.vehicle_assignments)} vehicles assigned")
+            else:
+                logging.warning("[StaticPlanning] OR-Tools returned no solution, trying MIP")
+                solution = None
+        except Exception as e:
+            logging.warning(f"[StaticPlanning] OR-Tools failed: {e}, trying MIP")
+            solution = None
+        
+        # 2. 如果 OR-Tools 失败，尝试 MIP（可能受限）
+        if solution is None and algorithm == "mip":
+            try:
+                solution = self.algorithm_manager.solve_mip(
+                    tasks, vehicles, charging_stations,
+                    (warehouse_pos.x, warehouse_pos.y)
+                )
+                if solution and solution.vehicle_assignments:
+                    logging.info(f"[StaticPlanning] MIP solution: {len(solution.vehicle_assignments)} vehicles assigned")
+                else:
+                    logging.warning("[StaticPlanning] MIP returned no solution, falling back to GA")
+                    solution = None
+            except Exception as e:
+                logging.error(f"[StaticPlanning] MIP failed: {e}, falling back to GA")
+                solution = None
+        
+        # 3. 如果前面都失败，使用 GA（总是可用）
+        if solution is None:
+            try:
+                solution = self.algorithm_manager.solve_genetic(
+                    tasks, vehicles, charging_stations,
+                    (warehouse_pos.x, warehouse_pos.y)
+                )
+                if solution and solution.vehicle_assignments:
+                    logging.info(f"[StaticPlanning] GA solution: {len(solution.vehicle_assignments)} vehicles assigned")
+                else:
+                    logging.warning("[StaticPlanning] GA also returned no solution")
+            except Exception as e:
+                logging.error(f"[StaticPlanning] GA failed: {e}")
+                solution = None
 
         vehicle_routes = {}
         task_assignments = {}
@@ -70,26 +144,14 @@ class StaticPlanningModule:
         total_distance = 0.0
         total_time = 0.0
 
-        for cluster in task_clusters:
-            if not cluster:
-                continue
+        if solution and solution.vehicle_assignments:
+            for vehicle_id, task_ids in solution.vehicle_assignments.items():
+                vehicle_routes[vehicle_id] = task_ids
+                for task_id in task_ids:
+                    task_assignments[task_id] = vehicle_id
 
-            solution = self.algorithm_manager.solve_genetic(
-                cluster, vehicles, charging_stations, 
-                (warehouse_pos.x, warehouse_pos.y)
-            )
-
-            if solution and solution.vehicle_assignments:
-                for vehicle_id, task_ids in solution.vehicle_assignments.items():
-                    if vehicle_id not in vehicle_routes:
-                        vehicle_routes[vehicle_id] = []
-                    vehicle_routes[vehicle_id].extend(task_ids)
-
-                    for task_id in task_ids:
-                        task_assignments[task_id] = vehicle_id
-
-                total_distance += solution.total_distance
-                total_time += solution.total_time
+            total_distance = solution.total_distance
+            total_time = solution.total_time
 
         for vehicle_id in vehicle_routes:
             charging_schedule[vehicle_id] = []

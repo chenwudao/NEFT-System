@@ -19,6 +19,14 @@ def client():
     # 注册路由
     app.include_router(api_controller.get_router(), prefix="/api", tags=["API"])
     
+    # 将组件注入 APP 状态，以便后端控制器中的 request.app.state 能找到它们
+    app.state.data_manager = data_manager
+    app.state.algorithm_manager = algorithm_manager
+    app.state.decision_manager = decision_manager
+    app.state.websocket_handler = websocket_handler
+    app.state.simulation_running = False
+    app.state.simulation_mode = "realtime"
+    
     return TestClient(app)
 
 def test_root(client):
@@ -100,6 +108,7 @@ def test_get_system_status(client):
     assert "total_tasks" in data
     assert "total_vehicles" in data
     assert "total_charging_stations" in data
+    assert "strategy_scores" in data
 
 def test_get_performance_metrics(client):
     response = client.get("/api/system/performance")
@@ -125,8 +134,30 @@ def test_schedule_tasks(client):
     }
     response = client.post("/api/scheduling", json=scheduling_data)
     assert response.status_code == 200
-    commands = response.json()
-    assert isinstance(commands, list)
+    data = response.json()
+    assert "commands" in data
+    assert "selected_strategy" in data
+    assert "strategy_scores" in data
+    assert isinstance(data["commands"], list)
+
+
+def test_simulation_control_endpoints(client):
+    cfg = client.post("/api/simulation/config", json={"mode": "realtime", "scale": "small"})
+    assert cfg.status_code == 200
+    assert cfg.json()["success"] is True
+
+    start = client.post("/api/simulation/start", json={"mode": "realtime", "scale": "small"})
+    assert start.status_code == 200
+    assert start.json()["running"] is True
+
+    status = client.get("/api/simulation/status")
+    assert status.status_code == 200
+    assert "mode" in status.json()
+    assert "scale" in status.json()
+
+    stop = client.post("/api/simulation/stop")
+    assert stop.status_code == 200
+    assert stop.json()["running"] is False
 
 def test_get_strategies(client):
     response = client.get("/api/strategies")

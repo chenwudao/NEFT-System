@@ -49,6 +49,8 @@
     <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=aaeb6c55c1207366c4137fb037def927"></script>
     <!-- 引入AMapUI组件库 -->
     <script type="text/javascript" src="https://webapi.amap.com/ui/1.1/main.js"></script>
+    <!-- 引入 Chart.js（历史数据图表）-->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -56,10 +58,19 @@
             <h1>车辆调度算法仿真可视化</h1>
             <div class="controls">
                 <button id="startButton">启动模拟</button>
-                <button id="stopButton" disabled>停止模拟</button>
-                <button id="speedSlow">慢速</button>
-                <button id="speedNormal" style="background-color: #4CAF50; color: white;">正常</button>
-                <button id="speedFast">快速</button>
+                <button id="stopButton" disabled>暂停模拟</button>
+                <button id="resetButton" style="background-color: #ff9800; color: white;">重置仿真</button>
+                <label for="modeSelect">模式</label>
+                <select id="modeSelect">
+                    <option value="realtime" selected>实时策略</option>
+                    <option value="static">静态规划</option>
+                </select>
+                <label for="scaleSelect">规模</label>
+                <select id="scaleSelect">
+                    <option value="small">小规模</option>
+                    <option value="medium" selected>中规模</option>
+                    <option value="large">大规模</option>
+                </select>
                 <button id="toggleMap">切换地图模式</button>
             </div>
         </header>
@@ -75,10 +86,18 @@
             <div class="dashboard">
                 <div class="core-stats">
                     <h2>仿真核心数据</h2>
+                    <p>仿真状态：<span id="simulationStatus">未启动</span></p>
+                    <p>仿真速度：<span id="simSpeedDisplay">×120（1秒=2分钟）</span></p>
                     <p>当前时间戳：<span id="timestamp">0</span></p>
                     <p>累计总得分：<span id="totalScore">0.0</span></p>
                     <p>任务完成率：<span id="taskCompletionRate">0.0%</span></p>
                     <p>车辆利用率：<span id="vehicleUtilization">0.0%</span></p>
+                </div>
+                <div class="strategy-reasoning">
+                    <h3>当前调度策略</h3>
+                    <p>策略：<span id="currentStrategy">-</span></p>
+                    <p>选择原因：<span id="strategyReason">暂未选择</span></p>
+                    <div id="strategyScoreDetail" class="strategy-score-wrap"></div>
                 </div>
                 <div class="vehicle-stats">
                     <h3>车辆状态</h3>
@@ -91,6 +110,27 @@
                 <div class="station-stats">
                     <h3>充电站状态</h3>
                     <div id="stationList"></div>
+                </div>
+                <!-- 历史数据图表面板（折叠式）-->
+                <div class="charts-panel" id="chartsPanel">
+                    <div class="charts-panel-header" id="chartsPanelToggle">
+                        <h3>📊 历史数据趋势</h3>
+                        <span class="toggle-icon" id="chartToggleIcon">▼</span>
+                    </div>
+                    <div class="charts-content" id="chartsContent">
+                        <div class="chart-wrapper">
+                            <canvas id="completionRateChart"></canvas>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="utilizationChart"></canvas>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="totalScoreChart"></canvas>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="strategyTimelineChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>

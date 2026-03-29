@@ -13,9 +13,10 @@ from backend.interface.schemas import (
     CreateTaskRequest, CreateVehicleRequest, CreateChargingStationRequest,
     UpdateVehicleRequest, SchedulingRequest,
     SystemStatusResponse, PerformanceMetricsResponse,
-    SimulationStateResponse, CommandResponse,
+    SimulationStateResponse, CommandResponse, SchedulingResultResponse,
     CompletePathRequest, CompletePathResponse,
-    BatchCompletePathRequest, WarehousePositionModel, TaskCompletionInfo
+    BatchCompletePathRequest, WarehousePositionModel, TaskCompletionInfo,
+    SimulationSpeedRequest, SimulationSpeedResponse
 )
 from backend.interface.data_transformer import DataTransformer
 
@@ -148,29 +149,57 @@ class APIController:
         @self.router.get("/system/state", response_model=SimulationStateResponse)
         async def get_simulation_state():
             state = self.data_manager.get_system_state()
-            map_data = self.data_manager.get_map_data()
 
+            wh = state["warehouse_position"]
             return SimulationStateResponse(
-            timestamp=state["timestamp"],
-            warehouse_position=PositionModel(x=state["warehouse_position"]["x"],
-                                       y=state["warehouse_position"]["y"]),
-            vehicles=[self.transformer.vehicle_to_model(v) for v in self.data_manager.get_vehicles()],
-            tasks=[self.transformer.task_to_model(t) for t in self.data_manager.get_tasks()],
-            charging_stations=[self.transformer.charging_station_to_model(s)
-                             for s in self.data_manager.get_charging_stations()],
-            total_score=0.0,
-            map_nodes=[],
-            map_edges=[]
-        )
+                timestamp=state["timestamp"],
+                warehouse_position=PositionModel(
+                    x=wh["x"],
+                    y=wh["y"],
+                    gcj_lng=wh.get("gcj_lng"),
+                    gcj_lat=wh.get("gcj_lat"),
+                ),
+                vehicles=[self.transformer.vehicle_to_model(v) for v in self.data_manager.get_vehicles()],
+                tasks=[self.transformer.task_to_model(t) for t in self.data_manager.get_tasks()],
+                charging_stations=[
+                    self.transformer.charging_station_to_model(s)
+                    for s in self.data_manager.get_charging_stations()
+                ],
+                total_score=state["total_score"],
+                map_nodes=state["map_nodes"],
+                map_edges=state["map_edges"]
+            )
 
-        @self.router.post("/scheduling", response_model=List[CommandResponse])
+        @self.router.post("/scheduling", response_model=SchedulingResultResponse)
         async def schedule_tasks(request: SchedulingRequest):
             commands = self.decision_manager.dynamic_scheduling(strategy=request.strategy)
 
             for command in commands:
                 await self.websocket_handler.broadcast_command(command)
 
-            return [CommandResponse(**cmd) for cmd in commands]
+            converted_commands = []
+            for cmd in commands:
+                command_data = dict(cmd)
+                command_data["path"] = [
+                    {"x": float(p[0]), "y": float(p[1])} if isinstance(p, (tuple, list)) else p
+                    for p in command_data.get("path", [])
+                ]
+                command_data["complete_path"] = [
+                    {"x": float(p[0]), "y": float(p[1])} if isinstance(p, (tuple, list)) else p
+                    for p in command_data.get("complete_path", [])
+                ]
+                converted_commands.append(CommandResponse(**command_data))
+
+            strategy_eval = self.decision_manager.get_last_strategy_evaluation()
+            selected_strategy = strategy_eval.get("selected_strategy", request.strategy)
+            selection_reason = strategy_eval.get("selection_reason", "manual_strategy")
+
+            return SchedulingResultResponse(
+                selected_strategy=selected_strategy,
+                selection_reason=selection_reason,
+                strategy_scores={},  # 不再返回详细策略分数
+                commands=converted_commands
+            )
 
         @self.router.post("/scheduling/static")
         async def execute_static_planning():
@@ -197,7 +226,7 @@ class APIController:
         async def get_available_strategies():
             return {
                 "strategies": ["shortest_task_first", "heaviest_task_first", "auto"],
-                "current_strategy": self.decision_manager.strategy_selector.get_best_strategy()
+                "current_strategy": self.decision_manager.last_selected_strategy
             }
 
         @self.router.get("/commands")
@@ -304,6 +333,24 @@ class APIController:
             return {
                 "completed_tasks": [task.id for task in completed_tasks],
                 "count": len(completed_tasks)
+            }
+
+        # 模拟速度控制接口
+        @self.router.get("/simulation/speed")
+        async def get_simulation_speed():
+            """获取当前模拟速度"""
+            from backend.main import SIM_SPEED_FACTOR
+            return {
+                "speed_factor": int(SIM_SPEED_FACTOR),
+                "message": f"当前模拟速度: 1现实秒 = {int(SIM_SPEED_FACTOR)}仿真秒"
+            }
+
+        @self.router.post("/simulation/speed")
+        async def set_simulation_speed(request: SimulationSpeedRequest):
+            """设置模拟速度（需要重启后端才能生效）"""
+            return {
+                "speed_factor": request.speed_factor,
+                "message": f"速度设置已保存: {request.speed_factor}。请重启后端服务使新速度生效。"
             }
 
     def get_router(self):

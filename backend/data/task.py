@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -64,3 +64,10 @@ class Task:
             "score": self.score,
             "is_on_time": self.is_on_time
         }
+
+
+def apply_deadline_timeouts(tasks: Iterable[Task], current_timestamp: int) -> None:
+    """Mark overdue PENDING tasks as TIMEOUT (single place for realtime + meta evaluation)."""
+    for task in tasks:
+        if task.status == TaskStatus.PENDING and task.deadline < current_timestamp:
+            task.update_status(TaskStatus.TIMEOUT)

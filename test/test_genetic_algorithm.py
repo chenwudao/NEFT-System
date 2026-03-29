@@ -79,3 +79,17 @@ def test_evolve(genetic_algorithm, test_tasks, test_vehicles):
     assert hasattr(solution, 'objective_value')
     assert solution.total_distance >= 0
     assert solution.objective_value >= 0
+
+
+def test_crossover_generates_valid_assignments(genetic_algorithm, test_tasks, test_vehicles):
+    genetic_algorithm.initialize_population(test_tasks, test_vehicles)
+    parent1 = genetic_algorithm.population[0]
+    parent2 = genetic_algorithm.population[1]
+
+    child = genetic_algorithm.crossover(parent1, parent2, test_tasks, test_vehicles)
+
+    assert isinstance(child, Gene)
+    assert len(child.tasks) == len(test_tasks)
+    assigned = [tid for _, tids in child.vehicle_assignments.items() for tid in tids]
+    assert set(assigned) == set([task.id for task in test_tasks])
+    assert child.fitness >= 0

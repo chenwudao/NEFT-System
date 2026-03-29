@@ -6,15 +6,18 @@ from backend.data.task import Task, TaskStatus
 from backend.data.vehicle import Vehicle, VehicleStatus
 from backend.data.charging_station import ChargingStation
 
+
 @pytest.fixture
 def data_manager():
     dm = DataManager()
     dm.set_warehouse_position(Position(x=0, y=0))
     return dm
 
+
 @pytest.fixture
 def algorithm_manager(data_manager):
     return AlgorithmManager(data_manager.path_calculator)
+
 
 def test_algorithm_manager_initialization(algorithm_manager):
     """测试算法管理器初始化"""
@@ -22,32 +25,14 @@ def test_algorithm_manager_initialization(algorithm_manager):
     assert algorithm_manager.path_calculator is not None
     assert hasattr(algorithm_manager, 'mip_solver')
     assert hasattr(algorithm_manager, 'genetic_algorithm')
-    assert hasattr(algorithm_manager, 'clustering_algorithm')
+    # 聚类算法已删除
+    assert hasattr(algorithm_manager, 'strategy_classes')
+    # 验证精简后的策略（3个）
+    assert len(algorithm_manager.strategy_classes) == 3
+    assert 'shortest_task_first' in algorithm_manager.strategy_classes
+    assert 'priority_based' in algorithm_manager.strategy_classes
+    assert 'composite_score' in algorithm_manager.strategy_classes
 
-def test_cluster_tasks(algorithm_manager):
-    """测试任务聚类功能"""
-    # 创建测试任务
-    tasks = [
-        Task(id=1, position=Position(x=10, y=10), weight=10, create_time=1000, deadline=2000, priority=1),
-        Task(id=2, position=Position(x=12, y=12), weight=15, create_time=1000, deadline=2000, priority=2),
-        Task(id=3, position=Position(x=50, y=50), weight=20, create_time=1000, deadline=2000, priority=3),
-        Task(id=4, position=Position(x=52, y=52), weight=25, create_time=1000, deadline=2000, priority=4),
-    ]
-    
-    # 测试Kmeans聚类
-    clusters = algorithm_manager.cluster_tasks(tasks, method="kmeans")
-    assert isinstance(clusters, list)
-    assert len(clusters) > 0
-    
-    # 测试区域划分聚类
-    region_clusters = algorithm_manager.cluster_tasks(tasks, method="region")
-    assert isinstance(region_clusters, list)
-    assert len(region_clusters) > 0
-    
-    # 测试默认聚类方法
-    default_clusters = algorithm_manager.cluster_tasks(tasks, method="unknown")
-    assert isinstance(default_clusters, list)
-    assert len(default_clusters) == len(tasks)
 
 def test_schedule_realtime(algorithm_manager, data_manager):
     """测试实时调度功能"""
@@ -79,19 +64,21 @@ def test_schedule_realtime(algorithm_manager, data_manager):
         "current_time": 1000
     }
     
-    commands = algorithm_manager.schedule_realtime(
-        "shortest_task_first", idle_vehicles, pending_tasks, 
+    # 测试3个精简后的策略
+    for strategy in ['shortest_task_first', 'priority_based', 'composite_score']:
+        commands = algorithm_manager.schedule_realtime(
+            strategy, idle_vehicles, pending_tasks, 
+            charging_stations, global_params
+        )
+        assert isinstance(commands, list)
+    
+    # 测试无效策略回退到默认策略
+    commands_invalid = algorithm_manager.schedule_realtime(
+        "invalid_strategy", idle_vehicles, pending_tasks, 
         charging_stations, global_params
     )
-    
-    assert isinstance(commands, list)
-    
-    # 测试其他策略
-    commands_genetic = algorithm_manager.schedule_realtime(
-        "genetic", idle_vehicles, pending_tasks, 
-        charging_stations, global_params
-    )
-    assert isinstance(commands_genetic, list)
+    assert isinstance(commands_invalid, list)
+
 
 def test_solve_genetic(algorithm_manager, data_manager):
     """测试遗传算法求解"""
@@ -119,3 +106,42 @@ def test_solve_genetic(algorithm_manager, data_manager):
     )
     
     assert solution is not None
+
+
+def test_solve_mip(algorithm_manager, data_manager):
+    """测试MIP求解器"""
+    # 创建测试数据
+    vehicle = Vehicle(
+        id=1, position=Position(x=0, y=0), battery=100, max_battery=100,
+        current_load=0, max_load=100, unit_energy_consumption=0.1
+    )
+    task = Task(
+        id=1, position=Position(x=10, y=10), weight=10, create_time=1000, 
+        deadline=2000, priority=1
+    )
+    
+    data_manager.add_vehicle(vehicle)
+    data_manager.add_task(task)
+    
+    # 测试MIP求解（如果没有Gurobi会回退）
+    tasks = data_manager.get_tasks()
+    vehicles = data_manager.get_vehicles()
+    charging_stations = data_manager.get_charging_stations()
+    warehouse_position = (0, 0)
+    
+    solution = algorithm_manager.solve_mip(
+        tasks, vehicles, charging_stations, warehouse_position
+    )
+    
+    # MIP可能返回None（如果没有求解器）或Solution
+    assert solution is None or hasattr(solution, 'vehicle_assignments')
+
+
+def test_get_available_strategies(algorithm_manager):
+    """测试获取可用策略列表"""
+    strategies = algorithm_manager.get_available_strategies()
+    assert isinstance(strategies, list)
+    assert len(strategies) == 3
+    assert 'shortest_task_first' in strategies
+    assert 'priority_based' in strategies
+    assert 'composite_score' in strategies

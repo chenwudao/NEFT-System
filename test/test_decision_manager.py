@@ -63,6 +63,7 @@ def test_get_system_status(decision_manager, data_manager):
     assert "total_tasks" in status
     assert "total_vehicles" in status
     assert "total_charging_stations" in status
+    assert "current_strategy_reason" in status
     assert status["total_tasks"] == 1
     assert status["total_vehicles"] == 1
     assert status["total_charging_stations"] == 1
@@ -181,3 +182,36 @@ def test_manage_battery(decision_manager, data_manager):
     assert command is not None
     assert command["action_type"] == "charge"
     assert command["vehicle_id"] == 1
+
+
+def test_evaluate_system_performance_uses_task_score(decision_manager, data_manager):
+    completed_task = Task(
+        id=11,
+        position=Position(x=10.0, y=10.0),
+        weight=20.0,
+        create_time=1000,
+        deadline=2000,
+        priority=1,
+        status=TaskStatus.COMPLETED,
+        start_time=1200,
+        complete_time=1800,
+        score=123.45,
+        complete_path_distance=50.0
+    )
+    pending_task = Task(
+        id=12,
+        position=Position(x=20.0, y=20.0),
+        weight=10.0,
+        create_time=1000,
+        deadline=2500,
+        priority=1,
+        status=TaskStatus.PENDING
+    )
+
+    data_manager.add_task(completed_task)
+    data_manager.add_task(pending_task)
+
+    metrics = decision_manager.evaluate_system_performance()
+    assert metrics["completion_rate"] == 0.5
+    assert metrics["total_distance"] == 50.0
+    assert metrics["total_score"] == pytest.approx(123.45)

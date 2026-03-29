@@ -2,11 +2,13 @@ from typing import List
 import random
 import math
 from backend.data.task import Task, Position
+from backend.data.path_calculator import PathCalculator
 
 class ClusteringAlgorithm:
-    def __init__(self, k: int = 3, max_iterations: int = 100):
+    def __init__(self, k: int = 3, max_iterations: int = 100, path_calculator: PathCalculator = None):
         self.k = k
         self.max_iterations = max_iterations
+        self.path_calculator = path_calculator
 
     def kmeans_clustering(self, tasks: List[Task]) -> List[List[Task]]:
         if len(tasks) < self.k:
@@ -37,7 +39,7 @@ class ClusteringAlgorithm:
             closest_cluster = 0
 
             for i, centroid in enumerate(centroids):
-                distance = self._euclidean_distance(task.position, centroid)
+                distance = self._distance(task.position, centroid)
                 if distance < min_distance:
                     min_distance = distance
                     closest_cluster = i
@@ -62,13 +64,15 @@ class ClusteringAlgorithm:
     def _centroids_converged(self, old_centroids: List[Position], 
                             new_centroids: List[Position], tolerance: float = 0.001) -> bool:
         for old, new in zip(old_centroids, new_centroids):
-            distance = self._euclidean_distance(old, new)
+            distance = self._distance(old, new)
             if distance > tolerance:
                 return False
         return True
 
-    def _euclidean_distance(self, pos1: Position, pos2: Position) -> float:
-        return math.sqrt((pos1.x - pos2.x)**2 + (pos1.y - pos2.y)**2)
+    def _distance(self, pos1: Position, pos2: Position) -> float:
+        if not self.path_calculator:
+            raise RuntimeError("PathCalculator is required for graph-based clustering.")
+        return self.path_calculator.calculate_pair_distance((pos1.x, pos1.y), (pos2.x, pos2.y))
 
     def region_partition(self, tasks: List[Task], num_regions: int = 4) -> List[List[Task]]:
         if len(tasks) == 0:

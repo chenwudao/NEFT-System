@@ -6,6 +6,7 @@ import json
 import sys
 from datetime import datetime
 from fastapi import FastAPI, WebSocket
+from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -32,6 +33,11 @@ from backend.config import config
 current_problem_scale = "medium"
 current_algorithm = "genetic"
 
+
+class SimulationConfigRequest(BaseModel):
+    mode: str = "realtime"   # realtime | static
+    scale: str = "medium"    # small | medium | large
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Starting NEFT System...")
@@ -42,8 +48,6 @@ async def lifespan(app: FastAPI):
     websocket_handler = WebSocketHandler(data_manager, decision_manager)
     api_controller = APIController(data_manager, decision_manager, websocket_handler)
 
-    data_manager.set_warehouse_position(Position(x=0, y=0))
-
     data_manager.register_task_update_callback(websocket_handler.broadcast_task_update)
     data_manager.register_vehicle_update_callback(websocket_handler.broadcast_vehicle_update)
     data_manager.register_station_update_callback(websocket_handler.broadcast_station_update)
@@ -52,18 +56,22 @@ async def lifespan(app: FastAPI):
     app.state.decision_manager = decision_manager
     app.state.websocket_handler = websocket_handler
     app.state.api_controller = api_controller
+    app.state.simulation_running = False
+    app.state.simulation_mode = "realtime"
+    app.state.static_planning_interval = int(
+        os.getenv("NEFT_STATIC_PLAN_INTERVAL_SEC", str(config.PLANNING_INTERVAL))
+    )
+    app.state.last_static_planning_ts = 0
+    # Wall-clock throttle for realtime dynamic_scheduling (see NEFT_DYNAMIC_SCHEDULE_INTERVAL_SEC)
+    app.state.last_dynamic_scheduling_ts = 0.0
 
     app.include_router(api_controller.get_router(), prefix="/api", tags=["API"])
-
-    # 初始化测试数据，默认中规模
-    global current_algorithm
-    current_algorithm = initialize_test_data(data_manager, current_problem_scale)
     
-    # Create initial log file
+    # 创建初始日志文件
     create_log_file()
 
-    asyncio.create_task(background_tasks(data_manager, decision_manager, websocket_handler))
-    asyncio.create_task(task_generator(data_manager))
+    asyncio.create_task(background_tasks(app, data_manager, decision_manager, websocket_handler))
+    asyncio.create_task(task_generator(app, data_manager))
 
     yield
 
@@ -100,6 +108,153 @@ async def set_problem_scale(scale: str):
     return {
         "status": "success",
         "scale": scale,
+        "algorithm": current_algorithm
+    }
+
+
+@app.post("/api/simulation/config")
+async def set_simulation_config(request: SimulationConfigRequest):
+    global current_problem_scale, current_algorithm
+
+    if request.mode not in ["realtime", "static"]:
+        return {"success": False, "message": "mode must be realtime or static"}
+    if request.scale not in ["small", "medium", "large"]:
+        return {"success": False, "message": "scale must be small, medium or large"}
+
+    app.state.simulation_mode = request.mode
+
+    # scale changes are applied immediately
+    if current_problem_scale != request.scale:
+        current_problem_scale = request.scale
+        data_manager = app.state.data_manager
+        data_manager.tasks.clear()
+        data_manager.vehicles.clear()
+        data_manager.charging_stations.clear()
+        current_algorithm = initialize_test_data(data_manager, request.scale)
+
+    return {
+        "success": True,
+        "running": app.state.simulation_running,
+        "mode": app.state.simulation_mode,
+        "scale": current_problem_scale,
+        "algorithm": current_algorithm
+    }
+
+
+class SimulationStartRequest(BaseModel):
+    mode: str = "realtime"   # realtime | static
+    scale: str = "medium"    # small | medium | large (仅静态规划需要)
+
+
+@app.post("/api/simulation/start")
+async def start_simulation(request: SimulationStartRequest):
+    global current_problem_scale, current_algorithm
+    
+    # 验证参数
+    if request.mode not in ["realtime", "static"]:
+        return {"success": False, "message": "mode must be realtime or static"}
+    if request.scale not in ["small", "medium", "large"]:
+        return {"success": False, "message": "scale must be small, medium or large"}
+    
+    # 设置模式和规模
+    app.state.simulation_mode = request.mode
+    current_problem_scale = request.scale
+    
+    data_manager = app.state.data_manager
+    decision_manager = app.state.decision_manager
+    
+    # 清空现有数据
+    data_manager.tasks.clear()
+    data_manager.vehicles.clear()
+    data_manager.charging_stations.clear()
+    decision_manager._dynamic_scheduling.active_commands.clear()
+    
+    # 根据模式初始化
+    if request.mode == "static":
+        # 静态规划：预生成任务和车辆
+        current_algorithm = initialize_test_data(data_manager, request.scale)
+        print(f"[Static Mode] Initialized with scale={request.scale}, tasks={len(data_manager.get_tasks())}")
+    else:
+        # 实时规划：只初始化车辆和充电站，不生成任务
+        _initialize_realtime_mode(data_manager, request.scale)
+        current_algorithm = "realtime_heuristic"
+        print(f"[Realtime Mode] Initialized with scale={request.scale}, no pre-generated tasks")
+    
+    # 设置算法管理器的仓库位置
+    algorithm_manager = decision_manager.algorithm_manager
+    if data_manager.warehouse_position:
+        algorithm_manager.warehouse_pos = (data_manager.warehouse_position.x, data_manager.warehouse_position.y)
+    
+    # 启动仿真
+    app.state.simulation_running = True
+    app.state.last_static_planning_ts = 0
+    app.state.last_dynamic_scheduling_ts = 0.0
+    
+    return {
+        "success": True,
+        "running": True,
+        "mode": app.state.simulation_mode,
+        "scale": current_problem_scale,
+        "algorithm": current_algorithm,
+        "tasks_count": len(data_manager.get_tasks()),
+        "vehicles_count": len(data_manager.get_vehicles())
+    }
+
+
+@app.post("/api/simulation/stop")
+async def stop_simulation():
+    app.state.simulation_running = False
+    return {
+        "success": True,
+        "running": False,
+        "mode": app.state.simulation_mode,
+        "scale": current_problem_scale,
+        "algorithm": current_algorithm
+    }
+
+
+@app.post("/api/simulation/reset")
+async def reset_simulation():
+    """重置模拟到初始状态（未启动状态），清空所有数据，需要重新选择模式和规模后启动"""
+    app.state.simulation_running = False
+    global current_problem_scale, current_algorithm
+    
+    data_manager = app.state.data_manager
+    # 清空所有数据
+    data_manager.tasks.clear()
+    data_manager.vehicles.clear()
+    data_manager.charging_stations.clear()
+    
+    # 重置决策模块状态
+    dsm = app.state.decision_manager._dynamic_scheduling
+    dsm.active_commands.clear()
+    dsm.pending_tasks.clear()
+    app.state.decision_manager.last_selected_strategy = "shortest_task_first"
+    app.state.decision_manager.last_strategy_reason = "init"
+    app.state.decision_manager.last_strategy_scores = {}
+    app.state.last_dynamic_scheduling_ts = 0.0
+    app.state.last_static_planning_ts = 0
+    
+    # 重置为初始状态（未配置）
+    current_problem_scale = None
+    current_algorithm = None
+    app.state.simulation_mode = None
+
+    return {
+        "success": True,
+        "running": False,
+        "mode": None,
+        "scale": None,
+        "message": "Simulation reset. Please select mode and scale, then start simulation."
+    }
+
+
+@app.get("/api/simulation/status")
+async def get_simulation_status():
+    return {
+        "running": app.state.simulation_running,
+        "mode": app.state.simulation_mode,
+        "scale": current_problem_scale,
         "algorithm": current_algorithm
     }
 
@@ -148,82 +303,222 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-def initialize_test_data(data_manager: DataManager, problem_scale="medium"):
-    print(f"Initializing test data for {problem_scale} scale problem...")
+def _initialize_realtime_mode(data_manager: DataManager, problem_scale="medium"):
+    """
+    实时规划模式初始化：只创建车辆和充电站，不预生成任务。
+    任务将通过 task_generator 动态生成。
+    
+    位置策略：
+    - 仓库固定在图的中心节点
+    - 充电站分布在图的四周节点
+    - 车辆从仓库（中心）出发
+    """
+    print(f"Initializing realtime mode (scale={problem_scale})...")
 
-    # 根据问题规模设置参数
-    if problem_scale == "small":
-        # 小规模问题：1-5辆车，1-10个任务
-        vehicle_count = 3
-        station_count = 1
-        vehicle_type = "medium"
-        task_weight_range = (10, 50)
-        algorithm = "mip"
-    elif problem_scale == "large":
-        # 大规模问题：15-50辆车，30-100个任务
-        vehicle_count = 20
-        station_count = 5
-        vehicle_type = "large"
-        task_weight_range = (10, 200)
-        algorithm = "clustering+genetic"
-    else:
-        # 中规模问题：5-15辆车，10-30个任务
-        problem_scale = "medium"
-        vehicle_count = 10
-        station_count = 2
-        vehicle_type = "medium"
-        task_weight_range = (10, 100)
-        algorithm = "genetic"
-
-    # 更新全局任务重量范围
-    global global_task_weight_range
-    global_task_weight_range = task_weight_range
-
-    print(f"Scale: {problem_scale}, Vehicles: {vehicle_count}, Stations: {station_count}, Algorithm: {algorithm}")
-
-    vehicle_config = config.get_vehicle_config(vehicle_type)
-    station_config = config.get_charging_station_config()
+    fleet_config = config.get_fleet_config()
+    station_cfg = config.get_charging_station_config()
     task_config = config.get_task_config()
 
-    # 添加车辆（所有车辆从仓库出发）
-    warehouse_pos = Position(x=0, y=0)
-    for i in range(1, vehicle_count + 1):
-        vehicle = Vehicle(
-            id=i,
-            position=Position(x=warehouse_pos.x, y=warehouse_pos.y),  # 车辆从仓库出发
-            battery=vehicle_config["max_battery"] * 0.8,
-            max_battery=vehicle_config["max_battery"],
-            current_load=0.0,
-            max_load=vehicle_config["max_load"],
-            unit_energy_consumption=vehicle_config["unit_energy_consumption"],
-            speed=vehicle_config["speed"]  # 添加速度配置
-        )
-        data_manager.add_vehicle(vehicle)
+    # 任务重量范围
+    global global_task_weight_range
+    global_task_weight_range = (task_config["min_weight"], task_config["max_weight"])
 
-    # 添加充电站
-    for i in range(1, station_count + 1):
+    # 仓库位置：固定在图的中心节点
+    warehouse_xy = data_manager.path_calculator.get_central_node_xy()
+    warehouse_pos = Position(x=warehouse_xy[0], y=warehouse_xy[1])
+    data_manager.set_warehouse_position(warehouse_pos)
+    print(f"  Warehouse positioned at center node: ({warehouse_pos.x:.6f}, {warehouse_pos.y:.6f})")
+
+    # 混合车队初始化：所有车辆从仓库出发
+    vehicle_id = 1
+    type_counts = [
+        ("small", fleet_config["small_count"]),
+        ("medium", fleet_config["medium_count"]),
+        ("large", fleet_config["large_count"]),
+    ]
+    for vtype, count in type_counts:
+        vcfg = config.get_vehicle_config(vtype)
+        for _ in range(count):
+            vehicle = Vehicle(
+                id=vehicle_id,
+                position=Position(x=warehouse_pos.x, y=warehouse_pos.y),
+                battery=vcfg["max_battery"],
+                max_battery=vcfg["max_battery"],
+                current_load=0.0,
+                max_load=vcfg["max_load"],
+                unit_energy_consumption=vcfg["unit_energy_consumption"],
+                speed=vcfg["speed"],
+                vehicle_type=vtype,
+                charging_power=vcfg["charging_power"],
+            )
+            data_manager.add_vehicle(vehicle)
+            vehicle_id += 1
+
+    # 充电站初始化：分布在图的四周节点
+    station_count = fleet_config["station_count"]
+    station_positions_xy = data_manager.path_calculator.get_peripheral_nodes_xy(station_count)
+    for i, pos_xy in enumerate(station_positions_xy, start=1):
         station = ChargingStation(
             id=f"cs{i}",
-            position=Position(x=150 + i * 100, y=150),
-            capacity=station_config["default_capacity"],
+            position=Position(x=pos_xy[0], y=pos_xy[1]),
+            capacity=station_cfg["default_capacity"],
             queue_count=0,
             charging_vehicles=[],
             load_pressure=0.0,
-            charging_rate=station_config["default_charging_rate"]
+            charging_rate=0.022,
         )
         data_manager.add_charging_station(station)
+        print(f"  Charging station {i} positioned at peripheral node: ({pos_xy[0]:.6f}, {pos_xy[1]:.6f})")
 
-    print(f"Test data initialized successfully for {problem_scale} scale problem")
-    return algorithm
+    print(f"[Realtime Mode] Fleet: {vehicle_id - 1} vehicles, Stations: {station_count}, Tasks: 0 (will be generated dynamically)")
+
+
+def initialize_test_data(data_manager: DataManager, problem_scale="medium"):
+    """
+    初始化仿真数据。
+    修正要点：
+    - 车队规模固定为适应番禺区的真实规模（small:8, medium:15, large:7 = 30辆）
+    - problem_scale 小中大 = 静态规划下的任务规樘（实时模式下无意义）
+    - 初始电量改为100%（满电出发）
+    - 充电站数量固定为6座，每座内置3个充电桩
+    
+    位置策略：
+    - 仓库固定在图的中心节点
+    - 充电站分布在图的四周节点
+    - 车辆从仓库（中心）出发
+    """
+    print(f"Initializing test data (scale={problem_scale})...")
+
+    fleet_config = config.get_fleet_config()
+    station_cfg  = config.get_charging_station_config()
+    task_config  = config.get_task_config()
+
+    # 任务重量范围（均以 kg 为单位，与 vehicle.max_load 一致）
+    task_scale_cfg = config.get_task_scale_config(problem_scale)
+    global global_task_weight_range
+    global_task_weight_range = (task_config["min_weight"], task_config["max_weight"])
+
+    # 仓库位置：固定在图的中心节点
+    warehouse_xy = data_manager.path_calculator.get_central_node_xy()
+    warehouse_pos = Position(x=warehouse_xy[0], y=warehouse_xy[1])
+    data_manager.set_warehouse_position(warehouse_pos)
+    print(f"  Warehouse positioned at center node: ({warehouse_pos.x:.6f}, {warehouse_pos.y:.6f})")
+
+    # ----------------------------------------------------------------
+    # 混合车队初始化：small 8辆 + medium 15辆 + large 7辆 = 30辆
+    # 所有车辆从仓库（中心）出发
+    # ----------------------------------------------------------------
+    vehicle_id = 1
+    type_counts = [
+        ("small",  fleet_config["small_count"]),
+        ("medium", fleet_config["medium_count"]),
+        ("large",  fleet_config["large_count"]),
+    ]
+    for vtype, count in type_counts:
+        vcfg = config.get_vehicle_config(vtype)
+        for _ in range(count):
+            vehicle = Vehicle(
+                id=vehicle_id,
+                position=Position(x=warehouse_pos.x, y=warehouse_pos.y),
+                battery=vcfg["max_battery"],        # 满电出发（Q3）
+                max_battery=vcfg["max_battery"],
+                current_load=0.0,
+                max_load=vcfg["max_load"],
+                unit_energy_consumption=vcfg["unit_energy_consumption"],
+                speed=vcfg["speed"],
+                vehicle_type=vtype,
+                charging_power=vcfg["charging_power"],
+            )
+            data_manager.add_vehicle(vehicle)
+            vehicle_id += 1
+
+    # ----------------------------------------------------------------
+    # 充电站初始化：6座充电站，分布在图的四周节点
+    # ----------------------------------------------------------------
+    station_count = fleet_config["station_count"]
+    station_positions_xy = data_manager.path_calculator.get_peripheral_nodes_xy(station_count)
+    for i, pos_xy in enumerate(station_positions_xy, start=1):
+        station = ChargingStation(
+            id=f"cs{i}",
+            position=Position(x=pos_xy[0], y=pos_xy[1]),
+            capacity=station_cfg["default_capacity"],
+            queue_count=0,
+            charging_vehicles=[],
+            load_pressure=0.0,
+            charging_rate=0.022,   # 默认中型车充电功率，旧字段向后兼容
+        )
+        data_manager.add_charging_station(station)
+        print(f"  Charging station {i} positioned at peripheral node: ({pos_xy[0]:.6f}, {pos_xy[1]:.6f})")
+
+    # 静态规划模式：按规模预生成任务
+    pre_generated_tasks = 0
+    expected_tasks = 0
+    if problem_scale in ("small", "medium", "large"):
+        expected_tasks = random.randint(task_scale_cfg["min_tasks"], task_scale_cfg["max_tasks"])
+        # 实际生成并添加任务到 DataManager，持续尝试直到生成足够任务或达到最大尝试次数
+        task_id_start = 1
+        max_attempts = expected_tasks * 3  # 最多尝试3倍预期数量的任务
+        attempts = 0
+        while pre_generated_tasks < expected_tasks and attempts < max_attempts:
+            task = generate_random_task(data_manager, task_id_start + pre_generated_tasks)
+            if task:
+                pre_generated_tasks += 1
+            attempts += 1
+    
+    # 如果生成的任务数量明显少于预期，发出警告
+    if expected_tasks > 0 and pre_generated_tasks < expected_tasks * 0.8:
+        print(f"[Warning] 任务生成率较低：预期 {expected_tasks} 个，实际生成 {pre_generated_tasks} 个"
+              f"（{(pre_generated_tasks/expected_tasks*100):.1f}%）")
+
+    print(f"Fleet: {vehicle_id-1} vehicles (small*{fleet_config['small_count']}, "
+          f"medium*{fleet_config['medium_count']}, large*{fleet_config['large_count']}), "
+          f"Stations: {station_count}, Pre-generated tasks: {pre_generated_tasks}")
+    return "ortools"   # 默认算法标识
+
 
 # 全局变量，存储当前问题规模的任务重量范围
 global_task_weight_range = (10, 100)  # 默认中规模
 
-def generate_random_task(data_manager: DataManager, task_id: int):
-    task_config = config.get_task_config()
+def generate_random_task(data_manager: DataManager, task_id: int, max_retries: int = 50):
+    """生成随机任务（与 offline_simulator.py 保持一致）
     
-    x = random.uniform(50, 200)  # 缩小范围，使任务更接近仓库
-    y = random.uniform(50, 200)  # 缩小范围，使任务更接近仓库
+    新增：检查任务位置与仓库之间的路径可达性，不可达则重新生成位置
+    
+    Args:
+        data_manager: 数据管理器
+        task_id: 任务ID
+        max_retries: 最大重试次数，超过则返回None
+    
+    Returns:
+        Task对象，如果无法生成可达任务则返回None
+    """
+    task_config = config.get_task_config()
+    path_calculator = data_manager.path_calculator
+    warehouse_pos = data_manager.warehouse_position
+    
+    # 尝试生成可达的任务位置
+    pos = None
+    for attempt in range(max_retries):
+        candidate_pos = data_manager.sample_graph_position()
+        
+        # 检查从仓库到任务位置是否可达
+        try:
+            path = path_calculator.find_shortest_path(
+                (warehouse_pos.x, warehouse_pos.y),
+                (candidate_pos.x, candidate_pos.y)
+            )
+            if path and len(path) > 0:
+                pos = candidate_pos
+                break  # 找到可达位置
+        except Exception:
+            # 路径不可达，继续尝试
+            pass
+    
+    if pos is None:
+        print(f"[Warning] 无法为任务 {task_id} 生成可达位置（已尝试 {max_retries} 次）")
+        return None
+    
+    x, y = pos.x, pos.y
     weight = random.uniform(global_task_weight_range[0], global_task_weight_range[1])
     priority = random.randint(task_config["min_priority"], task_config["max_priority"])
     create_time = int(time.time())
@@ -316,33 +611,56 @@ def create_log_file(tasks=None):
     
     print(f"Log created: {log_path}")
 
-async def task_generator(data_manager: DataManager):
+async def task_generator(app: FastAPI, data_manager: DataManager):
     task_id_counter = 100
     while True:
         try:
             await asyncio.sleep(random.randint(10, 30))
+            if not getattr(app.state, "simulation_running", False):
+                continue
             
-            task_id_counter += 1
-            task = generate_random_task(data_manager, task_id_counter)
-            print(f"Generated new task {task.id}: position=({task.position.x:.2f}, {task.position.y:.2f}), weight={task.weight:.2f}")
+            # 静态规划模式下不生成新任务
+            if getattr(app.state, "simulation_mode", "realtime") == "static":
+                continue
+
+            pending_count = len(data_manager.get_pending_tasks())
+            if pending_count >= 50:
+                print(f"Pending tasks reached {pending_count}, skipping generation this cycle")
+                continue
             
-            # Log each generated task
+            # 随机生成1-5个任务，更贴近真实场景
+            num_tasks_to_generate = random.randint(1, 5)
+            generated_count = 0
+            
+            for _ in range(num_tasks_to_generate):
+                if pending_count + generated_count >= 50:
+                    break
+                    
+                task_id_counter += 1
+                task = generate_random_task(data_manager, task_id_counter)
+                if task:
+                    generated_count += 1
+                    print(f"Generated new task {task.id}: position=({task.position.x:.2f}, {task.position.y:.2f}), weight={task.weight:.2f}")
+            
+            print(f"[TaskGenerator] Batch generated {generated_count}/{num_tasks_to_generate} tasks (pending: {pending_count + generated_count})")
+            
+            # 记录每个新生成任务
             log_dir = os.path.join(os.path.dirname(__file__), '..', 'test', 'log')
             os.makedirs(log_dir, exist_ok=True)
             
-            # Get the current log file or create a new one
+            # 获取当前日志文件（若不存在则创建）
             current_log = None
             log_files = [f for f in os.listdir(log_dir) if f.endswith('.json')]
             if log_files:
                 log_files.sort(reverse=True)
                 current_log = os.path.join(log_dir, log_files[0])
                 
-                # Read current log
+                # 读取当前日志
                 try:
                     with open(current_log, 'r', encoding='utf-8') as f:
                         log_data = json.load(f)
                     
-                    # Add new task to log
+                    # 将新任务追加到日志
                     log_data["tasks"].append({
                         "id": task.id,
                         "position": {"x": task.position.x, "y": task.position.y},
@@ -352,7 +670,7 @@ async def task_generator(data_manager: DataManager):
                         "priority": task.priority
                     })
                     
-                    # Write back to log file
+                    # 回写日志文件
                     with open(current_log, 'w', encoding='utf-8') as f:
                         json.dump(log_data, f, indent=2, ensure_ascii=False)
                 except Exception as e:
@@ -361,31 +679,131 @@ async def task_generator(data_manager: DataManager):
         except Exception as e:
             print(f"Task generator error: {e}")
 
-async def background_tasks(data_manager: DataManager, decision_manager: DecisionManager, 
+# ============================================================
+# 仿真加速倍率（建议2：1 现实秒 = 60 仿真秒）# ============================================================
+# 仿真速度从配置读取，可通过环境变量 NEFT_SIM_SPEED 覆盖
+# ============================================================
+sim_config = config.get_simulation_config()
+SIM_SPEED_FACTOR: float = float(sim_config.get("speed_factor", 120))
+
+# 实时模式下 dynamic_scheduling 最小间隔（秒，墙钟）。默认 1 与原先「每秒重调度」一致；调大可降 CPU。
+DYNAMIC_SCHEDULE_INTERVAL_SEC: float = float(os.getenv("NEFT_DYNAMIC_SCHEDULE_INTERVAL_SEC", "1"))
+
+async def background_tasks(app: FastAPI, data_manager: DataManager, decision_manager: DecisionManager,
                           websocket_handler: WebSocketHandler):
+    """
+    主循环（1次/秒现实时间 = SIM_SPEED_FACTOR 秒仿真时间）。
+
+    建议1 落地：正常调度默认充到100%（config.normal_release=100.0），
+               仅在任务紧急（deadline<30min）时截止60%离站。
+    建议2 落地：SIM_SPEED_FACTOR=60，每现实秒推进60仿真秒。
+              - 位置更新 time_delta = SIM_SPEED_FACTOR
+              - 充电量    charge_δ  = charging_power × SIM_SPEED_FACTOR
+    """
     while True:
         try:
             await asyncio.sleep(1)
 
-            # 更新所有运输中车辆的位置（基于速度）
+            if not getattr(app.state, "simulation_running", False):
+                await websocket_handler.broadcast_system_status()
+                await websocket_handler.broadcast_state()
+                continue
+
             vehicles = data_manager.get_vehicles()
             for vehicle in vehicles:
+
                 if vehicle.status == VehicleStatus.TRANSPORTING:
-                    data_manager.update_vehicle_position_by_speed(vehicle.id, time_delta=1.0)
+                    # 运输中：time_delta 乘以加速倍率（建议2）
+                    data_manager.update_vehicle_position_by_speed(
+                        vehicle.id, time_delta=SIM_SPEED_FACTOR
+                    )
+
+                elif vehicle.status == VehicleStatus.CHARGING:
+                    # 充电中：每tick充电量 = power × 加速倍率（建议2）
+                    charge_rate = vehicle.charging_power if vehicle.charging_power > 0 else 0.022
+                    charge_delta = charge_rate * SIM_SPEED_FACTOR
+                    new_battery = min(vehicle.max_battery, vehicle.battery + charge_delta)
+                    data_manager.update_vehicle_battery(vehicle.id, new_battery)
+
+                    # 情境感知离站阈值（建议1 + Q4）
+                    release_threshold_pct = decision_manager.evaluate_charge_release_threshold(vehicle)
+
+                    should_release = False
+                    if release_threshold_pct <= 0.0:
+                        should_release = True  # 高优打断
+                    elif vehicle.get_battery_percentage() >= release_threshold_pct:
+                        should_release = True  # 达到阈值
+
+                    if should_release and vehicle.charging_station_id:
+                        data_manager.remove_vehicle_from_charging_station(
+                            vehicle.id, vehicle.charging_station_id
+                        )
+                        print(f"[Sim×{SIM_SPEED_FACTOR:.0f}] Vehicle {vehicle.id} "
+                              f"({vehicle.vehicle_type}) left station "
+                              f"at {vehicle.get_battery_percentage():.1f}% "
+                              f"(threshold={release_threshold_pct:.0f}%)")
+
+                elif vehicle.status == VehicleStatus.IDLE:
+                    # 空闲车：主动电量管理（修复 B3）
+                    charge_cmd = decision_manager.manage_battery(vehicle)
+                    if charge_cmd:
+                        station_id = charge_cmd.get("charging_station_id")
+                        if station_id:
+                            data_manager.add_vehicle_to_charging_station(vehicle.id, station_id)
+                            print(f"[Sim×{SIM_SPEED_FACTOR:.0f}] Vehicle {vehicle.id} "
+                                  f"auto-sent to station {station_id} "
+                                  f"(battery={vehicle.get_battery_percentage():.1f}%)")
+
+                # WAITING_CHARGE：由 ChargingStation.remove_vehicle 自动晋升，无需处理。
+
+            decision_manager._dynamic_scheduling.clear_completed_commands()
 
             await websocket_handler.broadcast_system_status()
-
             await websocket_handler.broadcast_performance_metrics()
-
             await websocket_handler.broadcast_state()
 
-            # 每次循环都执行动态调度，确保任务能够被及时分配
-            # 使用当前选择的算法
+            # 调度分支：实时模式每轮重调度；静态模式按周期触发
             global current_algorithm
-            decision_manager.dynamic_scheduling(strategy=current_algorithm)
+            if getattr(app.state, "simulation_mode", "realtime") == "static":
+                now_ts = int(time.time())
+                interval = int(getattr(app.state, "static_planning_interval", 3600))
+                if (app.state.last_static_planning_ts == 0
+                        or now_ts - app.state.last_static_planning_ts >= interval):
+                    print(f"[DEBUG] Executing static planning...")
+                    try:
+                        plan = decision_manager.static_planning()
+                        print(f"[DEBUG] Static plan generated: {plan is not None}")
+                        if plan:
+                            print(f"[DEBUG] Plan routes: {len(plan.vehicle_routes) if plan.vehicle_routes else 0} vehicles")
+                        commands = decision_manager.apply_static_plan(plan)
+                        print(f"[DEBUG] Applied static plan: {len(commands)} commands")
+                        # 静态规划模式下不执行实时调度，只执行静态规划生成的命令
+                    except Exception as e:
+                        print(f"[ERROR] Static planning failed: {e}")
+                        import traceback
+                        traceback.print_exc()
+                    app.state.last_static_planning_ts = now_ts
+            else:
+                now_wall = time.time()
+                last_dyn = float(getattr(app.state, "last_dynamic_scheduling_ts", 0.0))
+                if (now_wall - last_dyn) >= DYNAMIC_SCHEDULE_INTERVAL_SEC:
+                    pending = len(data_manager.get_pending_tasks())
+                    idle = len(data_manager.get_idle_vehicles())
+                    print(f"[DEBUG] Scheduling triggered: {pending} pending, {idle} idle vehicles")
+                    try:
+                        commands = decision_manager.dynamic_scheduling(strategy="auto")
+                        print(f"[DEBUG] Generated {len(commands)} commands, strategy={decision_manager.last_selected_strategy}")
+                    except Exception as sched_e:
+                        print(f"[ERROR] Scheduling failed: {sched_e}")
+                        import traceback
+                        traceback.print_exc()
+                    app.state.last_dynamic_scheduling_ts = now_wall
 
         except Exception as e:
             print(f"Background task error: {e}")
+            import traceback
+            traceback.print_exc()
+
 
 if __name__ == "__main__":
 	import uvicorn
