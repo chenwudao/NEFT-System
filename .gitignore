@@ -1,0 +1,21 @@
+﻿# Python bytecode/cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test/cache tooling
+.pytest_cache/
+.mypy_cache/
+
+# Runtime logs and temp artifacts
+*.log
+run_stdout.log
+run_stderr.log
+
+# Local simulation logs
+test/log/*.json
+!test/log/.gitkeep
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
