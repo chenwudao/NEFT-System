@@ -1,0 +1,270 @@
+{
+  "stop_reason": "manual_stop",
+  "sim_seconds_elapsed": 1560.0,
+  "wall_seconds_elapsed": 35.947464,
+  "tasks": {
+    "total": 13,
+    "completed": 3,
+    "on_time": 3,
+    "timeout": 0,
+    "pending": 6,
+    "completion_rate": 0.23076923076923078,
+    "on_time_rate": 1.0
+  },
+  "scores": {
+    "total": 470.66321616000005,
+    "average": 156.88773872000002
+  },
+  "distance_meters": {
+    "total_fleet_traveled": 61907.47,
+    "average_completed_task_leg": 4641.687999999999
+  },
+  "vehicles_summary": {
+    "total": 6,
+    "stranded": 0,
+    "stranded_ids": []
+  },
+  "fleet": [
+    {
+      "id": 1,
+      "type": "small",
+      "battery_final": 58.2,
+      "battery_percentage": 97.00000000000001,
+      "total_distance_traveled": 7200.000000000003,
+      "energy_consumption_trip": 1.8,
+      "final_status": "moving_to_task"
+    },
+    {
+      "id": 2,
+      "type": "small",
+      "battery_final": 58.20000000000002,
+      "battery_percentage": 97.00000000000003,
+      "total_distance_traveled": 7200.000000000001,
+      "energy_consumption_trip": 1.7999999999999998,
+      "final_status": "moving_to_task"
+    },
+    {
+      "id": 3,
+      "type": "medium",
+      "battery_final": 96.215824,
+      "battery_percentage": 96.215824,
+      "total_distance_traveled": 12613.920000000004,
+      "energy_consumption_trip": 3.2397822,
+      "final_status": "moving_to_warehouse"
+    },
+    {
+      "id": 4,
+      "type": "medium",
+      "battery_final": 96.26584150000002,
+      "battery_percentage": 96.26584150000002,
+      "total_distance_traveled": 12447.195000000003,
+      "energy_consumption_trip": 0.0,
+      "final_status": "idle"
+    },
+    {
+      "id": 5,
+      "type": "medium",
+      "battery_final": 96.17879350000001,
+      "battery_percentage": 96.17879350000001,
+      "total_distance_traveled": 12737.354999999994,
+      "energy_consumption_trip": 0.0,
+      "final_status": "idle"
+    },
+    {
+      "id": 6,
+      "type": "large",
+      "battery_final": 146.1164000000001,
+      "battery_percentage": 97.4109333333334,
+      "total_distance_traveled": 9709.0,
+      "energy_consumption_trip": 3.8835999999999995,
+      "final_status": "moving_to_warehouse"
+    }
+  ],
+  "charging_stations": [
+    {
+      "id": "cs1",
+      "capacity": 3,
+      "final_load": 0.0,
+      "charging_vehicles": [],
+      "queue_count": 0
+    },
+    {
+      "id": "cs2",
+      "capacity": 3,
+      "final_load": 0.0,
+      "charging_vehicles": [],
+      "queue_count": 0
+    }
+  ],
+  "task_details": [
+    {
+      "id": 1,
+      "status": "in_progress",
+      "weight": 753.8429061877845,
+      "priority": 1,
+      "create_time": 1776604846,
+      "deadline": 1776608629,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 7313.6990000000005,
+      "assigned_vehicle_id": 3
+    },
+    {
+      "id": 2,
+      "status": "completed",
+      "weight": 1299.0494815346701,
+      "priority": 5,
+      "create_time": 1776604846,
+      "deadline": 1776611468,
+      "complete_time": 1776604854,
+      "is_on_time": true,
+      "score": 251.79910062000002,
+      "complete_path_distance": 907.3230000000001,
+      "assigned_vehicle_id": 3
+    },
+    {
+      "id": 3,
+      "status": "in_progress",
+      "weight": 1245.0718821244118,
+      "priority": 5,
+      "create_time": 1776604846,
+      "deadline": 1776610422,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 6912.326,
+      "assigned_vehicle_id": 6
+    },
+    {
+      "id": 4,
+      "status": "completed",
+      "weight": 717.8186676067137,
+      "priority": 3,
+      "create_time": 1776604846,
+      "deadline": 1776609214,
+      "complete_time": 1776604882,
+      "is_on_time": true,
+      "score": 80.41609104000001,
+      "complete_path_distance": 6459.816,
+      "assigned_vehicle_id": 4
+    },
+    {
+      "id": 5,
+      "status": "completed",
+      "weight": 1317.7629510521235,
+      "priority": 5,
+      "create_time": 1776604846,
+      "deadline": 1776610067,
+      "complete_time": 1776604882,
+      "is_on_time": true,
+      "score": 138.44802450000003,
+      "complete_path_distance": 6557.924999999999,
+      "assigned_vehicle_id": 5
+    },
+    {
+      "id": 1005,
+      "status": "pending",
+      "weight": 181.31892685306022,
+      "priority": 3,
+      "create_time": 1776604847,
+      "deadline": 1776611990,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    },
+    {
+      "id": 1006,
+      "status": "pending",
+      "weight": 875.4857696527464,
+      "priority": 2,
+      "create_time": 1776604847,
+      "deadline": 1776607296,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    },
+    {
+      "id": 1007,
+      "status": "assigned",
+      "weight": 197.1528611546501,
+      "priority": 3,
+      "create_time": 1776604862,
+      "deadline": 1776609941,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": 1
+    },
+    {
+      "id": 1008,
+      "status": "pending",
+      "weight": 834.7026919492355,
+      "priority": 5,
+      "create_time": 1776604862,
+      "deadline": 1776610005,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    },
+    {
+      "id": 1009,
+      "status": "assigned",
+      "weight": 479.0701324293237,
+      "priority": 2,
+      "create_time": 1776604862,
+      "deadline": 1776611368,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": 2
+    },
+    {
+      "id": 1010,
+      "status": "pending",
+      "weight": 447.2065502906037,
+      "priority": 4,
+      "create_time": 1776604882,
+      "deadline": 1776611595,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    },
+    {
+      "id": 1011,
+      "status": "pending",
+      "weight": 840.0849555415244,
+      "priority": 3,
+      "create_time": 1776604882,
+      "deadline": 1776609755,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    },
+    {
+      "id": 1012,
+      "status": "pending",
+      "weight": 27.798955071185112,
+      "priority": 5,
+      "create_time": 1776604882,
+      "deadline": 1776607902,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    }
+  ]
+}

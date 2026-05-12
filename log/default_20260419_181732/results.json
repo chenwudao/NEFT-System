@@ -1,0 +1,166 @@
+{
+  "stop_reason": "manual_stop",
+  "sim_seconds_elapsed": 0.0,
+  "wall_seconds_elapsed": 0.004905,
+  "tasks": {
+    "total": 5,
+    "completed": 0,
+    "on_time": 0,
+    "timeout": 0,
+    "pending": 5,
+    "completion_rate": 0.0,
+    "on_time_rate": 0.0
+  },
+  "scores": {
+    "total": 0,
+    "average": 0.0
+  },
+  "distance_meters": {
+    "total_fleet_traveled": 0.0,
+    "average_completed_task_leg": 0.0
+  },
+  "vehicles_summary": {
+    "total": 6,
+    "stranded": 0,
+    "stranded_ids": []
+  },
+  "fleet": [
+    {
+      "id": 1,
+      "type": "small",
+      "battery_final": 60.0,
+      "battery_percentage": 100.0,
+      "total_distance_traveled": 0.0,
+      "energy_consumption_trip": 0.0,
+      "final_status": "idle"
+    },
+    {
+      "id": 2,
+      "type": "small",
+      "battery_final": 60.0,
+      "battery_percentage": 100.0,
+      "total_distance_traveled": 0.0,
+      "energy_consumption_trip": 0.0,
+      "final_status": "idle"
+    },
+    {
+      "id": 3,
+      "type": "medium",
+      "battery_final": 100.0,
+      "battery_percentage": 100.0,
+      "total_distance_traveled": 0.0,
+      "energy_consumption_trip": 0.0,
+      "final_status": "idle"
+    },
+    {
+      "id": 4,
+      "type": "medium",
+      "battery_final": 100.0,
+      "battery_percentage": 100.0,
+      "total_distance_traveled": 0.0,
+      "energy_consumption_trip": 0.0,
+      "final_status": "idle"
+    },
+    {
+      "id": 5,
+      "type": "medium",
+      "battery_final": 100.0,
+      "battery_percentage": 100.0,
+      "total_distance_traveled": 0.0,
+      "energy_consumption_trip": 0.0,
+      "final_status": "idle"
+    },
+    {
+      "id": 6,
+      "type": "large",
+      "battery_final": 150.0,
+      "battery_percentage": 100.0,
+      "total_distance_traveled": 0.0,
+      "energy_consumption_trip": 0.0,
+      "final_status": "idle"
+    }
+  ],
+  "charging_stations": [
+    {
+      "id": "cs1",
+      "capacity": 3,
+      "final_load": 0.0,
+      "charging_vehicles": [],
+      "queue_count": 0
+    },
+    {
+      "id": "cs2",
+      "capacity": 3,
+      "final_load": 0.0,
+      "charging_vehicles": [],
+      "queue_count": 0
+    }
+  ],
+  "task_details": [
+    {
+      "id": 1,
+      "status": "pending",
+      "weight": 1026.1314588025866,
+      "priority": 4,
+      "create_time": 1776593852,
+      "deadline": 1776599539,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    },
+    {
+      "id": 2,
+      "status": "pending",
+      "weight": 559.7596883311086,
+      "priority": 5,
+      "create_time": 1776593852,
+      "deadline": 1776598009,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    },
+    {
+      "id": 3,
+      "status": "pending",
+      "weight": 848.4222791519096,
+      "priority": 4,
+      "create_time": 1776593852,
+      "deadline": 1776599004,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    },
+    {
+      "id": 4,
+      "status": "pending",
+      "weight": 356.90968581512266,
+      "priority": 5,
+      "create_time": 1776593852,
+      "deadline": 1776598009,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    },
+    {
+      "id": 5,
+      "status": "pending",
+      "weight": 1281.049462067933,
+      "priority": 1,
+      "create_time": 1776593852,
+      "deadline": 1776597741,
+      "complete_time": null,
+      "is_on_time": true,
+      "score": 0.0,
+      "complete_path_distance": 0.0,
+      "assigned_vehicle_id": null
+    }
+  ]
+}

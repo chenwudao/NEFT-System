@@ -1,0 +1,49 @@
+"""最近任务优先：最简单的贪心策略。
+
+* 在仓库：离车最近的 1 个任务接单，立刻出发
+* 在外面：车上还有没送的货 → 去最近的那个；否则回仓库
+
+这是所有更复杂算法的"对照基线"。
+"""
+
+from __future__ import annotations
+
+from typing import List
+
+from backend.algorithm import utils
+from backend.algorithm.scheduler import Command, Scheduler
+from backend.algorithm.snapshot import Snapshot
+
+
+class NearestTaskScheduler(Scheduler):
+    name = "nearest_task"
+
+    def schedule(self, snapshot: Snapshot) -> List[Command]:
+        commands: List[Command] = []
+
+        # 1) 已经在路上、刚到某个任务点的车
+        for v in snapshot.idle_vehicles_not_at_warehouse():
+            commands.append(utils.decide_en_route(v, snapshot))
+
+        # 2) 停在仓库、待命接新任务的车
+        #    每轮最多把 pending 任务"抢"光：这里保证多辆车不会抢到同一个任务。
+        claimed = set()
+        available = list(snapshot.available_tasks())
+
+        def pick_one(vehicle, tasks, snap):
+            unclaimed = [t for t in tasks if t.id not in claimed]
+            if not unclaimed:
+                return []
+            nearest = min(
+                unclaimed,
+                key=lambda t: snap.distance(vehicle.position, t.position),
+            )
+            return [nearest]
+
+        for v in snapshot.idle_vehicles_at_warehouse():
+            cmd = utils.decide_at_warehouse(v, snapshot, pick_one)
+            if cmd.action == "deliver":
+                claimed.update(cmd.assigned_tasks)
+            commands.append(cmd)
+
+        return commands
