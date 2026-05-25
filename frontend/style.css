@@ -368,7 +368,6 @@ canvas#simulationCanvas {
         white-space: nowrap;
     }
     .vehicle-item .task-badge.pending     { background: rgba(148, 163, 184, 0.15); border-color: rgba(148, 163, 184, 0.4); color: #cbd5e1; }
-    .vehicle-item .task-badge.assigned    { background: rgba(59, 130, 246, 0.18);  border-color: rgba(59, 130, 246, 0.5);  color: #bfdbfe; }
     .vehicle-item .task-badge.in-progress { background: rgba(234, 179, 8, 0.18);   border-color: rgba(234, 179, 8, 0.55);  color: #fde68a; }
     .vehicle-item .task-badge.completed   { background: rgba(34, 197, 94, 0.18);   border-color: rgba(34, 197, 94, 0.5);   color: #bbf7d0; }
     .vehicle-item .task-badge.timeout     { background: rgba(239, 68, 68, 0.18);   border-color: rgba(239, 68, 68, 0.55);  color: #fecaca; }

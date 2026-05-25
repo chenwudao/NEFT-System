@@ -161,7 +161,8 @@ class DataManager:
         with self.lock:
             if task_id in self.tasks and vehicle_id in self.vehicles:
                 self.tasks[task_id].assigned_vehicle_id = vehicle_id
-                self.tasks[task_id].update_status(TaskStatus.ASSIGNED)
+                # 任务一旦开始由车辆承运，即进入运输中状态。
+                self.tasks[task_id].update_status(TaskStatus.IN_PROGRESS)
                 self.vehicles[vehicle_id].add_task(task_id)
                 self._notify_task_update(self.tasks[task_id])
                 self._notify_vehicle_update(self.vehicles[vehicle_id])
@@ -216,8 +217,8 @@ class DataManager:
                 if task.assigned_vehicle_id != src_vehicle_id:
                     return False
                 # 只允许在"正挂在车上"的阶段做接力：
-                # ASSIGNED / IN_PROGRESS 都算"被某辆车背着"。
-                if task.status not in (TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS):
+                # 运输中任务才算"被某辆车背着"。
+                if task.status != TaskStatus.IN_PROGRESS:
                     return False
                 pending_transfer.append(task)
                 total_weight += task.weight
@@ -541,7 +542,7 @@ class DataManager:
         )
         vehicle.battery = 0.0
         vehicle.status = VehicleStatus.STRANDED
-        # 挂在车上的任务保持 ASSIGNED/IN_PROGRESS 不动：它们永远完不成也领不到分，
+        # 挂在车上的任务保持 IN_PROGRESS 不动：它们永远完不成也领不到分，
         # 这是刻意的——用来惩罚把车开到没电的算法。
         vehicle.clear_route()
 
@@ -583,13 +584,12 @@ class DataManager:
         self._notify_vehicle_update(vehicle)
 
     def _handle_arrival_at_task(self, vehicle: Vehicle) -> None:
-        """送达：对应 task 从 ASSIGNED → IN_PROGRESS，车载重相应减少。"""
+        """送达任务点：任务立刻 COMPLETED，并按任务主体计分。"""
         task_id = vehicle.current_task_id
         if task_id is not None:
             task = self.tasks.get(task_id)
             if task is not None:
-                # 记录送达距离（这是这一趟走过的路径；仓库->任务的距离累计）
-                # 我们这里只记这一段的 target 距离作为该任务的"配送腿"距离。
+                # 记录该任务配送腿距离（当前路径段）。
                 try:
                     seg_dist = self.path_calculator.calculate_distance(
                         [(p[0], p[1]) for p in vehicle.current_route]
@@ -597,10 +597,18 @@ class DataManager:
                 except Exception:
                     seg_dist = 0.0
                 task.complete_path_distance = max(task.complete_path_distance, seg_dist)
-                if task.status == TaskStatus.ASSIGNED:
-                    task.update_status(TaskStatus.IN_PROGRESS)
-                # 卸货
+                # 到达任务点即完成（按任务口径）。
+                task.update_status(TaskStatus.COMPLETED)
+                actual_ts = task.complete_time if task.complete_time else int(datetime.now().timestamp())
+                task.score = self.path_calculator.calculate_task_score(
+                    task, actual_ts, task.complete_path_distance, vehicle=vehicle
+                )
+                task.is_on_time = actual_ts <= task.deadline
+                task.assigned_vehicle_id = None
+
+                # 卸货 + 从车辆挂载列表移除
                 vehicle.update_load(max(0.0, vehicle.current_load - task.weight))
+                vehicle.remove_task(task.id)
                 self._notify_task_update(task)
 
         vehicle.clear_route()
@@ -628,36 +636,25 @@ class DataManager:
         self.add_vehicle_to_charging_station(vehicle.id, target_station_id)
 
     def _handle_arrival_at_warehouse(self, vehicle: Vehicle) -> None:
-        """回仓库：车上 IN_PROGRESS 的任务批量 COMPLETED，清空载重。"""
-        completion_ts = int(datetime.now().timestamp())
-        completed: List[Task] = []
+        """回仓库：回收仍挂在车上的未送达任务，清空载重。"""
+        recovered: List[Task] = []
         for task_id in list(vehicle.assigned_task_ids):
             task = self.tasks.get(task_id)
             if task is None:
                 vehicle.remove_task(task_id)
                 continue
-            # 已送达的（IN_PROGRESS）才算 COMPLETED
+            # 任务完成已在"到达任务点"时结算。回仓时只回收仍未送达的货物。
             if task.status == TaskStatus.IN_PROGRESS:
-                task.update_status(TaskStatus.COMPLETED)
-                actual_ts = task.complete_time if task.complete_time else completion_ts
-                task.score = self.path_calculator.calculate_task_score(
-                    task, actual_ts, task.complete_path_distance, vehicle=vehicle
-                )
-                task.is_on_time = actual_ts <= task.deadline
-                completed.append(task)
-                vehicle.remove_task(task_id)
-                self._notify_task_update(task)
-            # 极端情况：ASSIGNED 但没送达就回仓库（比如算法主动放弃）——回收
-            elif task.status == TaskStatus.ASSIGNED:
                 task.assigned_vehicle_id = None
                 task.update_status(TaskStatus.PENDING)
+                recovered.append(task)
                 vehicle.remove_task(task_id)
                 self._notify_task_update(task)
 
-        if completed:
+        if recovered:
             print(
                 f"Vehicle {vehicle.id} returned to warehouse, "
-                f"completed {len(completed)} task(s): {[t.id for t in completed]}"
+                f"recovered {len(recovered)} undelivered task(s): {[t.id for t in recovered]}"
             )
 
         # 清空状态准备下一轮装货

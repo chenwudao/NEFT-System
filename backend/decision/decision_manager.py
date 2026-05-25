@@ -54,7 +54,7 @@ class DecisionManager:
         pending = [t for t in tasks if t.status == TaskStatus.PENDING]
         in_progress = [
             t for t in tasks
-            if t.status in (TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS)
+            if t.status == TaskStatus.IN_PROGRESS
         ]
         completed = [t for t in tasks if t.status == TaskStatus.COMPLETED]
         timeout = [t for t in tasks if t.status == TaskStatus.TIMEOUT]

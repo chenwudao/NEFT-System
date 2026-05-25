@@ -6,7 +6,6 @@ from .position import Position
 
 class TaskStatus(Enum):
     PENDING = "pending"
-    ASSIGNED = "assigned"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     TIMEOUT = "timeout"
@@ -16,9 +15,8 @@ class Task:
     """一件"货物"。
     重构后的模型：车和货是两个东西，车是货的"载体"。
       - Task 描述的是货物本身：它要去哪（position）、多重、什么时候必须送到。
-      - Task.status 描述的是"货"的状态：是还在仓库待分配(PENDING)、
-        已经在某辆车上(ASSIGNED)、已经送达目的地(IN_PROGRESS)、
-        整个闭环完成(COMPLETED)、还是过期作废(TIMEOUT)。
+      - Task.status 描述的是"货"的状态：还在仓库待分配(PENDING)、
+        运输中(IN_PROGRESS)、已送达任务点(COMPLETED)、还是过期作废(TIMEOUT)。
       - `assigned_vehicle_id` 表示"当前背着这个货的车"——接力场景下这个值会变化。
         这个字段在 to_dict 里也同时以 `carrier_vehicle_id` 导出，语义等价。
     """

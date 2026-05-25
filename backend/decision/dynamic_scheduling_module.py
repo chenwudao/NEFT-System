@@ -173,7 +173,7 @@ class DynamicSchedulingModule:
     def _handle_deliver(self, vehicle, cmd: Command) -> None:
         """transport 语义：同时支持"在仓库装货"与"半路跳下一站"。"""
         # 1) 如果 cmd.assigned_tasks 非空，说明这一次是在仓库批量接单：
-        #    逐一把 task 状态置 ASSIGNED + 加到车上 + 累加载重
+        #    逐一把 task 状态置 IN_PROGRESS + 加到车上 + 累加载重
         if cmd.assigned_tasks:
             for tid in cmd.assigned_tasks:
                 task = self.data_manager.get_task(tid)
@@ -195,8 +195,8 @@ class DynamicSchedulingModule:
             task_id=target_task.id,
         )
         if not ok:
-            # 路径不可达：把 ASSIGNED 的这单退回 PENDING 以免死锁
-            if target_task.status == TaskStatus.ASSIGNED:
+            # 路径不可达：把这单退回 PENDING 以免死锁
+            if target_task.status == TaskStatus.IN_PROGRESS:
                 target_task.assigned_vehicle_id = None
                 target_task.update_status(TaskStatus.PENDING)
                 vehicle.remove_task(target_task.id)

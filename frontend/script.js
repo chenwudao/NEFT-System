@@ -704,7 +704,6 @@ function vehicleStatusColor(status) {
 function taskStatusColor(status) {
     switch (status) {
         case 'pending': return colors.taskPending;
-        case 'assigned':
         case 'in_progress': return colors.taskDelivering;
         case 'completed': return colors.taskCompleted;
         case 'timeout': return colors.taskTimeout;
@@ -757,7 +756,6 @@ function vehicleStatusText(status) {
 function taskColor(status) {
 	switch (status) {
 		case 'pending': return colors.taskPending;
-		case 'assigned':
 		case 'in_progress': return colors.taskDelivering;
 		case 'completed': return colors.taskCompleted;
 		case 'timeout': return colors.taskTimeout;
@@ -2515,7 +2513,6 @@ function updateDashboard(state) {
 	const taskBadgeClass = (s) => {
 		switch (s) {
 			case 'pending':     return 'task-badge pending';
-			case 'assigned':    return 'task-badge assigned';
 			case 'in_progress': return 'task-badge in-progress';
 			case 'completed':   return 'task-badge completed';
 			case 'timeout':     return 'task-badge timeout';
@@ -2525,9 +2522,8 @@ function updateDashboard(state) {
 	const taskStatusLabel = (s) => {
 		switch (s) {
 			case 'pending':     return '待派';
-			case 'assigned':    return '在车上';
-			case 'in_progress': return '已送达';
-			case 'completed':   return '已结算';
+			case 'in_progress': return '运输中';
+			case 'completed':   return '已完成';
 			case 'timeout':     return '超时';
 			default:            return s || '';
 		}

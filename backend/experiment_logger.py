@@ -231,9 +231,9 @@ class ExperimentLogger:
         on_time = [t for t in completed if getattr(t, "is_on_time", False)]
         timeouts = [t for t in tasks if t.status == TaskStatus.TIMEOUT]
         pending = [t for t in tasks if t.status == TaskStatus.PENDING]
-        in_progress_or_assigned = [
+        in_progress_tasks = [
             t for t in tasks
-            if t.status in (TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS)
+            if t.status == TaskStatus.IN_PROGRESS
         ]
 
         per_task_scores = [getattr(t, "score", 0.0) for t in completed]
@@ -324,7 +324,7 @@ class ExperimentLogger:
                 "on_time":         len(on_time),
                 "timeout":         len(timeouts),
                 "pending":         len(pending),
-                "in_progress":     len(in_progress_or_assigned),
+                "in_progress":     len(in_progress_tasks),
                 "completion_rate": len(completed) / len(tasks) if tasks else 0.0,
                 "on_time_rate":    len(on_time) / len(completed) if completed else 0.0,
                 "timeout_rate":    len(timeouts) / len(tasks) if tasks else 0.0,

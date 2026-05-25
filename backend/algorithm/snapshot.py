@@ -88,15 +88,15 @@ class Snapshot:
         tid_set = set(vehicle.assigned_task_ids)
         return [
             t for t in self.tasks
-            if t.id in tid_set and t.status in (TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS)
+            if t.id in tid_set and t.status == TaskStatus.IN_PROGRESS
         ]
 
     def vehicle_undelivered_tasks(self, vehicle: Vehicle) -> List[Task]:
-        """车上还没被送到的任务（status=ASSIGNED）——即还需绕去送的点。"""
+        """车上还没被送到的任务（IN_PROGRESS）。"""
         tid_set = set(vehicle.assigned_task_ids)
         return [
             t for t in self.tasks
-            if t.id in tid_set and t.status == TaskStatus.ASSIGNED
+            if t.id in tid_set and t.status == TaskStatus.IN_PROGRESS
         ]
 
     # ------------------------------------------------------------------

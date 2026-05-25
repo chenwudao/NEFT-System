@@ -5,7 +5,6 @@ scheduling:
   strategy: deadline_earliest
   low_battery_pct: 20.0
   charge_until_pct: 90.0
-  max_tasks_per_trip: 4
   battery_safety_margin: 1.15
   charge_load_weight_m: 8000.0
   charge_queue_weight_m: 2000.0
