@@ -63,8 +63,8 @@ class DynamicSchedulingModule:
 
         out: List[Dict] = []
         for cmd in commands:
-            self._execute(cmd)
-            out.append(cmd.to_dict())
+            executed = self._execute(cmd, snapshot)
+            out.append(executed.to_dict())
 
         self.last_commands = out
         return out
@@ -72,26 +72,28 @@ class DynamicSchedulingModule:
     # ------------------------------------------------------------------
     # 落地：把 Command 翻译成 DataManager 上的状态变动
     # ------------------------------------------------------------------
-    def _execute(self, cmd: Command) -> None:
+    def _execute(self, cmd: Command, snapshot: Snapshot) -> Command:
         vehicle = self.data_manager.get_vehicle(cmd.vehicle_id)
         if vehicle is None:
-            return
+            return cmd
+
+        cmd = self._guard_battery_before_motion(vehicle, cmd, snapshot)
 
         if cmd.action == ACTION_IDLE:
             # 保留在 IDLE；清干净残留目标
             vehicle.clear_route()
             vehicle.update_status(VehicleStatus.IDLE)
-            return
+            return cmd
 
         if cmd.action == ACTION_HANDOFF:
             # 原地接力：不需要 target_xy，走专门路径
             self._handle_handoff(vehicle, cmd)
-            return
+            return cmd
 
         if cmd.target_xy is None:
             # 其余 action 必须带 target
             print(f"[WARN] Command {cmd} missing target_xy; ignored.")
-            return
+            return cmd
 
         if cmd.action == ACTION_DELIVER:
             self._handle_deliver(vehicle, cmd)
@@ -107,6 +109,52 @@ class DynamicSchedulingModule:
             self.data_manager.start_vehicle_route(
                 vehicle.id, cmd.target_xy, VehicleStatus.MOVING_TO_WAREHOUSE
             )
+        return cmd
+
+    def _guard_battery_before_motion(
+        self, vehicle, cmd: Command, snapshot: Snapshot
+    ) -> Command:
+        """落地前兜底：目标不可达时，改派到当前电量可达的充电站。
+
+        调度算法通常会在 utils 模板里做电量预判；这里再守一次，防止某个
+        自定义算法直接输出不可达的 deliver/return/charge 命令导致车辆抛锚。
+        """
+        if cmd.action in (ACTION_IDLE, ACTION_HANDOFF) or cmd.target_xy is None:
+            return cmd
+
+        if cmd.action == ACTION_CHARGE:
+            if utils.can_reach_target(
+                vehicle, cmd.target_xy, snapshot, require_station_buffer=False
+            ):
+                return cmd
+            station = utils.best_charging_station(vehicle, snapshot)
+            if station is not None:
+                return utils.make_charge_command(vehicle, station)
+            print(
+                f"[WARN] Vehicle {vehicle.id} cannot reach requested charging station "
+                "and no reachable station is available; keep idle."
+            )
+            return utils.make_idle_command(vehicle)
+
+        # 配送 / 特殊节点要预留“到最近充电站”的余量；回仓库本身可作为安全点。
+        require_station_buffer = cmd.action != ACTION_RETURN
+        if utils.can_reach_target(
+            vehicle,
+            cmd.target_xy,
+            snapshot,
+            require_station_buffer=require_station_buffer,
+        ):
+            return cmd
+
+        station = utils.best_charging_station(vehicle, snapshot)
+        if station is not None:
+            return utils.make_charge_command(vehicle, station)
+
+        print(
+            f"[WARN] Vehicle {vehicle.id} cannot reach target or any charging station; "
+            "keep idle to avoid running out of battery."
+        )
+        return utils.make_idle_command(vehicle)
 
     def _handle_handoff(self, vehicle, cmd: Command) -> None:
         """把 cmd.vehicle_id 车上的 task_ids_to_transfer 交给 cmd.target_vehicle_id。"""

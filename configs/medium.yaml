@@ -13,6 +13,18 @@ charging_station:
   default_capacity: 3
   max_queue_time:   600
 
+vehicle:
+  small:
+    unit_energy_consumption: 0.001  
+    max_battery: 60.0
+  medium:
+    unit_energy_consumption: 0.0015 
+    max_battery: 100.0
+  large:
+    unit_energy_consumption: 0.002
+    max_battery: 150.0
+
+
 task:
   initial_tasks:               5
   generation_interval_sec_min: 10

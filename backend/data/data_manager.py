@@ -4,6 +4,7 @@ import threading
 import asyncio
 import inspect
 import logging
+import math
 import random
 from .task import Task, TaskStatus, Position
 from .vehicle import Vehicle, VehicleStatus
@@ -470,11 +471,31 @@ class DataManager:
             # "下一个还没到的节点下标"。
             while remaining > 0 and vehicle._route_index < len(route) - 1:
                 here_xy = (vehicle.position.x, vehicle.position.y)
+                seg_start_xy = route[vehicle._route_index]
                 nxt_xy = route[vehicle._route_index + 1]
                 try:
-                    seg_len = self.path_calculator.calculate_pair_distance(here_xy, nxt_xy)
+                    seg_total_len = self.path_calculator.calculate_pair_distance(
+                        seg_start_xy, nxt_xy
+                    )
                 except Exception:
                     # 不可达：直接跳到该节点当已到
+                    seg_total_len = 0.0
+
+                # here_xy 可能是段内插值点，不一定是图节点；如果拿它去重算
+                # 路网距离，会被吸附到最近节点，导致“视觉几乎不动但持续扣电”。
+                # 因此用当前段的坐标剩余比例折算剩余米数。
+                coord_total = math.hypot(
+                    nxt_xy[0] - seg_start_xy[0],
+                    nxt_xy[1] - seg_start_xy[1],
+                )
+                coord_remaining = math.hypot(
+                    nxt_xy[0] - here_xy[0],
+                    nxt_xy[1] - here_xy[1],
+                )
+                if coord_total > 1e-12:
+                    remain_ratio = min(1.0, max(0.0, coord_remaining / coord_total))
+                    seg_len = seg_total_len * remain_ratio
+                else:
                     seg_len = 0.0
 
                 if seg_len <= 1e-6:

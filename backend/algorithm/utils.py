@@ -160,6 +160,18 @@ def can_reach_with_battery(
     return can_reach_target(vehicle, target_xy, snapshot, require_station_buffer=True)
 
 
+def can_reach_charging_station(
+    vehicle: Vehicle, station: ChargingStation, snapshot: Snapshot
+) -> bool:
+    """判断车辆当前电量是否足够到达指定充电站。"""
+    return can_reach_target(
+        vehicle,
+        (station.position.x, station.position.y),
+        snapshot,
+        require_station_buffer=False,
+    )
+
+
 def can_complete_chain(
     vehicle: Vehicle,
     waypoints: List[Tuple[float, float]],
@@ -198,12 +210,12 @@ def can_complete_chain(
 def best_charging_station(
     vehicle: Vehicle, snapshot: Snapshot
 ) -> Optional[ChargingStation]:
-    """综合距离 + 充电站负荷压力，挑一个"最优"充电站。
+    """综合距离 + 充电站负荷压力，挑一个当前电量可达的"最优"充电站。
 
     评分 = 距离(米) + 排队/负荷惩罚。这样：
         - 距离一样，负荷低的优先；
         - 负荷一样，更近的优先；
-        - 不可达的站直接排除。
+        - 路网不可达或当前电量不可达的站直接排除。
     """
     if not snapshot.charging_stations:
         return None
@@ -217,6 +229,8 @@ def best_charging_station(
     for st in snapshot.charging_stations:
         d = snapshot.distance(vehicle.position, (st.position.x, st.position.y))
         if d == float("inf"):
+            continue
+        if not can_reach_charging_station(vehicle, st, snapshot):
             continue
         load_pen = float(getattr(st, "load_pressure", 0.0)) * load_weight
         # 排队车辆数（>capacity 时才算真的有排队）
