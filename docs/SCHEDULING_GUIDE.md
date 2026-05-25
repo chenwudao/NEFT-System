@@ -45,7 +45,7 @@
 
 1. 低电阈值命中（`low_battery_pct`）则先充电。
 2. 调用各策略自己的 `pick_tasks(...)` 选一批候选任务。
-3. 用 `feasible_task_batch_for` 再按载重/`max_tasks_per_trip` 过滤。
+3. 用 `feasible_task_batch_for` 再按载重过滤（不设任务数量上限）。
 4. 做电量安全预判 `_need_charge_at_warehouse`：
    - 新增了“首跳安全约束”：到下一目的地后必须还能到充电站；
    - 不再做“整条链回仓”预判，避免过度保守导致可执行单被拦截。
@@ -95,7 +95,7 @@
 ## 5.2 `priority_task`（优先级优先）
 
 - 任务排序：`priority` 降序，同优先级按距离近优先。
-- 批量装载仍受载重与 `max_tasks_per_trip` 限制。
+- 批量装载只受载重限制。
 - 适合“高优任务必须先处理”的场景。
 
 ## 5.3 `heaviest_task`（重货优先）
@@ -153,7 +153,7 @@
 所有策略都会受到以下硬约束（模板或执行层）：
 
 - 载重约束：不能超 `vehicle.max_load`
-- 批量约束：受 `max_tasks_per_trip`
+- 批量约束：只受车辆最大载重约束
 - 电量约束：下一站可达、链路可达、充电站可达
 - 路网约束：`snapshot.distance == inf` 的不可达点会被过滤
 - 防抢单：仓库派单时用 `claimed` 避免同轮重复派同一任务

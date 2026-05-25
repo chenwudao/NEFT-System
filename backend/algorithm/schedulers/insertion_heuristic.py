@@ -3,7 +3,7 @@
 
 特点：
 - 同时考虑路径距离与时效，目标：最小化 batch 内"额外里程 - 任务收益"
-- 单批最多接 max_tasks_per_trip 个任务（或受 vehicle.max_load 限制）
+- 单批任务数量不设上限，仅受 vehicle.max_load 限制
 - 没货可接时回退为 idle / 充电
 
 适合"一次出车送多单"且任务点比较密集时显著优于纯 nearest_task。
@@ -16,7 +16,6 @@ from typing import List, Tuple
 from backend.algorithm import utils
 from backend.algorithm.scheduler import Command, Scheduler
 from backend.algorithm.snapshot import Snapshot
-from backend.config import config
 
 
 class InsertionHeuristicScheduler(Scheduler):
@@ -29,8 +28,6 @@ class InsertionHeuristicScheduler(Scheduler):
             commands.append(utils.decide_en_route(v, snapshot))
 
         claimed = set()
-        max_trip = config.get_scheduling_config().get("max_tasks_per_trip")
-        max_trip = int(max_trip) if max_trip is not None else 6
 
         def pick_batch(vehicle, tasks, snap):
             available = [t for t in tasks if t.id not in claimed]
@@ -58,7 +55,7 @@ class InsertionHeuristicScheduler(Scheduler):
 
             cur_len = chain_length(route)
 
-            while remaining and len(chosen) < max_trip:
+            while remaining:
                 best_task = None
                 best_pos = None
                 best_score = float("-inf")

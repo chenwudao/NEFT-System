@@ -602,7 +602,6 @@ SCHEDULING_CONFIG = {
        "strategy": "nearest_task",   # 或 priority_task / mst_batch / 你自己的
        "low_battery_pct": 0.2,       # 低于该比例主动去充电
        "charge_until_pct": 0.9,      # 充到该比例出站
-       "max_tasks_per_trip": 4,      # 一趟最多带几个任务（MST 批量用）
    }
    ```
 

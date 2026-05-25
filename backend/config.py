@@ -107,7 +107,6 @@ _DEFAULT_SCHEDULING: Dict[str, Any] = {
     "strategy":              os.getenv("NEFT_STRATEGY", "nearest_task"),
     "low_battery_pct":       20.0,
     "charge_until_pct":      90.0,
-    "max_tasks_per_trip":    None,
     "battery_safety_margin": 1.15,
     "charge_load_weight_m":  8000.0,
     "charge_queue_weight_m": 2000.0,

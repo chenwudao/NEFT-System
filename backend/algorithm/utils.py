@@ -51,14 +51,10 @@ def feasible_tasks_for(vehicle: Vehicle, tasks: List[Task]) -> List[Task]:
 
 
 def feasible_task_batch_for(vehicle: Vehicle, tasks: List[Task]) -> List[Task]:
-    """按输入顺序贪心装一批任务，保证总重量不超过车辆剩余载重。"""
-    max_trip = config.get_scheduling_config().get("max_tasks_per_trip")
-    max_trip_n = int(max_trip) if max_trip is not None else None
+    """按输入顺序贪心装一批任务，只受车辆剩余载重约束。"""
     remaining = vehicle.get_remaining_load()
     batch: List[Task] = []
     for task in tasks:
-        if max_trip_n is not None and len(batch) >= max_trip_n:
-            break
         if task.weight <= remaining + 1e-9:
             batch.append(task)
             remaining -= task.weight

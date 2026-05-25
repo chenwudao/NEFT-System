@@ -32,7 +32,6 @@ scheduling:
   strategy:              "simulated_annealing"
   low_battery_pct:       20.0
   charge_until_pct:      90.0
-  max_tasks_per_trip:    6
   battery_safety_margin: 1.15
   charge_load_weight_m:  10000.0
   charge_queue_weight_m: 3000.0
