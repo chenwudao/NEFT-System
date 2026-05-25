@@ -1,4 +1,7 @@
-"""优先级优先：先服务高优先级任务，同优先级按距离近优先。"""
+"""最大载重优先：每次挑剩余能装下、重量最大的那个任务。
+
+适用场景：货物有显著的重量差异，希望"先把大件清掉"，提升每次出车的载重利用率。
+"""
 
 from __future__ import annotations
 
@@ -9,8 +12,8 @@ from backend.algorithm.scheduler import Command, Scheduler
 from backend.algorithm.snapshot import Snapshot
 
 
-class PriorityTaskScheduler(Scheduler):
-    name = "priority_task"
+class HeaviestTaskScheduler(Scheduler):
+    name = "heaviest_task"
 
     def schedule(self, snapshot: Snapshot) -> List[Command]:
         commands: List[Command] = []
@@ -20,21 +23,21 @@ class PriorityTaskScheduler(Scheduler):
 
         claimed = set()
 
-        def pick_one(vehicle, tasks, snap):
+        def pick_heaviest(vehicle, tasks, snap):
             unclaimed = [t for t in tasks if t.id not in claimed]
             unclaimed = utils.feasible_tasks_for(vehicle, unclaimed)
             if not unclaimed:
                 return []
             unclaimed.sort(
                 key=lambda t: (
-                    -t.priority,
+                    -t.weight,
                     snap.distance(vehicle.position, t.position),
                 )
             )
             return [unclaimed[0]]
 
         for v in snapshot.idle_vehicles_at_warehouse():
-            cmd = utils.decide_at_warehouse(v, snapshot, pick_one)
+            cmd = utils.decide_at_warehouse(v, snapshot, pick_heaviest)
             if cmd.action == "deliver":
                 claimed.update(cmd.assigned_tasks)
             commands.append(cmd)

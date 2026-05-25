@@ -1,9 +1,10 @@
 """NEFT 系统后端入口。
 
-相较旧版本，这里做了大幅简化：
-    - 不再有 scale / static mode：所有数量、速度、阈值都在 backend/config.py 里硬指定。
-    - 每次启动会创建一个实验目录 log/<name>_<ts>/，结束时写 results.json。
-    - 主循环只管：推进运动、给充电中车辆充电、触发调度、必要时自动停止。
+要点：
+    - 配置入口在 backend/config.py + configs/*.yaml；可通过命令行
+      `python backend/main.py --cfg configs/small.yaml` 选择 yaml。
+    - 每次启动会创建一个实验目录 log/<experiment.name>/，内含 config.yaml 与 log.txt。
+    - 主循环：推进运动、充电、触发调度；达到时间上限 / 任务全部结算时自动停。
 """
 
 import asyncio
@@ -19,6 +20,26 @@ from pydantic import BaseModel
 
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _apply_cli_config_arg() -> None:
+    """在导入 backend.config 前处理 --cfg/--config。
+
+    config.py 在 import 时读取 NEFT_CONFIG_FILE，因此 CLI 参数必须尽早写入
+    环境变量。保留参数在 sys.argv 中也没问题：uvicorn 不会消费它。
+    """
+    for flag in ("--cfg", "--config"):
+        if flag in sys.argv:
+            idx = sys.argv.index(flag)
+            if idx + 1 >= len(sys.argv):
+                raise SystemExit(f"{flag} requires a yaml config path")
+            os.environ["NEFT_CONFIG_FILE"] = sys.argv[idx + 1]
+            # 避免未来有库解析 argv 时看到未知参数。
+            del sys.argv[idx:idx + 2]
+            return
+
+
+_apply_cli_config_arg()
 
 from backend.algorithm.algorithm_manager import AlgorithmManager
 from backend.config import config
@@ -40,10 +61,14 @@ _sim_cfg = config.get_simulation_config()
 SIM_SPEED_FACTOR: float = float(_sim_cfg.get("speed_factor", 120))
 TICK_INTERVAL_SEC: float = float(_sim_cfg.get("tick_interval", 1.0))
 MAX_SIM_SECONDS = _sim_cfg.get("max_sim_seconds")  # None = 无限
+STOP_WHEN_ALL_TASKS_DONE: bool = bool(_sim_cfg.get("stop_when_all_tasks_done", True))
 
 _sched_cfg = config.get_scheduling_config()
 DEFAULT_STRATEGY: str = str(_sched_cfg.get("strategy", "nearest_task"))
 CHARGE_UNTIL_PCT: float = float(_sched_cfg.get("charge_until_pct", 90.0))
+
+_task_cfg = config.get_task_config()
+TOTAL_TASK_BUDGET = _task_cfg.get("total_task_budget")  # None = 不限
 
 DYNAMIC_SCHEDULE_INTERVAL_SEC: float = float(
     os.getenv("NEFT_DYNAMIC_SCHEDULE_INTERVAL_SEC", "1")
@@ -75,6 +100,8 @@ async def lifespan(app: FastAPI):
     app.state.simulation_running = False
     app.state.sim_seconds_elapsed = 0.0
     app.state.last_dynamic_scheduling_ts = 0.0
+    app.state.task_id_counter = 0
+    app.state.last_progress_log_sim = 0.0
 
     app.include_router(api_controller.get_router(), prefix="/api", tags=["API"])
 
@@ -125,11 +152,18 @@ async def start_simulation(_: SimulationStartRequest | None = None):
     app.state.simulation_running = True
     app.state.sim_seconds_elapsed = 0.0
     app.state.last_dynamic_scheduling_ts = 0.0
+    app.state.last_progress_log_sim = 0.0
+    app.state._gen_stop_logged = False
 
-    # 建实验日志目录 + 写 config 快照
     experiment_logger.start_experiment(
         config.get_experiment_config(),
         config.snapshot(),
+    )
+    experiment_logger.log(
+        f"strategy={DEFAULT_STRATEGY}, fleet_size={len(data_manager.get_vehicles())}, "
+        f"stations={len(data_manager.get_charging_stations())}, "
+        f"initial_tasks={len(data_manager.get_tasks())}, "
+        f"task_budget={TOTAL_TASK_BUDGET}, max_sim_seconds={MAX_SIM_SECONDS}"
     )
 
     return {
@@ -184,6 +218,8 @@ async def reset_simulation():
     app.state.decision_manager.last_selected_strategy = DEFAULT_STRATEGY
     app.state.sim_seconds_elapsed = 0.0
     app.state.last_dynamic_scheduling_ts = 0.0
+    app.state.last_progress_log_sim = 0.0
+    app.state._gen_stop_logged = False
 
     return {
         "success": True,
@@ -380,6 +416,7 @@ def _generate_initial_tasks(data_manager: DataManager, n: int) -> int:
 # 任务生成（运行过程中周期性生成）
 # ============================================================
 _task_id_counter = 1000  # 运行期生成的任务从 1000 开始，避开初始任务
+_runtime_tasks_generated = 0  # 主循环内累计生成的任务数（含初始）
 
 
 def generate_random_task(data_manager: DataManager, task_id: int, max_retries: int = 50):
@@ -426,8 +463,15 @@ def generate_random_task(data_manager: DataManager, task_id: int, max_retries: i
 
 
 async def task_generator(app: FastAPI, data_manager: DataManager):
-    """每隔一段时间生成一批新任务，直到 PENDING 达到上限。"""
-    global _task_id_counter
+    """每隔一段时间生成一批新任务。
+
+    生成停止条件（取或，由 `_task_generation_stopped` 判断）：
+      1) 累计任务数 >= total_task_budget
+      2) 仿真时间已达 max_sim_seconds（"任务生成截止时间"语义）
+
+    达到上述任一条件后停止生成，但仿真主循环继续，直到所有现存任务结算完。
+    """
+    global _task_id_counter, _runtime_tasks_generated
     task_cfg = config.get_task_config()
     interval_min = int(task_cfg.get("generation_interval_sec_min", 10))
     interval_max = int(task_cfg.get("generation_interval_sec_max", 30))
@@ -442,6 +486,10 @@ async def task_generator(app: FastAPI, data_manager: DataManager):
             if not getattr(app.state, "simulation_running", False):
                 continue
 
+            # 任务生成已截止 → 不再生成
+            if _task_generation_stopped(app, data_manager):
+                continue
+
             pending = len(data_manager.get_pending_tasks())
             if pending >= max_pending:
                 continue
@@ -451,16 +499,86 @@ async def task_generator(app: FastAPI, data_manager: DataManager):
             for _ in range(batch):
                 if pending + created >= max_pending:
                     break
+                if _task_generation_stopped(app, data_manager):
+                    break
                 _task_id_counter += 1
                 t = generate_random_task(data_manager, _task_id_counter)
                 if t is not None:
                     created += 1
+                    _runtime_tasks_generated += 1
                     print(
                         f"[TaskGen] new task {t.id} weight={t.weight:.1f} prio={t.priority} "
                         f"pending={pending + created}/{max_pending}"
                     )
+                    experiment_logger.log(
+                        f"new task t{t.id} weight={t.weight:.1f} prio={t.priority} "
+                        f"deadline={t.deadline} pending={pending + created}/{max_pending}",
+                        level="TASK"
+                    )
         except Exception as e:
             print(f"Task generator error: {e}")
+
+
+# ============================================================
+# 终止条件 / 周期性日志
+# ============================================================
+def _task_generation_stopped(app: FastAPI, data_manager: DataManager) -> bool:
+    """任务生成是否已经截止（不会再有新任务进来）。
+
+    两个停止条件取或：
+      1) 已生成任务数 >= total_task_budget
+      2) 仿真时间已达 max_sim_seconds（这里把 max_sim_seconds 解释为
+         '任务生成截止时间'，到达后不再生成新任务，但仿真继续直到所有
+          已有任务结算完毕）
+    若两者都没设，则任务生成永不截止——只能手动 stop。
+    """
+    if TOTAL_TASK_BUDGET is not None:
+        if len(data_manager.get_tasks()) >= int(TOTAL_TASK_BUDGET):
+            return True
+    if MAX_SIM_SECONDS is not None:
+        if float(getattr(app.state, "sim_seconds_elapsed", 0.0)) >= float(MAX_SIM_SECONDS):
+            return True
+    return False
+
+
+def _all_tasks_settled(app: FastAPI, data_manager: DataManager) -> bool:
+    """是否可以结束仿真：任务生成已停止 + 所有任务都到了终态。"""
+    from backend.data.task import TaskStatus
+
+    if not _task_generation_stopped(app, data_manager):
+        return False
+    tasks = data_manager.get_tasks()
+    if not tasks:
+        return False
+    for t in tasks:
+        if t.status not in (TaskStatus.COMPLETED, TaskStatus.TIMEOUT):
+            return False
+    return True
+
+
+def _log_progress(
+    data_manager: DataManager,
+    decision_manager: DecisionManager,
+    sim_seconds_elapsed: float,
+) -> None:
+    """落一行进度日志到 log.txt（每 ~300 仿真秒一次）。"""
+    try:
+        status = decision_manager.get_system_status()
+        experiment_logger.log(
+            f"sim_elapsed={sim_seconds_elapsed:.0f}s "
+            f"strategy={status.get('current_strategy')} "
+            f"tasks total={status.get('total_tasks')} "
+            f"completed={status.get('completed_tasks')} "
+            f"pending={status.get('pending_tasks')} "
+            f"in_progress={status.get('in_progress_tasks')} "
+            f"timeout={status.get('timeout_tasks')} "
+            f"vehicles idle={status.get('idle_vehicles')} "
+            f"moving={status.get('moving_vehicles')} "
+            f"charging={status.get('charging_vehicles')}",
+            level="PROGRESS",
+        )
+    except Exception as exc:
+        print(f"[ERROR] _log_progress: {exc}")
 
 
 # ============================================================
@@ -518,24 +636,57 @@ async def background_tasks(
             app.state.sim_seconds_elapsed = float(
                 getattr(app.state, "sim_seconds_elapsed", 0.0)
             ) + sim_dt
-            if (
-                MAX_SIM_SECONDS is not None
-                and app.state.sim_seconds_elapsed >= float(MAX_SIM_SECONDS)
-            ):
+
+            # 周期性 progress 日志：每 ~300 仿真秒落一行到 log.txt
+            last_prog = float(getattr(app.state, "last_progress_log_sim", 0.0))
+            if app.state.sim_seconds_elapsed - last_prog >= 300.0:
+                _log_progress(data_manager, decision_manager,
+                              float(app.state.sim_seconds_elapsed))
+                app.state.last_progress_log_sim = float(app.state.sim_seconds_elapsed)
+
+            # ---- 唯一终止条件：任务生成已停止 + 所有任务都结算 ----
+            # 注意：达到 max_sim_seconds **不会**直接停仿真——它只表示
+            # "不再生成新任务"。仿真会继续推进直到现存任务全部 COMPLETED / TIMEOUT。
+            stopped_this_tick = False
+            gen_just_stopped = _task_generation_stopped(app, data_manager)
+            if gen_just_stopped and not getattr(app.state, "_gen_stop_logged", False):
                 print(
-                    f"[Sim] Reached max_sim_seconds={MAX_SIM_SECONDS}, "
-                    f"auto-stopping simulation."
+                    f"[Sim] Task generation stopped "
+                    f"(sim_elapsed={app.state.sim_seconds_elapsed:.0f}s, "
+                    f"total_tasks={len(data_manager.get_tasks())}). "
+                    f"Simulation continues until all tasks are settled."
                 )
+                experiment_logger.log(
+                    f"task generation stopped at sim_elapsed="
+                    f"{app.state.sim_seconds_elapsed:.0f}s "
+                    f"(reason: budget/max_sim_seconds reached). "
+                    f"continuing until all tasks settle.",
+                    level="INFO",
+                )
+                app.state._gen_stop_logged = True
+
+            if STOP_WHEN_ALL_TASKS_DONE and _all_tasks_settled(app, data_manager):
+                print("[Sim] All tasks settled, auto-stopping simulation.")
                 app.state.simulation_running = False
                 experiment_logger.finalize_experiment(
                     data_manager,
                     float(app.state.sim_seconds_elapsed),
-                    stop_reason="max_sim_seconds_reached",
+                    stop_reason="all_tasks_done",
                 )
+                stopped_this_tick = True
 
             await websocket_handler.broadcast_system_status()
             await websocket_handler.broadcast_performance_metrics()
             await websocket_handler.broadcast_state()
+            if stopped_this_tick:
+                await websocket_handler.broadcast_simulation_finished(
+                    "all_tasks_done",
+                    float(app.state.sim_seconds_elapsed),
+                )
+
+            # 仿真在本 tick 内被自动停掉了：跳过本 tick 的调度
+            if stopped_this_tick:
+                continue
 
             # 动态调度节流
             now_wall = time.time()

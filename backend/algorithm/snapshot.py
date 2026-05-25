@@ -31,6 +31,7 @@ class Snapshot:
     warehouse_xy: Tuple[float, float]
     timestamp: int
     path_calculator: PathCalculator
+    _distance_cache: dict = field(default_factory=dict, repr=False)
 
     # ------------------------------------------------------------------
     # 构造：从 DataManager 拍一张当前快照
@@ -105,10 +106,20 @@ class Snapshot:
         """任意两点间的路网距离（米）。不可达返回 +inf。"""
         ax, ay = self._xy(a)
         bx, by = self._xy(b)
+        key = (
+            round(ax, 6),
+            round(ay, 6),
+            round(bx, 6),
+            round(by, 6),
+        )
+        if key in self._distance_cache:
+            return self._distance_cache[key]
         try:
-            return self.path_calculator.calculate_pair_distance((ax, ay), (bx, by))
+            dist = self.path_calculator.calculate_pair_distance((ax, ay), (bx, by))
         except Exception:
-            return float("inf")
+            dist = float("inf")
+        self._distance_cache[key] = dist
+        return dist
 
     def path(self, a, b) -> List[Tuple[float, float]]:
         """两点间 Dijkstra 最短路径，返回空列表表示不可达。"""

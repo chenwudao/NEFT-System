@@ -32,6 +32,7 @@ class NearestTaskScheduler(Scheduler):
 
         def pick_one(vehicle, tasks, snap):
             unclaimed = [t for t in tasks if t.id not in claimed]
+            unclaimed = utils.feasible_tasks_for(vehicle, unclaimed)
             if not unclaimed:
                 return []
             nearest = min(

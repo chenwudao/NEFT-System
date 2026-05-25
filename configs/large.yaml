@@ -1,0 +1,53 @@
+# 大规模配置：12 辆车 / 4 充电站 / 高任务流量
+experiment:
+  name: "large-scale-simulated-annealing"
+  log_dir: "log"
+
+fleet:
+  small_count:   4
+  medium_count:  6
+  large_count:   2
+  station_count: 4
+
+charging_station:
+  default_capacity: 4
+  max_queue_time:   900
+
+task:
+  initial_tasks:               12
+  generation_interval_sec_min: 6
+  generation_interval_sec_max: 18
+  generation_batch_min:        2
+  generation_batch_max:        5
+  max_pending_tasks:           40
+  min_weight:           20.0
+  max_weight:           3000.0
+  min_priority:         1
+  max_priority:         5
+  min_deadline_offset:  1200
+  max_deadline_offset:  7200
+  total_task_budget:    200
+
+scheduling:
+  strategy:              "simulated_annealing"
+  low_battery_pct:       20.0
+  charge_until_pct:      90.0
+  max_tasks_per_trip:    6
+  battery_safety_margin: 1.15
+  charge_load_weight_m:  10000.0
+  charge_queue_weight_m: 3000.0
+  sa:
+    iterations:    1500
+    t_start:       1000.0
+    t_end:         1.0
+    alpha_reward:  2.0
+    seed:          42
+
+simulation:
+  speed_factor:    180
+  tick_interval:   1.0
+  # 任务生成截止时间，仿真秒（到达后停止生成新任务，但仿真继续直到所有任务结算）
+  max_sim_seconds: 14400
+  marker_tween_ms: 900
+  marker_tween_adaptive: true
+  stop_when_all_tasks_done: true

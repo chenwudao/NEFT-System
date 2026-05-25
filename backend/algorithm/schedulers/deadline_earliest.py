@@ -1,4 +1,8 @@
-"""优先级优先：先服务高优先级任务，同优先级按距离近优先。"""
+"""最早截止时间优先（EDF：Earliest Deadline First）。
+
+每辆车在仓库时，选 deadline 最早的那个未抢任务；同 deadline 时按距离近优先。
+属于"按时率优化型"策略。
+"""
 
 from __future__ import annotations
 
@@ -9,8 +13,8 @@ from backend.algorithm.scheduler import Command, Scheduler
 from backend.algorithm.snapshot import Snapshot
 
 
-class PriorityTaskScheduler(Scheduler):
-    name = "priority_task"
+class DeadlineEarliestScheduler(Scheduler):
+    name = "deadline_earliest"
 
     def schedule(self, snapshot: Snapshot) -> List[Command]:
         commands: List[Command] = []
@@ -20,21 +24,21 @@ class PriorityTaskScheduler(Scheduler):
 
         claimed = set()
 
-        def pick_one(vehicle, tasks, snap):
+        def pick_edf(vehicle, tasks, snap):
             unclaimed = [t for t in tasks if t.id not in claimed]
             unclaimed = utils.feasible_tasks_for(vehicle, unclaimed)
             if not unclaimed:
                 return []
             unclaimed.sort(
                 key=lambda t: (
-                    -t.priority,
+                    t.deadline,
                     snap.distance(vehicle.position, t.position),
                 )
             )
             return [unclaimed[0]]
 
         for v in snapshot.idle_vehicles_at_warehouse():
-            cmd = utils.decide_at_warehouse(v, snapshot, pick_one)
+            cmd = utils.decide_at_warehouse(v, snapshot, pick_edf)
             if cmd.action == "deliver":
                 claimed.update(cmd.assigned_tasks)
             commands.append(cmd)

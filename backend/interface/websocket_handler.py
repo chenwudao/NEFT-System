@@ -106,6 +106,18 @@ class WebSocketHandler:
 
         await self._broadcast_to_subscribers(message, ["performance_metrics", "all"])
 
+    async def broadcast_simulation_finished(self, reason: str, sim_seconds_elapsed: float):
+        """通知前端仿真已经结束，前端应冻结地图/Canvas 动画。"""
+        message = {
+            "type": "simulation_finished",
+            "data": {
+                "reason": reason,
+                "sim_seconds_elapsed": sim_seconds_elapsed,
+            },
+            "timestamp": int(datetime.now().timestamp()),
+        }
+        await self._broadcast_to_subscribers(message, ["system_status", "all"])
+
     async def broadcast_warehouse_position_update(self, position):
         """广播中央仓库位置更新"""
         wh = {"x": position.x, "y": position.y}

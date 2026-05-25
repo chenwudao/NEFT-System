@@ -1,10 +1,17 @@
 """调度算法的工具箱。
 
 把几乎所有算法都会重复写的小逻辑集中在这里，按需组合即可。
-分为三类：
+分为五类：
     1. 度量 / 查询         distance_to / nearest_task / feasible_tasks ...
-    2. 路径组合            greedy_chain / mst_order
-    3. 指令构造            make_deliver_command / make_charge_command / make_return_command / make_idle_command
+    2. 电量与充电          can_reach_target / energy_required_for / best_charging_station ...
+    3. 路径组合            greedy_chain / mst_order
+    4. 指令构造            make_deliver_command / make_charge_command / ...
+    5. 决策模板            decide_at_warehouse / decide_en_route
+
+电量预判机制（重点）：
+    所有算法都应通过 `decide_at_warehouse` / `decide_en_route` 模板
+    使用，模板内部会做"是否能到下一目标点 + 缓冲到最近充电站"的硬约束检查。
+    若不够电，先派去 `best_charging_station`（综合距离 + 负荷压力）。
 """
 
 from __future__ import annotations
@@ -62,33 +69,153 @@ def nearest_station(
     return min(stations, key=lambda s: snapshot.distance(vehicle.position, s.position))
 
 
+# ======================================================================
+# 2. 电量与充电
+# ======================================================================
+
+
+def _safety_margin() -> float:
+    """安全余量系数：从 config 拿，默认 1.15（15% 余量）。"""
+    return float(config.get_scheduling_config().get("battery_safety_margin", 1.15))
+
+
 def needs_charge(vehicle: Vehicle) -> bool:
-    """电量是否低于 config 里设置的 low_battery_pct。"""
+    """电量是否低于 config 里设置的 low_battery_pct（百分比阈值）。"""
     pct = vehicle.get_battery_percentage()
     thresh = float(config.get_scheduling_config().get("low_battery_pct", 20.0))
     return pct <= thresh
 
 
+def energy_required_for_distance(vehicle: Vehicle, distance_m: float) -> float:
+    """根据距离估算需要的能量（kWh 等效）。"""
+    if distance_m == float("inf") or distance_m < 0:
+        return float("inf")
+    return float(distance_m) * float(vehicle.unit_energy_consumption)
+
+
+def min_distance_to_any_station(
+    xy: Tuple[float, float], stations: List[ChargingStation], snapshot: Snapshot
+) -> float:
+    """从一个点出发，到最近充电站的路网距离；没有站则 0。"""
+    if not stations:
+        return 0.0
+    best = float("inf")
+    for st in stations:
+        d = snapshot.distance(xy, (st.position.x, st.position.y))
+        if d < best:
+            best = d
+    return best if best != float("inf") else float("inf")
+
+
+def can_reach_target(
+    vehicle: Vehicle,
+    target_xy: Tuple[float, float],
+    snapshot: Snapshot,
+    *,
+    require_station_buffer: bool = True,
+) -> bool:
+    """判断车辆是否还有足够电量从当前位置走到 target_xy。
+
+    若 require_station_buffer=True，额外要求：
+        到达 target 后还要能到最近一个充电站（避免"送到了但回不来"）。
+
+    任何不可达 / 距离无穷大的情况都视为 False。
+    """
+    d = snapshot.distance(vehicle.position, target_xy)
+    if d == float("inf"):
+        return False
+
+    extra = 0.0
+    if require_station_buffer and snapshot.charging_stations:
+        d_buf = min_distance_to_any_station(
+            target_xy, snapshot.charging_stations, snapshot
+        )
+        if d_buf == float("inf"):
+            return False
+        extra = d_buf
+
+    need = energy_required_for_distance(vehicle, d + extra) * _safety_margin()
+    return vehicle.battery + 1e-9 >= need
+
+
 def can_reach_with_battery(
     vehicle: Vehicle, target_xy: Tuple[float, float], snapshot: Snapshot
 ) -> bool:
-    """粗判：从当前位置走到 target 再走到最近充电站所需电量是否够。
+    """保守判断（向后兼容）：到 target 再到最近充电站是否够电。"""
+    return can_reach_target(vehicle, target_xy, snapshot, require_station_buffer=True)
 
-    这是保守估计；写算法时不想考虑这一层可以直接忽略。
+
+def can_complete_chain(
+    vehicle: Vehicle,
+    waypoints: List[Tuple[float, float]],
+    snapshot: Snapshot,
+    *,
+    require_station_buffer: bool = True,
+) -> bool:
+    """判断车辆是否能依次走完整条路径（含从 vehicle.position 出发的第一段）。
+
+    waypoints 为按访问顺序排列的点（不含车辆当前位置）。最后一个点之后是否
+    还要预留"到最近充电站"的余量，由 require_station_buffer 控制。
     """
-    dist = snapshot.distance(vehicle.position, target_xy)
-    if dist == float("inf"):
-        return False
-    # 再加一段"到最近充电站"的余量
-    station = nearest_station(vehicle, snapshot.charging_stations, snapshot)
-    if station is not None:
-        dist += snapshot.distance(target_xy, station.position)
-    need = dist * vehicle.unit_energy_consumption
-    return vehicle.battery >= need
+    if not waypoints:
+        return True
+
+    total_d = 0.0
+    cur = (vehicle.position.x, vehicle.position.y)
+    for nxt in waypoints:
+        d = snapshot.distance(cur, nxt)
+        if d == float("inf"):
+            return False
+        total_d += d
+        cur = nxt
+
+    extra = 0.0
+    if require_station_buffer and snapshot.charging_stations:
+        d_buf = min_distance_to_any_station(cur, snapshot.charging_stations, snapshot)
+        if d_buf == float("inf"):
+            return False
+        extra = d_buf
+
+    need = energy_required_for_distance(vehicle, total_d + extra) * _safety_margin()
+    return vehicle.battery + 1e-9 >= need
+
+
+def best_charging_station(
+    vehicle: Vehicle, snapshot: Snapshot
+) -> Optional[ChargingStation]:
+    """综合距离 + 充电站负荷压力，挑一个"最优"充电站。
+
+    评分 = 距离(米) + 排队/负荷惩罚。这样：
+        - 距离一样，负荷低的优先；
+        - 负荷一样，更近的优先；
+        - 不可达的站直接排除。
+    """
+    if not snapshot.charging_stations:
+        return None
+
+    sched_cfg = config.get_scheduling_config()
+    load_weight = float(sched_cfg.get("charge_load_weight_m", 8000.0))
+    queue_weight = float(sched_cfg.get("charge_queue_weight_m", 2000.0))
+
+    best = None
+    best_cost = float("inf")
+    for st in snapshot.charging_stations:
+        d = snapshot.distance(vehicle.position, (st.position.x, st.position.y))
+        if d == float("inf"):
+            continue
+        load_pen = float(getattr(st, "load_pressure", 0.0)) * load_weight
+        # 排队车辆数（>capacity 时才算真的有排队）
+        waiting = max(0, int(getattr(st, "queue_count", 0)) - int(getattr(st, "capacity", 0)))
+        queue_pen = waiting * queue_weight
+        cost = d + load_pen + queue_pen
+        if cost < best_cost:
+            best_cost = cost
+            best = st
+    return best
 
 
 # ======================================================================
-# 2. 路径组合（算法用来决定"顺路怎么走"）
+# 3. 路径组合（算法用来决定"顺路怎么走"）
 # ======================================================================
 
 
@@ -145,7 +272,6 @@ def mst_order(
                     min_edge[v] = d
                     parent[v] = u
 
-    # 根据 parent 建邻接表，从 start 做 DFS
     adj: List[List[int]] = [[] for _ in range(n)]
     for v in range(1, n):
         if parent[v] >= 0:
@@ -159,7 +285,6 @@ def mst_order(
         visited[u] = True
         if u != 0:
             order_idx.append(u)
-        # 子节点按距离近的先走
         adj[u].sort(key=lambda x: snapshot.distance(nodes[u], nodes[x]))
         for v in adj[u]:
             if not visited[v]:
@@ -170,7 +295,7 @@ def mst_order(
 
 
 # ======================================================================
-# 3. 指令构造
+# 4. 指令构造
 # ======================================================================
 
 
@@ -223,14 +348,7 @@ def make_deliver_command(
 def make_goto_node_command(
     vehicle: Vehicle, target_xy: Tuple[float, float]
 ) -> Command:
-    """让车去一个"特殊坐标"。
-
-    典型用途：
-      - 多个任务点的 MST/质心汇聚节点
-      - 两辆车的接力碰头点（比如两车当前位置的中间节点）
-      - 任何"先把车挪到这个点再说"的需求
-    到达后车会变 IDLE，具体下一步由调度器继续决定。
-    """
+    """让车去一个"特殊坐标"。到达后车会变 IDLE，由调度器再决定下一步。"""
     return Command(
         vehicle_id=vehicle.id,
         action=ACTION_GOTO_NODE,
@@ -255,11 +373,7 @@ def can_transfer_cargo(
     src: Vehicle, dst: Vehicle, task_ids: List[int], tasks_by_id: dict,
     eps: float = 1e-4,
 ) -> bool:
-    """纯检查：src 能否把这些 task 交给 dst。不改任何状态。
-
-    `tasks_by_id` 一般用 `{t.id: t for t in snapshot.tasks}` 传进来。
-    用于算法在出接力命令前先做校验。
-    """
+    """纯检查：src 能否把这些 task 交给 dst。不改任何状态。"""
     if src.id == dst.id or src.is_stranded() or dst.is_stranded():
         return False
     if not same_position(src, dst, eps):
@@ -276,14 +390,7 @@ def can_transfer_cargo(
 def make_handoff_command(
     src: Vehicle, dst: Vehicle, task_ids: List[int]
 ) -> Command:
-    """构造"原地接力"指令：把 src 车上的这些 task 交给 dst 车。
-
-    前置（由算法自己保证；执行层会再兜底检查一次）：
-      - src / dst 当前坐标已经重合
-      - dst 剩余载重够
-      - 每个 task.assigned_vehicle_id == src.id
-    执行层（DynamicSchedulingModule）会调用 DataManager.transfer_cargo。
-    """
+    """构造"原地接力"指令：把 src 车上的这些 task 交给 dst 车。"""
     return Command(
         vehicle_id=src.id,
         action=ACTION_HANDOFF,
@@ -293,8 +400,29 @@ def make_handoff_command(
 
 
 # ======================================================================
-# 4. 常用组合：车在仓库时的一揽子决策
+# 5. 常用组合：决策模板（所有"每车独立决策"算法的基础）
 # ======================================================================
+
+
+def _need_charge_at_warehouse(
+    vehicle: Vehicle,
+    snapshot: Snapshot,
+    planned_chain: Optional[List[Tuple[float, float]]] = None,
+) -> bool:
+    """在仓库判断"是否该先充电"。两条件取或：
+        1) 当前电量百分比已低于阈值；
+        2) 如果给定了 planned_chain（仓库→各任务点→仓库），跑完它电量不够。
+    """
+    if needs_charge(vehicle):
+        return True
+    if planned_chain:
+        # 加上从最后一个任务点回仓库的一段
+        warehouse_xy = snapshot.warehouse_xy
+        full = list(planned_chain) + [warehouse_xy]
+        # 不需要再加"到充电站"的 buffer（回仓库本身就解决了能量）
+        if not can_complete_chain(vehicle, full, snapshot, require_station_buffer=False):
+            return True
+    return False
 
 
 def decide_at_warehouse(
@@ -304,19 +432,17 @@ def decide_at_warehouse(
 ) -> Command:
     """在仓库时的标准决策：
 
-    1) 若电量低 → 就近充电
-    2) 否则让传入的 `pick_tasks` 决定要接哪些任务
-       - 有任务 → 装货 + 用 greedy_chain 排顺序，发第一跳 deliver
-       - 无任务 → idle（等下一轮）
-
-    `pick_tasks` 自己决定怎么选，比如：
-        lambda v, ts, snap: [min(ts, key=lambda t: snap.distance(v.position, t.position))]
+    1) 若电量已低于阈值 → 就近充电（综合负荷）
+    2) 否则让 pick_tasks 决定要接哪些任务；用贪心排序
+    3) 二次预判：电量能否跑完"仓库 → 各任务点 → 仓库"；不够则改去充电
+    4) 没有可接的任务 → idle
     """
-    # 低电量优先充电
+    # 1) 阈值充电（先 cheap check）
     if needs_charge(vehicle):
-        station = nearest_station(vehicle, snapshot.charging_stations, snapshot)
+        station = best_charging_station(vehicle, snapshot)
         if station is not None:
             return make_charge_command(vehicle, station)
+        return make_idle_command(vehicle)
 
     pending = snapshot.available_tasks()
     if not pending:
@@ -326,25 +452,34 @@ def decide_at_warehouse(
     if not picked:
         return make_idle_command(vehicle)
 
-    # 尊重配置里的单次任务数上限
     max_trip = config.get_scheduling_config().get("max_tasks_per_trip")
     if max_trip is not None:
         picked = picked[: int(max_trip)]
 
-    # 载重约束兜底
     picked = feasible_tasks_for(vehicle, picked)
     if not picked:
         return make_idle_command(vehicle)
 
-    # 用贪心把挑好的点排个顺序，下一跳就是其中第一个
     order = greedy_chain(
         (vehicle.position.x, vehicle.position.y),
         [(t.position.x, t.position.y) for t in picked],
         snapshot,
     )
     id_by_xy = {(t.position.x, t.position.y): t for t in picked}
-    first_task = id_by_xy[order[0]]
 
+    # 3) 电量预判：在仓库就跑完整条 chain（含回仓）
+    if _need_charge_at_warehouse(vehicle, snapshot, planned_chain=order):
+        # 不够电跑完整条 chain → 先充电
+        station = best_charging_station(vehicle, snapshot)
+        if station is not None:
+            return make_charge_command(vehicle, station)
+        # 找不到充电站：尝试只接第一个任务（缩小负担）
+        first_task = id_by_xy[order[0]]
+        if can_reach_target(vehicle, order[0], snapshot, require_station_buffer=True):
+            return make_deliver_command(vehicle, first_task, assigned_tasks=[first_task.id])
+        return make_idle_command(vehicle)
+
+    first_task = id_by_xy[order[0]]
     return make_deliver_command(
         vehicle,
         first_task,
@@ -353,23 +488,54 @@ def decide_at_warehouse(
 
 
 def decide_en_route(vehicle: Vehicle, snapshot: Snapshot) -> Command:
-    """车刚到某个任务点（不在仓库），决定下一步。
+    """车不在仓库的标准决策。
 
-    - 车上还有没送的任务 → 去最近的那个
-    - 都送完了 → 回仓库
-    - 电量紧急 → 先去充电
+    - 阈值充电  → 就近充电
+    - 还有未送达任务 → 先选下一站；预判"下一站 + 后续未送 + 回仓"电量
+      不够则改去充电
+    - 都送完了 → 回仓库；不够回则改去充电
     """
     if needs_charge(vehicle):
-        station = nearest_station(vehicle, snapshot.charging_stations, snapshot)
+        station = best_charging_station(vehicle, snapshot)
         if station is not None:
             return make_charge_command(vehicle, station)
+        # 没有充电站可用：还是尝试继续，最坏会 STRANDED（属于算法的"惩罚"）
 
     undelivered = snapshot.vehicle_undelivered_tasks(vehicle)
+
     if not undelivered:
+        # 直接回仓
+        warehouse_xy = snapshot.warehouse_xy
+        if not can_reach_target(vehicle, warehouse_xy, snapshot, require_station_buffer=False):
+            # 电量不足回仓，先去充电
+            station = best_charging_station(vehicle, snapshot)
+            if station is not None:
+                return make_charge_command(vehicle, station)
         return make_return_command(vehicle, snapshot)
 
+    # 选下一个最近的未送任务点
     nxt = min(
         undelivered,
         key=lambda t: snapshot.distance(vehicle.position, t.position),
     )
+    target_xy = (nxt.position.x, nxt.position.y)
+
+    # 路径预判：下一站 + 后续所有未送 + 回仓
+    rest_xy: List[Tuple[float, float]] = [target_xy]
+    for t in undelivered:
+        if t.id == nxt.id:
+            continue
+        rest_xy.append((t.position.x, t.position.y))
+    rest_xy.append(snapshot.warehouse_xy)
+
+    if not can_complete_chain(vehicle, rest_xy, snapshot, require_station_buffer=False):
+        # 不够电跑完 → 去充电
+        station = best_charging_station(vehicle, snapshot)
+        if station is not None:
+            return make_charge_command(vehicle, station)
+        # 找不到站；至少看能不能继续去这个最近的任务点（车上的货还能交付）
+        if not can_reach_target(vehicle, target_xy, snapshot, require_station_buffer=True):
+            # 实在不行回仓
+            return make_return_command(vehicle, snapshot)
+
     return make_deliver_command(vehicle, nxt)

@@ -56,6 +56,7 @@ const API_BASE = 'http://localhost:8000/api';
 console.log('WebSocket URL:', WS_URL);
 let websocket = null;
 let currentSimulationState = null;
+let simulationEnded = false;
 let animationFrameId = null;
 let simulationInterval = 500;
 const MAP_WIDTH = 1000;
@@ -343,6 +344,50 @@ function stopCanvasRenderLoop() {
     }
 }
 
+function cancelVehicleTweens() {
+    for (const anim of vehicleAnimations.values()) {
+        if (anim && anim.rafId) cancelAnimationFrame(anim.rafId);
+    }
+    vehicleAnimations.clear();
+}
+
+function resetSimulationEndedState() {
+    simulationEnded = false;
+    cancelVehicleTweens();
+    canvasVehicleAnimState.clear();
+}
+
+function freezeSimulationRendering(reason, simSecondsElapsed) {
+    simulationEnded = true;
+    cancelVehicleTweens();
+    stopCanvasRenderLoop();
+    canvasVehicleAnimState.clear();
+
+    // 真实地图模式下，把 marker 直接对齐到后端最后一帧位置，避免 tween 继续摇摆。
+    if (useRealMap && currentSimulationState && Array.isArray(currentSimulationState.vehicles)) {
+        for (const v of currentSimulationState.vehicles) {
+            const marker = mapMarkers.get(`vehicle_${v.id}`);
+            if (!marker || !v.position) continue;
+            const p = positionToAmap(v.position);
+            if (p && isFinite(p.lng) && isFinite(p.lat)) {
+                marker.setPosition([p.lng, p.lat]);
+            }
+        }
+    }
+
+    if (!useRealMap && currentSimulationState && canvas && ctx) {
+        drawCanvasScene(currentSimulationState);
+    }
+
+    if (simulationStatusDisplay) {
+        const reasonText = reason ? `（${reason}）` : '';
+        const elapsedText = simSecondsElapsed ? `，仿真时长 ${formatSimSeconds(simSecondsElapsed)}` : '';
+        simulationStatusDisplay.textContent = `模拟结束${reasonText}${elapsedText}`;
+    }
+    if (startButton) startButton.disabled = true;
+    if (stopButton) stopButton.disabled = true;
+}
+
 // 拉取后端的 NetworkX 路网（只在 canvas 模式需要）
 async function ensureRoadGraphLoaded() {
     if (roadGraph || roadGraphLoading) return;
@@ -483,12 +528,25 @@ function clearOsmAmapOverlay() {
     osmOverlayAmapPolylines = [];
 }
 
+function isOsmOverlayGcj02() {
+    const features = osmOverlayGeoJson && Array.isArray(osmOverlayGeoJson.features)
+        ? osmOverlayGeoJson.features
+        : [];
+    for (const feature of features.slice(0, 20)) {
+        const cs = String(feature?.properties?.coord_system || '').toLowerCase();
+        if (cs.includes('gcj')) return true;
+        if (cs.includes('wgs')) return false;
+    }
+    return false;
+}
+
 function drawOsmOverlayOnAmap() {
     if (!map || !osmOverlayGeoJson) return;
     clearOsmAmapOverlay();
 
     // 检查是否为主干路模式（根据文件名或特征数量判断）
     const isMainRoadsMode = osmOverlayGeoJson.features.length < 5000;
+    const overlayIsGcj02 = isOsmOverlayGcj02();
     
     for (const feature of osmOverlayGeoJson.features) {
         if (feature?.geometry?.type !== 'LineString') continue;
@@ -523,8 +581,14 @@ function drawOsmOverlayOnAmap() {
             strokeOpacity = isMainRoad ? 0.75 : 0.35;
         }
         
+        // frontend 里的 osm_main_roads / amap_overlay 文件已经是 GCJ-02；
+        // 只有未标注或明确 WGS84 的 GeoJSON 才转换，避免二次偏移。
+        const amapPath = (overlayIsGcj02 ? path : path.map(p => pathPointToAmap(p)))
+            .filter(p => p && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+        if (amapPath.length < 2) continue;
+
         const polyline = new AMap.Polyline({
-            path,
+            path: amapPath,
             strokeColor,
             strokeWeight,
             strokeOpacity,
@@ -574,6 +638,85 @@ const colors = {
 	path: '#64b5f6',
 	completePath: '#00bcd4'
 };
+
+function markerLabelText(text) {
+    return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function amapBadgeContent({ color, label, symbol = '', size = 22, ring = '#ffffff' }) {
+    const safeLabel = markerLabelText(label);
+    const safeSymbol = markerLabelText(symbol);
+    const fontSize = size >= 28 ? 14 : 12;
+    return `
+        <div style="position:relative; transform:translate(-50%, -50%); text-align:center; pointer-events:auto;">
+            <div style="
+                width:${size}px; height:${size}px; border-radius:50%;
+                background:${color};
+                border:2px solid ${ring};
+                box-shadow:0 2px 8px rgba(0,0,0,.35), 0 0 0 2px rgba(15,23,42,.18);
+                display:flex; align-items:center; justify-content:center;
+                color:#0f172a; font-weight:800; font-size:${fontSize}px;
+                line-height:1;">
+                ${safeSymbol}
+            </div>
+            <div style="
+                position:absolute; left:50%; top:${size + 3}px; transform:translateX(-50%);
+                white-space:nowrap; padding:1px 5px; border-radius:4px;
+                background:rgba(15,23,42,.82); color:#e2e8f0;
+                border:1px solid rgba(226,232,240,.55);
+                font-size:11px; line-height:16px; font-weight:700;">
+                ${safeLabel}
+            </div>
+        </div>
+    `;
+}
+
+function createAmapBadgeMarker(position, opts) {
+    const size = opts.size || 22;
+    return new AMap.Marker({
+        position,
+        content: amapBadgeContent(opts),
+        title: opts.title || opts.label || '',
+        offset: new AMap.Pixel(0, 0),
+        anchor: 'center',
+        zIndex: opts.zIndex || 100,
+    });
+}
+
+function vehicleStatusColor(status) {
+    switch (status) {
+        case 'idle': return colors.vehicleIdle;
+        case 'moving_to_task':
+        case 'moving_to_node': return colors.vehicleMovingToTask;
+        case 'moving_to_warehouse': return colors.vehicleReturningToWarehouse;
+        case 'moving_to_charge': return colors.vehicleMovingToCharge;
+        case 'charging':
+        case 'waiting_charge': return colors.vehicleCharging;
+        case 'stranded': return '#ef4444';
+        default: return colors.vehicleIdle;
+    }
+}
+
+function taskStatusColor(status) {
+    switch (status) {
+        case 'pending': return colors.taskPending;
+        case 'assigned':
+        case 'in_progress': return colors.taskDelivering;
+        case 'completed': return colors.taskCompleted;
+        case 'timeout': return colors.taskTimeout;
+        default: return colors.taskPending;
+    }
+}
+
+function stationColor(station) {
+    if (station && station.queue_count > station.capacity) return colors.stationQueue;
+    if (station && station.available_slots === 0) return colors.stationFull;
+    return colors.station;
+}
 
 // 全局状态存储
 let taskCompletePaths = new Map();
@@ -744,9 +887,14 @@ function createMap() {
             }
             drawOsmOverlayOnAmap();
             if (osmOverlayBounds) {
-                const cx = (osmOverlayBounds.minLng + osmOverlayBounds.maxLng) / 2;
-                const cy = (osmOverlayBounds.minLat + osmOverlayBounds.maxLat) / 2;
-                map.setCenter([cx, cy]);
+                const rawCenter = {
+                    lng: (osmOverlayBounds.minLng + osmOverlayBounds.maxLng) / 2,
+                    lat: (osmOverlayBounds.minLat + osmOverlayBounds.maxLat) / 2,
+                };
+                const center = isOsmOverlayGcj02()
+                    ? rawCenter
+                    : wgs84ToGcj02(rawCenter.lng, rawCenter.lat);
+                map.setCenter([center.lng, center.lat]);
                 map.setZoom(11);
             }
         });
@@ -836,6 +984,7 @@ function initializeApp() {
                 
                 // 重置前端状态
                 websocket = null;
+                resetSimulationEndedState();
                 startButton.disabled = false;
                 stopButton.disabled = true;
                 
@@ -972,6 +1121,7 @@ async function connect() {
 		console.log('WebSocket already exists, skipping');
 		return;
 	}
+    resetSimulationEndedState();
     
     console.log('Starting simulation...');
 
@@ -1042,6 +1192,11 @@ async function connect() {
 			switch (msg.type) {
 				case 'state_update':
 				case 'state_response':
+                    if (simulationEnded) {
+                        // 仿真结束后后端可能仍维持 websocket 心跳/状态广播；
+                        // 前端冻结最后一帧，避免车辆 marker 继续 tween 产生摇摆。
+                        break;
+                    }
 					if (msg.data) {
 						currentSimulationState = msg.data;
 						updateDashboard(currentSimulationState);
@@ -1056,6 +1211,12 @@ async function connect() {
 						}
 					}
 					break;
+                case 'simulation_finished':
+                    freezeSimulationRendering(
+                        msg.data && msg.data.reason,
+                        msg.data && msg.data.sim_seconds_elapsed
+                    );
+                    break;
 				case 'performance_metrics':
 					if (msg.data) {
 						totalScoreDisplay.textContent = (msg.data.total_score ?? 0).toFixed(1);
@@ -1212,18 +1373,13 @@ function drawRealMapSceneIncremental(state) {
         try {
             const realPos = positionToAmap(state.warehouse_position);
             if (realPos && !isNaN(realPos.lng) && !isNaN(realPos.lat)) {
-                const warehouseMarker = new AMap.Marker({
-                    position: [realPos.lng, realPos.lat],
-                    icon: new AMap.Icon({
-                        size: new AMap.Size(30, 30),
-                        image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png',
-                        imageSize: new AMap.Size(30, 30)
-                    }),
+                const warehouseMarker = createAmapBadgeMarker([realPos.lng, realPos.lat], {
+                    color: colors.warehouse,
+                    label: '仓库',
+                    symbol: '仓',
+                    size: 30,
                     title: '中央仓库',
-                    label: {
-                        content: '仓库',
-                        offset: new AMap.Pixel(0, -30)
-                    }
+                    zIndex: 180,
                 });
                 warehouseMarker.setMap(map);
                 mapMarkers.set('warehouse', warehouseMarker);
@@ -1246,18 +1402,13 @@ function drawRealMapSceneIncremental(state) {
                 const realPos = positionToAmap(stationPos);
                 
                 if (realPos && !isNaN(realPos.lng) && !isNaN(realPos.lat)) {
-                    const stationMarker = new AMap.Marker({
-                        position: [realPos.lng, realPos.lat],
-                        icon: new AMap.Icon({
-                            size: new AMap.Size(25, 25),
-                            image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png',
-                            imageSize: new AMap.Size(25, 25)
-                        }),
+                    const stationMarker = createAmapBadgeMarker([realPos.lng, realPos.lat], {
+                        color: stationColor(s),
+                        label: `CS${s.id}`,
+                        symbol: '⚡',
+                        size: 24,
                         title: `充电站${s.id}`,
-                        label: {
-                            content: `充电站${s.id}`,
-                            offset: new AMap.Pixel(0, -25)
-                        }
+                        zIndex: 150,
                     });
                     stationMarker.setMap(map);
                     mapMarkers.set(stationKey, stationMarker);
@@ -1310,25 +1461,14 @@ function drawRealMapSceneIncremental(state) {
                     continue;
                 }
                 
-                // 根据状态选择颜色（pending 红 / 已派送蓝）
-                let iconUrl = 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-red.png';
-                if (t.status === 'in_progress' || t.status === 'assigned') {
-                    iconUrl = 'https://a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-yellow.png';
-                }
-                
                 // 绘制任务标记
-                const taskMarker = new AMap.Marker({
-                    position: [realPos.lng, realPos.lat],
-                    icon: new AMap.Icon({
-                        size: new AMap.Size(20, 20),
-                        image: iconUrl,
-                        imageSize: new AMap.Size(20, 20)
-                    }),
+                const taskMarker = createAmapBadgeMarker([realPos.lng, realPos.lat], {
+                    color: taskStatusColor(t.status),
+                    label: `#${t.id}`,
+                    symbol: t.priority ? String(t.priority) : '',
+                    size: 20,
                     title: `任务${t.id}`,
-                    label: {
-                        content: `任务${t.id}`,
-                        offset: new AMap.Pixel(0, -20)
-                    }
+                    zIndex: 120,
                 });
                 taskMarker.setMap(map);
                 mapMarkers.set(taskKey, taskMarker);
@@ -1378,21 +1518,26 @@ function drawRealMapSceneIncremental(state) {
                 }
 
                 if (!vehicleMarker) {
-                    vehicleMarker = new AMap.Marker({
-                        position: [realPos.lng, realPos.lat],
-                        icon: new AMap.Icon({
-                            size: new AMap.Size(30, 30),
-                            image: 'https://a.amap.com/jsapi_demos/static/demo-center/icons/car.png',
-                            imageSize: new AMap.Size(30, 30)
-                        }),
+                    vehicleMarker = createAmapBadgeMarker([realPos.lng, realPos.lat], {
+                        color: vehicleStatusColor(v.status),
+                        label: `V${v.id}`,
+                        symbol: '车',
+                        size: 28,
                         title: `车辆${v.id}`,
-                        label: {
-                            content: `V${v.id}`,
-                            offset: new AMap.Pixel(0, -30)
-                        }
+                        zIndex: 200,
                     });
                     vehicleMarker.setMap(map);
                     mapMarkers.set(vehicleKey, vehicleMarker);
+                } else {
+                    const lastVehicle = lastDrawnState.vehicles.get(v.id);
+                    if (!lastVehicle || lastVehicle.status !== v.status) {
+                        vehicleMarker.setContent(amapBadgeContent({
+                            color: vehicleStatusColor(v.status),
+                            label: `V${v.id}`,
+                            symbol: '车',
+                            size: 28,
+                        }));
+                    }
                 }
 
                 // 平滑移动到新位置：沿后端汇报的"本 tick 折线"(v.tick_waypoints) 走，

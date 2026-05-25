@@ -129,11 +129,23 @@ python main.py
 
 | 策略名称 | 描述 | 适用场景 |
 |---------|------|---------|
-| `shortest_task_first` | 最近任务优先 | 快速响应、短距离配送 |
-| `heaviest_task_first` | 最大载重优先 | 高载重利用率 |
-| `priority_based` | 优先级调度 | 紧急任务优先 |
-| `deadline_earliest_first` | 最早截止时间优先 | 时间敏感任务 |
-| `composite_score` | 复合评分策略 | 综合多因素决策 |
+| `nearest_task` | 最近任务优先（贪心基线） | 快速响应、短距离配送 |
+| `priority_task` | 优先级 + 距离 | 紧急任务优先 |
+| `heaviest_task` | 最大载重优先 | 高载重利用率 |
+| `deadline_earliest` | 最早截止时间优先（EDF） | 时间敏感任务 |
+| `composite_score` | 优先级 + 紧迫度 + 重量 + 距离 综合打分 | 综合多因素决策 |
+| `mst_batch` | 批量装载 + MST/DFS 排序 | 任务点密集，一趟多单 |
+| `insertion_heuristic` | 贪心插入启发式 | 任务点密集，一趟多单，更精细 |
+| `simulated_annealing` | 模拟退火元启发式 | 离线全局优化、动态批量重排 |
+| `random_baseline` | 随机基线 | 仅用于性能下界对比 |
+
+所有策略统一通过 `algorithm/utils.py` 中的 `decide_at_warehouse` /
+`decide_en_route` 决策模板做电量预判，即：
+- 阈值充电（`low_battery_pct`）
+- 路径电量预判：若当前电量不足以走完"下一站 → 其余未送 → 回仓"，自动改派
+  最优充电站（`best_charging_station`，综合距离 + 负荷压力 + 排队长度）
+
+这保证不论选哪个算法，**车辆都不会因没电瘫在路上**（除非完全没有可用充电站）。
 
 ### 3. 监控面板
 
@@ -257,14 +269,85 @@ NEFT-System/
 
 ## 🔧 配置说明
 
+### 通过 YAML 切换规模（推荐做对比实验时用）
+
+`configs/` 下提供三档基线：
+
+| 文件 | 车队 | 充电站 | 任务总数预算 | 默认策略 |
+|------|------|--------|--------------|----------|
+| `configs/small.yaml`  | 3   | 1 | 30  | `nearest_task` |
+| `configs/medium.yaml` | 6   | 2 | 80  | `composite_score` |
+| `configs/large.yaml`  | 12  | 4 | 200 | `simulated_annealing` |
+
+启动时通过命令行参数选择（推荐）：
+
+```powershell
+python backend\main.py --cfg "configs\medium.yaml"
+```
+
+也可以传绝对路径：
+
+```powershell
+python backend\main.py --cfg "F:\Data Structure\NEFT-System-main\NEFT-System\configs\medium.yaml"
+```
+
+仍然兼容环境变量方式：
+
+```powershell
+# PowerShell
+$env:NEFT_CONFIG_FILE = "configs\medium.yaml"; python backend\main.py
+```
+
+```bash
+# Bash
+NEFT_CONFIG_FILE=configs/medium.yaml python backend/main.py
+```
+
+YAML 里没写到的字段会沿用 `backend/config.py` 里的默认值（参见各 yaml 文件示例）。
+
+### 实验日志目录
+
+每次 `POST /api/simulation/start` 都会建一个独立目录：
+
+```
+log/<YYYYMMDD_HHMMSS>/
+├── config.yaml   # 本次跑用的完整配置快照（含 yaml 来源、scheduling/fleet/task/sim 等）
+└── log.txt       # 人类可读日志，每行带时间戳：
+                  #   - 实验名（来自 yaml.experiment.name）
+                  #   - 启动信息（策略、车队规模、任务预算）
+                  #   - 任务生成 / 进度快照 / 抛锚等关键事件
+                  #   - 终止时追加：任务完成率、按时率、超时率、得分、吞吐、能耗、车队均衡度等指标
+```
+
+目录名是纯时间戳（不会被同名实验覆盖）；**实验的"名字"写在 yaml 里、并打到 log.txt 顶部和结果区**，便于对比。
+
+仿真终止时机有三种：
+- 调用 `/api/simulation/stop`（`stop_reason=manual_stop`）
+- 所有任务都结算（`stop_reason=all_tasks_done`，需 `stop_when_all_tasks_done: true`）
+
+**注意 `max_sim_seconds` 的语义**：它表示"**任务生成截止时间**"（仿真秒）——
+到达后停止生成新任务，但仿真**继续推进**，直到所有现存任务进入终态
+（COMPLETED/TIMEOUT）后才自动停止。`total_task_budget` 也起同样作用：
+累计任务数达到预算后，立即停止生成新任务。
+
+### 量化指标（log.txt 末尾的人类可读 + 完整 YAML）
+
+- **任务**：总数、完成、按时、超时、待派；完成率 / 按时率 / 超时率
+- **得分**：总分、每任务平均、按时任务平均
+- **时效**：平均完成时长、平均超时分钟数、吞吐（任务/小时）
+- **距离 / 能耗**：车队总里程、任务腿均长、**里程方差（车均衡度）**、总能耗、单任务能耗
+- **车队**：抛锚数 / 抛锚车 ID、每车完成任务数
+
 ### 环境变量
 
 | 变量名 | 描述 | 默认值 |
 |-------|------|--------|
-| `NEFT_ENV` | 运行环境 | `development` |
-| `NEFT_LOG_LEVEL` | 日志级别 | `INFO` |
-| `NEFT_STATIC_PLAN_INTERVAL_SEC` | 静态规划间隔 | `3600` |
-| `NEFT_DYNAMIC_SCHEDULE_INTERVAL_SEC` | 动态调度间隔 | `5` |
+| `NEFT_CONFIG_FILE` | 选择 YAML 配置（推荐做规模对比时） | 无（用 `config.py` 默认） |
+| `NEFT_STRATEGY` | 临时覆盖调度策略 | 见 yaml/`config.py` |
+| `NEFT_EXP_NAME` | 临时覆盖实验名 | 见 yaml/`config.py` |
+| `NEFT_LOG_DIR` | 临时覆盖日志根目录 | `log` |
+| `NEFT_SIM_SPEED` | 临时覆盖仿真加速倍率 | 见 yaml/`config.py` |
+| `NEFT_DYNAMIC_SCHEDULE_INTERVAL_SEC` | 动态调度触发间隔（现实秒） | `1` |
 
 ### 车辆参数配置
 
@@ -350,14 +433,20 @@ schedule: Snapshot → List[Command]
 backend/algorithm/
 ├── snapshot.py            # Snapshot 数据类（算法唯一输入）
 ├── scheduler.py           # Scheduler 基类 + Command 数据类
-├── utils.py               # 度量 / 指令构造 / 决策模板
+├── utils.py               # 度量 / 指令构造 / 决策模板（含电量预判 + 最优充电站）
 ├── algorithm_manager.py   # 注册中心：按名字分发到 Scheduler
 ├── scoring_config.py      # 评分常量（供 PathCalculator 用，不影响算法接口）
 └── schedulers/            # 算法实现全部放这里
-    ├── __init__.py        # 导出 + 注册点（EXPORTED_SCHEDULERS）
-    ├── nearest_task.py    # 最近任务优先（示例）
-    ├── priority_task.py   # 优先级 + 最近距离（示例）
-    └── mst_batch.py       # MST 批量拼单（示例：一次带多个任务）
+    ├── __init__.py             # 导出 + 注册点（EXPORTED_SCHEDULERS）
+    ├── nearest_task.py         # 贪心：最近任务优先（基线）
+    ├── priority_task.py        # 优先级 + 距离
+    ├── heaviest_task.py        # 最大载重优先
+    ├── deadline_earliest.py    # 最早截止时间优先（EDF）
+    ├── composite_score.py      # 复合评分（优先级/紧迫度/重量/距离）
+    ├── mst_batch.py            # 批量装载 + MST/DFS 排序
+    ├── insertion_heuristic.py  # 贪心插入启发式
+    ├── simulated_annealing.py  # 模拟退火（元启发式）
+    └── random_baseline.py      # 随机基线（仅用于下界对比）
 ```
 
 ## 2. 核心数据类

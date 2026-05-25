@@ -1,0 +1,66 @@
+# 小规模配置：3 辆车 / 1 充电站 / 任务流量小
+# 用法：
+#   PowerShell:  $env:NEFT_CONFIG_FILE = "configs\small.yaml"; python backend\main.py
+#   Bash:        NEFT_CONFIG_FILE=configs/small.yaml python backend/main.py
+#
+# 注意：所有未在此 yaml 出现的字段都沿用 backend/config.py 中的默认值。
+
+experiment:
+  # 本次实验的名字（写入 log.txt 的标题，不作为目录名）
+  name: "small-scale-nearest-baseline"
+  log_dir: "log"
+
+# =============================================================
+# 仿真规模：小
+# =============================================================
+fleet:
+  small_count:   2
+  medium_count:  1
+  large_count:   0
+  station_count: 1
+
+charging_station:
+  default_capacity: 2
+  max_queue_time:   600
+
+task:
+  initial_tasks:               3
+  generation_interval_sec_min: 15
+  generation_interval_sec_max: 40
+  generation_batch_min:        1
+  generation_batch_max:        2
+  max_pending_tasks:           8
+  # 单任务（小规模 → 货物轻、deadline 偏短）
+  min_weight:           10.0
+  max_weight:           800.0
+  min_priority:         1
+  max_priority:         5
+  min_deadline_offset:  900
+  max_deadline_offset:  3600
+  # 总任务上限（生成够即停止生成；模拟也会等所有任务结算后自动停）
+  total_task_budget:    30
+
+# =============================================================
+# 调度
+# =============================================================
+scheduling:
+  strategy:              "nearest_task"
+  low_battery_pct:       25.0
+  charge_until_pct:      90.0
+  max_tasks_per_trip:    3
+  battery_safety_margin: 1.15
+  charge_load_weight_m:  8000.0
+  charge_queue_weight_m: 2000.0
+
+simulation:
+  speed_factor:    120
+  tick_interval:   1.0
+  # 【任务生成截止时间，仿真秒】
+  # 到达后停止生成新任务，但仿真主循环继续，直到所有现存任务结算完毕
+  # （COMPLETED / TIMEOUT）。设 null 则任务生成只受 total_task_budget 约束。
+  # 这里设 3600 仿真秒（speed_factor=120 时 ≈ 30 现实秒）便于演示。
+  max_sim_seconds: 3600
+  marker_tween_ms: 900
+  marker_tween_adaptive: true
+  # 全部任务结算后是否自动停止仿真（唯一的自动停止条件）
+  stop_when_all_tasks_done: true
