@@ -438,18 +438,24 @@ def _need_charge_at_warehouse(
     snapshot: Snapshot,
     planned_chain: Optional[List[Tuple[float, float]]] = None,
 ) -> bool:
-    """在仓库判断"是否该先充电"。两条件取或：
-        1) 当前电量百分比已低于阈值；
-        2) 如果给定了 planned_chain（仓库→各任务点→仓库），跑完它电量不够。
+    """在仓库判断"是否该先充电"。
+
+    当前策略只保留两条轻量规则：
+      1) 当前电量百分比已低于阈值；
+      2) 若给定 planned_chain，至少要保证“首跳到达后还能到最近充电站”。
     """
     if needs_charge(vehicle):
         return True
     if planned_chain:
-        # 加上从最后一个任务点回仓库的一段
-        warehouse_xy = snapshot.warehouse_xy
-        full = list(planned_chain) + [warehouse_xy]
-        # 不需要再加"到充电站"的 buffer（回仓库本身就解决了能量）
-        if not can_complete_chain(vehicle, full, snapshot, require_station_buffer=False):
+        # 更严格的首跳安全约束：
+        # 仓库 -> 下一目标后，必须还能到最近充电站；否则先充电。
+        first_stop = planned_chain[0]
+        if not can_reach_target(
+            vehicle,
+            first_stop,
+            snapshot,
+            require_station_buffer=True,
+        ):
             return True
     return False
 
@@ -535,9 +541,8 @@ def decide_en_route(vehicle: Vehicle, snapshot: Snapshot) -> Command:
     """车不在仓库的标准决策。
 
     - 阈值充电  → 就近充电
-    - 还有未送达任务 → 先选下一站；预判"下一站 + 后续未送 + 回仓"电量
-      不够则改去充电
-    - 都送完了 → 回仓库；不够回则改去充电
+    - 还有未送达任务 → 先选下一站；若到达后无法再去充电站，则先充电
+    - 都送完了 → 回仓库；若回仓后无法再去充电站，则先充电
     """
     if needs_charge(vehicle):
         station = best_charging_station(vehicle, snapshot)
@@ -550,8 +555,8 @@ def decide_en_route(vehicle: Vehicle, snapshot: Snapshot) -> Command:
     if not undelivered:
         # 直接回仓
         warehouse_xy = snapshot.warehouse_xy
-        if not can_reach_target(vehicle, warehouse_xy, snapshot, require_station_buffer=False):
-            # 电量不足回仓，先去充电
+        if not can_reach_target(vehicle, warehouse_xy, snapshot, require_station_buffer=True):
+            # 到仓后若不能继续去最近充电站，先去充电
             station = best_charging_station(vehicle, snapshot)
             if station is not None:
                 return make_charge_command(vehicle, station)
@@ -564,22 +569,12 @@ def decide_en_route(vehicle: Vehicle, snapshot: Snapshot) -> Command:
     )
     target_xy = (nxt.position.x, nxt.position.y)
 
-    # 路径预判：下一站 + 后续所有未送 + 回仓
-    rest_xy: List[Tuple[float, float]] = [target_xy]
-    for t in undelivered:
-        if t.id == nxt.id:
-            continue
-        rest_xy.append((t.position.x, t.position.y))
-    rest_xy.append(snapshot.warehouse_xy)
-
-    if not can_complete_chain(vehicle, rest_xy, snapshot, require_station_buffer=False):
-        # 不够电跑完 → 去充电
+    # 只保留“首跳安全”判断：下一站后必须还能去充电站
+    if not can_reach_target(vehicle, target_xy, snapshot, require_station_buffer=True):
         station = best_charging_station(vehicle, snapshot)
         if station is not None:
             return make_charge_command(vehicle, station)
-        # 找不到站；至少看能不能继续去这个最近的任务点（车上的货还能交付）
-        if not can_reach_target(vehicle, target_xy, snapshot, require_station_buffer=True):
-            # 实在不行回仓
-            return make_return_command(vehicle, snapshot)
+        # 连下一站 + 充电站 buffer 都不满足且无可达站，退回仓库
+        return make_return_command(vehicle, snapshot)
 
     return make_deliver_command(vehicle, nxt)

@@ -13,7 +13,8 @@
 不在代码里做"auto 选择"，策略固定由 config.py 给出。
 """
 
-from typing import Dict, List
+import re
+from typing import Dict, List, Optional
 
 from backend.data.path_calculator import PathCalculator
 
@@ -52,11 +53,50 @@ class AlgorithmManager:
     def get_available_strategies(self) -> List[str]:
         return list(self._registry.keys())
 
+    def _resolve_scheduler(self, strategy: str) -> Optional[Scheduler]:
+        """解析 strategy 名称，支持多种写法：
+
+        1) 标准短名：deadline_earliest
+        2) 类名：DeadlineEarliestScheduler
+        3) 类名去后缀：DeadlineEarliest
+        4) 大小写不敏感：DEADLINE_EARLIEST / deadlineEarliest
+        """
+        if not strategy:
+            return None
+
+        # 1) 直接命中（现有行为）
+        direct = self._registry.get(strategy)
+        if direct is not None:
+            return direct
+
+        # 2) 统一转 snake_case 再尝试命中
+        norm = str(strategy).strip()
+        if norm.endswith("Scheduler"):
+            norm = norm[: -len("Scheduler")]
+        snake = re.sub(r"(?<!^)(?=[A-Z])", "_", norm).replace("-", "_").lower()
+        snake = re.sub(r"_+", "_", snake).strip("_")
+        if snake:
+            by_snake = self._registry.get(snake)
+            if by_snake is not None:
+                return by_snake
+
+        # 3) 最后兜底：逐个比较类名（大小写不敏感）
+        lower_raw = str(strategy).strip().lower()
+        for sch in self._registry.values():
+            cls_name = type(sch).__name__.lower()
+            if lower_raw == cls_name:
+                return sch
+            if lower_raw.endswith("scheduler") and lower_raw == cls_name:
+                return sch
+            if lower_raw == cls_name[: -len("scheduler")] and cls_name.endswith("scheduler"):
+                return sch
+        return None
+
     # ------------------------------------------------------------------
     # 调度入口
     # ------------------------------------------------------------------
     def schedule(self, strategy: str, snapshot: Snapshot) -> List[Command]:
-        scheduler = self._registry.get(strategy)
+        scheduler = self._resolve_scheduler(strategy)
         if scheduler is None:
             scheduler = self._registry.get(self.DEFAULT_STRATEGY)
         if scheduler is None:

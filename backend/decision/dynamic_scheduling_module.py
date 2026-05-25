@@ -136,8 +136,8 @@ class DynamicSchedulingModule:
             )
             return utils.make_idle_command(vehicle)
 
-        # 配送 / 特殊节点要预留“到最近充电站”的余量；回仓库本身可作为安全点。
-        require_station_buffer = cmd.action != ACTION_RETURN
+        # 默认安全约束：任何下一目的地都要预留“到最近充电站”的余量。
+        require_station_buffer = True
         if utils.can_reach_target(
             vehicle,
             cmd.target_xy,
