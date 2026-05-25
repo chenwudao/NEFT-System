@@ -160,6 +160,8 @@ class DataManager:
     def assign_task_to_vehicle(self, task_id: int, vehicle_id: int):
         with self.lock:
             if task_id in self.tasks and vehicle_id in self.vehicles:
+                # 任务从仓库出发时，配送距离从 0 开始累计。
+                self.tasks[task_id].complete_path_distance = 0.0
                 self.tasks[task_id].assigned_vehicle_id = vehicle_id
                 # 任务一旦开始由车辆承运，即进入运输中状态。
                 self.tasks[task_id].update_status(TaskStatus.IN_PROGRESS)
@@ -551,6 +553,12 @@ class DataManager:
         if distance_m <= 0:
             return
         vehicle.total_distance_traveled += distance_m
+        # 任务距离按“货物随车实际移动”累计：
+        # 从任务上车（仓库分配）开始，到任务完成为止。
+        for task_id in list(vehicle.assigned_task_ids):
+            task = self.tasks.get(task_id)
+            if task is not None and task.status == TaskStatus.IN_PROGRESS:
+                task.complete_path_distance += float(distance_m)
         energy = distance_m * vehicle.unit_energy_consumption
         vehicle.battery = max(0.0, vehicle.battery - energy)
         vehicle.energy_consumption += energy
@@ -589,14 +597,6 @@ class DataManager:
         if task_id is not None:
             task = self.tasks.get(task_id)
             if task is not None:
-                # 记录该任务配送腿距离（当前路径段）。
-                try:
-                    seg_dist = self.path_calculator.calculate_distance(
-                        [(p[0], p[1]) for p in vehicle.current_route]
-                    ) if vehicle.current_route else 0.0
-                except Exception:
-                    seg_dist = 0.0
-                task.complete_path_distance = max(task.complete_path_distance, seg_dist)
                 # 到达任务点即完成（按任务口径）。
                 task.update_status(TaskStatus.COMPLETED)
                 actual_ts = task.complete_time if task.complete_time else int(datetime.now().timestamp())

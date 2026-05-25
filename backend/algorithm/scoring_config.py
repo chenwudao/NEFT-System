@@ -11,7 +11,7 @@
 TASK_ASSIGN_REWARD = 120.0          # 分配一个任务的奖励
 PRIORITY_REWARD = 30.0              # 每点优先级的奖励
 DISTANCE_PENALTY = 0.02             # 每米距离的惩罚
-ENERGY_PENALTY = 0.2                # 每单位能耗的惩罚
+EARLY_COMPLETION_REWARD_PER_MIN = 2.0   # 每分钟提前完成奖励（弱于逾期惩罚）
 OVERDUE_PENALTY_PER_MIN = 50.0      # 每分钟逾期的惩罚
 IDLE_PENALTY = 5.0                  # 车辆空闲的惩罚
 
@@ -53,17 +53,16 @@ def calculate_assignment_score(
     # 3. 距离惩罚
     distance_cost = round_trip_dist * DISTANCE_PENALTY
     
-    # 4. 能耗惩罚
-    energy_cost = round_trip_dist * vehicle.unit_energy_consumption * ENERGY_PENALTY
-    
-    # 5. 逾期惩罚
+    # 4. 提前完成奖励 + 逾期惩罚
     estimated_time = round_trip_dist / ASSUMED_SPEED_MPS
     expected_finish = current_timestamp + estimated_time
+    early_minutes = max(0, task.deadline - expected_finish) / 60.0
+    early_reward = early_minutes * EARLY_COMPLETION_REWARD_PER_MIN
     overdue_minutes = max(0, expected_finish - task.deadline) / 60.0
     overdue_cost = overdue_minutes * OVERDUE_PENALTY_PER_MIN
     
     # 综合得分
-    score = task_reward + priority_reward - distance_cost - energy_cost - overdue_cost
+    score = task_reward + priority_reward - distance_cost + early_reward - overdue_cost
     
     return score
 
@@ -135,7 +134,6 @@ def calculate_plan_score(
             assigned_tasks * TASK_ASSIGN_REWARD
             + total_priority * PRIORITY_REWARD
             - total_distance * DISTANCE_PENALTY
-            - total_energy * ENERGY_PENALTY
             - overdue_penalty * OVERDUE_PENALTY_PER_MIN
         )
     }

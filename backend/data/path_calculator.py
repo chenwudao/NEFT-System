@@ -544,7 +544,7 @@ class PathCalculator:
         
         统一评分公式（参考 scoring_config.py）：
           得分 = 任务分配奖励(120) + 优先级奖励(30×priority) 
-                - 距离惩罚(0.02×距离) - 能耗惩罚(0.2×能耗)
+                - 距离惩罚(0.02×距离) + 提前完成奖励
                 - 逾期惩罚(50×逾期分钟)
 
         参数:
@@ -559,7 +559,7 @@ class PathCalculator:
             TASK_ASSIGN_REWARD,
             PRIORITY_REWARD,
             DISTANCE_PENALTY,
-            ENERGY_PENALTY,
+            EARLY_COMPLETION_REWARD_PER_MIN,
             OVERDUE_PENALTY_PER_MIN
         )
         
@@ -572,19 +572,14 @@ class PathCalculator:
         # 3. 距离惩罚（使用实际完成路径）
         distance_cost = complete_path_distance * DISTANCE_PENALTY
         
-        # 4. 能耗惩罚（如果有车辆信息）
-        if vehicle and hasattr(vehicle, 'unit_energy_consumption'):
-            energy_cost = complete_path_distance * vehicle.unit_energy_consumption * ENERGY_PENALTY
-        else:
-            # 默认能耗系数 0.001 kWh/m
-            energy_cost = complete_path_distance * 0.001 * ENERGY_PENALTY
-        
-        # 5. 逾期惩罚
+        # 4. 提前完成奖励 + 逾期惩罚
+        early_minutes = max(0, task.deadline - completion_time) / 60.0
+        early_reward = early_minutes * EARLY_COMPLETION_REWARD_PER_MIN
         overdue_minutes = max(0, completion_time - task.deadline) / 60.0
         overdue_cost = overdue_minutes * OVERDUE_PENALTY_PER_MIN
         
         # 综合得分
-        total_score = task_reward + priority_reward - distance_cost - energy_cost - overdue_cost
+        total_score = task_reward + priority_reward - distance_cost + early_reward - overdue_cost
         
         return total_score
 
