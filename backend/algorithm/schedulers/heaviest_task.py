@@ -1,4 +1,4 @@
-"""最大载重优先：每次挑剩余能装下、重量最大的那个任务。
+"""最大载重优先：按重量从大到小装一批任务。
 
 适用场景：货物有显著的重量差异，希望"先把大件清掉"，提升每次出车的载重利用率。
 """
@@ -34,7 +34,7 @@ class HeaviestTaskScheduler(Scheduler):
                     snap.distance(vehicle.position, t.position),
                 )
             )
-            return [unclaimed[0]]
+            return utils.feasible_task_batch_for(vehicle, unclaimed)
 
         for v in snapshot.idle_vehicles_at_warehouse():
             cmd = utils.decide_at_warehouse(v, snapshot, pick_heaviest)

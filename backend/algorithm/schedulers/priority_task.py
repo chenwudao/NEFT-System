@@ -1,4 +1,4 @@
-"""优先级优先：先服务高优先级任务，同优先级按距离近优先。"""
+"""优先级优先：先服务高优先级任务，同优先级按距离近优先，一趟可带多单。"""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ class PriorityTaskScheduler(Scheduler):
 
         claimed = set()
 
-        def pick_one(vehicle, tasks, snap):
+        def pick_batch(vehicle, tasks, snap):
             unclaimed = [t for t in tasks if t.id not in claimed]
             unclaimed = utils.feasible_tasks_for(vehicle, unclaimed)
             if not unclaimed:
@@ -31,10 +31,10 @@ class PriorityTaskScheduler(Scheduler):
                     snap.distance(vehicle.position, t.position),
                 )
             )
-            return [unclaimed[0]]
+            return utils.feasible_task_batch_for(vehicle, unclaimed)
 
         for v in snapshot.idle_vehicles_at_warehouse():
-            cmd = utils.decide_at_warehouse(v, snapshot, pick_one)
+            cmd = utils.decide_at_warehouse(v, snapshot, pick_batch)
             if cmd.action == "deliver":
                 claimed.update(cmd.assigned_tasks)
             commands.append(cmd)

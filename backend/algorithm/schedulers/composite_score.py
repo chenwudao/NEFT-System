@@ -1,6 +1,6 @@
 """复合评分策略：综合"优先级、距离、紧迫度、重量"等多因素计算任务得分。
 
-每辆车在仓库时，给所有候选任务打分，选得分最高的（同分按距离近优先）。
+每辆车在仓库时，给所有候选任务打分，按得分从高到低装一批任务。
 
 评分公式（可在 SCHEDULING_CONFIG.composite_weights 中调整权重）：
     score = priority_weight * (priority / max_priority)
@@ -80,7 +80,7 @@ class CompositeScoreScheduler(Scheduler):
             unclaimed.sort(
                 key=lambda t: (-score(t), snap.distance(vehicle.position, t.position))
             )
-            return [unclaimed[0]]
+            return utils.feasible_task_batch_for(vehicle, unclaimed)
 
         for v in snapshot.idle_vehicles_at_warehouse():
             cmd = utils.decide_at_warehouse(v, snapshot, pick_best)

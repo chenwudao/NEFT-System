@@ -1,4 +1,4 @@
-"""随机基线：每辆在仓库车随机挑一个能装下的 PENDING 任务。
+"""随机基线：每辆在仓库车随机排列候选任务，再装一批。
 
 仅作对比基线（量化指标的下界参考）。线上不要用。
 """
@@ -32,7 +32,8 @@ class RandomBaselineScheduler(Scheduler):
             unclaimed = utils.feasible_tasks_for(vehicle, unclaimed)
             if not unclaimed:
                 return []
-            return [self._rng.choice(unclaimed)]
+            self._rng.shuffle(unclaimed)
+            return utils.feasible_task_batch_for(vehicle, unclaimed)
 
         for v in snapshot.idle_vehicles_at_warehouse():
             cmd = utils.decide_at_warehouse(v, snapshot, pick_random)

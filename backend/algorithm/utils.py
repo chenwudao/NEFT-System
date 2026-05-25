@@ -50,6 +50,21 @@ def feasible_tasks_for(vehicle: Vehicle, tasks: List[Task]) -> List[Task]:
     return [t for t in tasks if t.weight <= capacity]
 
 
+def feasible_task_batch_for(vehicle: Vehicle, tasks: List[Task]) -> List[Task]:
+    """按输入顺序贪心装一批任务，保证总重量不超过车辆剩余载重。"""
+    max_trip = config.get_scheduling_config().get("max_tasks_per_trip")
+    max_trip_n = int(max_trip) if max_trip is not None else None
+    remaining = vehicle.get_remaining_load()
+    batch: List[Task] = []
+    for task in tasks:
+        if max_trip_n is not None and len(batch) >= max_trip_n:
+            break
+        if task.weight <= remaining + 1e-9:
+            batch.append(task)
+            remaining -= task.weight
+    return batch
+
+
 def nearest_task(
     vehicle: Vehicle, tasks: List[Task], snapshot: Snapshot
 ) -> Optional[Task]:
@@ -452,11 +467,7 @@ def decide_at_warehouse(
     if not picked:
         return make_idle_command(vehicle)
 
-    max_trip = config.get_scheduling_config().get("max_tasks_per_trip")
-    if max_trip is not None:
-        picked = picked[: int(max_trip)]
-
-    picked = feasible_tasks_for(vehicle, picked)
+    picked = feasible_task_batch_for(vehicle, picked)
     if not picked:
         return make_idle_command(vehicle)
 
@@ -469,7 +480,26 @@ def decide_at_warehouse(
 
     # 3) 电量预判：在仓库就跑完整条 chain（含回仓）
     if _need_charge_at_warehouse(vehicle, snapshot, planned_chain=order):
-        # 不够电跑完整条 chain → 先充电
+        # 不够电跑完整批任务时，先尝试缩小批量；不要因为一批太大就直接去充电。
+        for n in range(len(picked) - 1, 0, -1):
+            reduced = picked[:n]
+            reduced_order = greedy_chain(
+                (vehicle.position.x, vehicle.position.y),
+                [(t.position.x, t.position.y) for t in reduced],
+                snapshot,
+            )
+            if not _need_charge_at_warehouse(
+                vehicle, snapshot, planned_chain=reduced_order
+            ):
+                reduced_by_xy = {(t.position.x, t.position.y): t for t in reduced}
+                first_task = reduced_by_xy[reduced_order[0]]
+                return make_deliver_command(
+                    vehicle,
+                    first_task,
+                    assigned_tasks=[t.id for t in reduced],
+                )
+
+        # 缩到 1 单仍然不够 → 先充电
         station = best_charging_station(vehicle, snapshot)
         if station is not None:
             return make_charge_command(vehicle, station)

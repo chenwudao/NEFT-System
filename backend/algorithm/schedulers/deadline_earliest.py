@@ -1,6 +1,6 @@
 """最早截止时间优先（EDF：Earliest Deadline First）。
 
-每辆车在仓库时，选 deadline 最早的那个未抢任务；同 deadline 时按距离近优先。
+每辆车在仓库时，按 deadline 从早到晚装一批任务；同 deadline 时按距离近优先。
 属于"按时率优化型"策略。
 """
 
@@ -35,7 +35,7 @@ class DeadlineEarliestScheduler(Scheduler):
                     snap.distance(vehicle.position, t.position),
                 )
             )
-            return [unclaimed[0]]
+            return utils.feasible_task_batch_for(vehicle, unclaimed)
 
         for v in snapshot.idle_vehicles_at_warehouse():
             cmd = utils.decide_at_warehouse(v, snapshot, pick_edf)

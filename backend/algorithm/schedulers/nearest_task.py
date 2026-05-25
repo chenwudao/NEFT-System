@@ -1,6 +1,6 @@
 """最近任务优先：最简单的贪心策略。
 
-* 在仓库：离车最近的 1 个任务接单，立刻出发
+* 在仓库：按“离当前点最近”贪心串成一批任务，装得下就一趟带走
 * 在外面：车上还有没送的货 → 去最近的那个；否则回仓库
 
 这是所有更复杂算法的"对照基线"。
@@ -30,19 +30,24 @@ class NearestTaskScheduler(Scheduler):
         claimed = set()
         available = list(snapshot.available_tasks())
 
-        def pick_one(vehicle, tasks, snap):
+        def pick_batch(vehicle, tasks, snap):
             unclaimed = [t for t in tasks if t.id not in claimed]
             unclaimed = utils.feasible_tasks_for(vehicle, unclaimed)
             if not unclaimed:
                 return []
-            nearest = min(
-                unclaimed,
-                key=lambda t: snap.distance(vehicle.position, t.position),
-            )
-            return [nearest]
+
+            ordered = []
+            cur = (vehicle.position.x, vehicle.position.y)
+            remaining = list(unclaimed)
+            while remaining:
+                nxt = min(remaining, key=lambda t: snap.distance(cur, t.position))
+                ordered.append(nxt)
+                remaining.remove(nxt)
+                cur = (nxt.position.x, nxt.position.y)
+            return utils.feasible_task_batch_for(vehicle, ordered)
 
         for v in snapshot.idle_vehicles_at_warehouse():
-            cmd = utils.decide_at_warehouse(v, snapshot, pick_one)
+            cmd = utils.decide_at_warehouse(v, snapshot, pick_batch)
             if cmd.action == "deliver":
                 claimed.update(cmd.assigned_tasks)
             commands.append(cmd)

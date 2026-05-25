@@ -1,6 +1,6 @@
 # 中规模配置：6 辆车 / 2 充电站 / 中等任务流量
 experiment:
-  name: "medium-scale-composite-score"
+  name: "medium-scale-deadline_earliest"
   log_dir: "log"
 
 fleet:
@@ -29,7 +29,7 @@ task:
   total_task_budget:    80
 
 scheduling:
-  strategy:              "composite_score"
+  strategy:              "deadline_earliest"
   low_battery_pct:       20.0
   charge_until_pct:      90.0
   max_tasks_per_trip:    4
