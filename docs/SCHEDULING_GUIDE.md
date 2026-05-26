@@ -53,11 +53,26 @@
 
 ---
 
-## 4. 全部调度方法（13 个）
+## 4. 动态/静态模式
+
+通过 `optimization.mode` 切换：
+
+- `dynamic`：在线动态调度（默认），任务按时间流入。
+- `static`：上帝视角静态优化，任务全集在仿真开始时已知。
+
+静态模式推荐配置：
+
+- `optimization.static.strategy: static_exact_solver`
+- `optimization.static.solver: gurobi | cplex`
+- `optimization.static.max_exact_tasks: 10`（精确搜索任务上限）
+
+---
+
+## 5. 全部调度方法（动态 + 静态）
 
 以下策略均已注册在 `backend/algorithm/schedulers/__init__.py`。
 
-### 4.1 基础启发式（快速基线）
+### 5.1 基础启发式（快速基线）
 
 - `nearest_task`：按最近距离逐个装单，直到不可行。
 - `priority_task`：按优先级降序逐个装单，直到不可行。
@@ -65,7 +80,7 @@
 - `deadline_earliest`：按截止时间升序逐个装单，直到不可行。
 - `random_baseline`：随机顺序基线（对照组）。
 
-### 4.2 结构化路径策略
+### 5.2 结构化路径策略
 
 - `mst_batch`：MST + DFS 顺序，强调整体路网结构。
 
@@ -76,7 +91,7 @@
   4. 插入后做轻量 2-opt 局部优化；
   5. 每步用充电可达约束验证可行性。
 
-### 4.3 评分规划策略
+### 5.3 评分规划策略
 
 - `composite_score`（复合评分规划）：
   1. 单任务打分（优先级+紧迫度+载重-距离）；
@@ -92,7 +107,7 @@
   4. 目标函数：`assignment_score 累计 - 距离惩罚`；
   5. 选全局最优可行子集。
 
-### 4.4 元启发式方法（Meta-heuristics）
+### 5.4 元启发式方法（Meta-heuristics）
 
 - `simulated_annealing`（模拟退火）：
   1. 初始解：按优先级/距离构造车辆-任务分配；
@@ -108,7 +123,7 @@
   4. 使用特赦准则允许“打破禁忌”的全局改进；
   5. 输出当前最优可行序列。
 
-### 4.5 超启发式方法（Hyper-heuristics）
+### 5.5 超启发式方法（Hyper-heuristics）
 
 - `hyper_heuristic`（UCB1）：
   1. 把 `nearest/priority/deadline/heaviest` 作为低层算子；
@@ -122,7 +137,7 @@
   3. 否则选择当前平均奖励最高算子；
   4. 在线更新算子价值。
 
-### 4.6 强化学习方法（Reinforcement Learning）
+### 5.6 强化学习方法（Reinforcement Learning）
 
 - `q_learning`（在线表格型强化学习）：
   1. 状态离散：电量桶、载重利用率桶、候选数桶；
@@ -131,7 +146,7 @@
   4. 奖励：优先级收益 - 距离惩罚 - 逾期风险；
   5. 在线更新 `Q(s,a)`，逐轮自适应。
 
-### 4.7 多智能体方法（Multi-agent）
+### 5.7 多智能体方法（Multi-agent）
 
 - `multi_agent_auction`（拍卖分配）：
   1. 每车对每任务计算 bid（收益-成本）；
@@ -145,9 +160,17 @@
   3. 逐轮授标给当前最高 bid agent；
   4. 每车本地排序并做可行性裁剪后下发指令。
 
+### 5.8 静态全局优化方法（Static Oracle）
+
+- `static_exact_solver`：
+  1. 任务全集已知后一次性构建全局分配；
+  2. 优先尝试调用 Gurobi/CPLEX 做任务-车辆分配；
+  3. 车内路径采用精确枚举（小规模）或近似（大规模）；
+  4. 生成全局计划后按序执行，并与动态策略结果对比。
+
 ---
 
-## 5. 共同硬约束
+## 6. 共同硬约束
 
 所有策略统一受以下约束：
 
@@ -159,7 +182,7 @@
 
 ---
 
-## 6. 推荐实验对比
+## 7. 推荐实验对比
 
 建议固定同一配置（如 `configs/medium.yaml`）跑多组，比较：
 

@@ -80,8 +80,11 @@ class Snapshot:
     # 对任务的视图
     # ------------------------------------------------------------------
     def available_tasks(self) -> List[Task]:
-        """还没被派过的 PENDING 任务。"""
-        return [t for t in self.tasks if t.status == TaskStatus.PENDING]
+        """还没被派过且已到释放时刻的 PENDING 任务。"""
+        return [
+            t for t in self.tasks
+            if t.status == TaskStatus.PENDING and int(getattr(t, "create_time", 0)) <= int(self.timestamp)
+        ]
 
     def vehicle_pending_tasks(self, vehicle: Vehicle) -> List[Task]:
         """已经派给某辆车、但还没送到的任务（车上的货）。"""

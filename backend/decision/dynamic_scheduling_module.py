@@ -172,12 +172,16 @@ class DynamicSchedulingModule:
 
     def _handle_deliver(self, vehicle, cmd: Command) -> None:
         """transport 语义：同时支持"在仓库装货"与"半路跳下一站"。"""
+        now_ts = int(datetime.now().timestamp())
         # 1) 如果 cmd.assigned_tasks 非空，说明这一次是在仓库批量接单：
         #    逐一把 task 状态置 IN_PROGRESS + 加到车上 + 累加载重
         if cmd.assigned_tasks:
             for tid in cmd.assigned_tasks:
                 task = self.data_manager.get_task(tid)
                 if task is None or task.status != TaskStatus.PENDING:
+                    continue
+                # 任务未到释放时刻，不允许提前装载（静态上帝视角仅可提前规划，不能提前执行）
+                if int(getattr(task, "create_time", 0)) > now_ts:
                     continue
                 self.data_manager.assign_task_to_vehicle(tid, vehicle.id)
                 vehicle.update_load(vehicle.current_load + task.weight)
@@ -186,6 +190,9 @@ class DynamicSchedulingModule:
         target_task = self.data_manager.get_task(cmd.task_id) if cmd.task_id is not None else None
         if target_task is None:
             # 没有指定具体 task，退化为 idle
+            vehicle.update_status(VehicleStatus.IDLE)
+            return
+        if int(getattr(target_task, "create_time", 0)) > now_ts:
             vehicle.update_status(VehicleStatus.IDLE)
             return
         ok = self.data_manager.start_vehicle_route(

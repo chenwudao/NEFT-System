@@ -1,0 +1,98 @@
+experiment:
+  name: medium-scale-tabu_search
+  log_dir: log
+scheduling:
+  strategy: tabu_search
+  low_battery_pct: 20.0
+  charge_until_pct: 90.0
+  battery_safety_margin: 1.15
+  charge_load_weight_m: 8000.0
+  charge_queue_weight_m: 2000.0
+  composite_weights:
+    priority: 1.0
+    urgency: 1.5
+    load: 0.3
+    distance: 1.0
+    scale_distance: 10000.0
+    urgency_window: 3600.0
+  sa:
+    iterations: 1500
+    t_start: 1000.0
+    t_end: 1.0
+    alpha_reward: 2.0
+    seed: 42
+fleet:
+  small_count: 2
+  medium_count: 3
+  large_count: 1
+  station_count: 2
+vehicle:
+  small:
+    max_battery: 60.0
+    max_load: 500.0
+    unit_energy_consumption: 0.001
+    speed: 10.0
+    charging_power: 0.015
+  medium:
+    max_battery: 100.0
+    max_load: 1500.0
+    unit_energy_consumption: 0.0015
+    speed: 10.0
+    charging_power: 0.022
+  large:
+    max_battery: 150.0
+    max_load: 5000.0
+    unit_energy_consumption: 0.002
+    speed: 8.0
+    charging_power: 0.03
+charging_station:
+  default_capacity: 3
+  max_queue_time: 600
+task:
+  initial_tasks: 5
+  generation_interval_sec_min: 5
+  generation_interval_sec_max: 15
+  generation_batch_min: 2
+  generation_batch_max: 4
+  max_pending_tasks: 20
+  min_weight: 10.0
+  max_weight: 500.0
+  min_priority: 1
+  max_priority: 5
+  min_deadline_offset: 1800
+  max_deadline_offset: 7200
+  total_task_budget: 80
+  generation_seed_file: F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-composite_score/task_generation_seed.yaml
+simulation:
+  speed_factor: 120
+  tick_interval: 1.0
+  max_sim_seconds: 7200
+  marker_tween_ms: 900
+  marker_tween_adaptive: true
+  stop_when_all_tasks_done: true
+routing:
+  graph:
+    place_name: Panyu District, Guangzhou, Guangdong, China
+    network_type: drive
+    main_roads_only: false
+scoring:
+  task_assign_reward: 120.0
+  priority_reward: 30.0
+  distance_penalty: 0.02
+  early_completion_reward_per_min: 2.0
+  overdue_penalty_per_min: 50.0
+  idle_penalty: 5.0
+  assumed_speed_mps: 10.0
+  urgent_deadline_window: 1800
+  max_deadline_window: 7200
+optimization:
+  mode: dynamic
+  static:
+    strategy: static_exact_solver
+    solver: gurobi
+    max_exact_tasks: 10
+performance_metrics:
+  completion_weight: 0.5
+  time_weight: 0.3
+  distance_weight: 0.2
+config_file: F:\Data Structure\NEFT-System-main\NEFT-System\configs\dynamic\medium.yaml

@@ -29,6 +29,11 @@ class DecisionManager:
 
     # ------------------------------------------------------------------
     def _configured_strategy(self) -> str:
+        opt_cfg = config.get_optimization_config()
+        mode = str(opt_cfg.get("mode", "dynamic")).strip().lower()
+        if mode == "static":
+            static_cfg = opt_cfg.get("static") or {}
+            return str(static_cfg.get("strategy", "static_exact_solver"))
         return str(config.get_scheduling_config().get("strategy", AlgorithmManager.DEFAULT_STRATEGY))
 
     # ------------------------------------------------------------------
@@ -39,7 +44,13 @@ class DecisionManager:
         chosen = strategy or self._configured_strategy()
         # 未知算法名就退回到 DEFAULT_STRATEGY，避免线上因为手滑写错而全停。
         if chosen not in self.algorithm_manager.get_available_strategies():
-            chosen = AlgorithmManager.DEFAULT_STRATEGY
+            opt_cfg = config.get_optimization_config()
+            if str(opt_cfg.get("mode", "dynamic")).strip().lower() == "static":
+                chosen = str((opt_cfg.get("static") or {}).get("strategy", "static_exact_solver"))
+                if chosen not in self.algorithm_manager.get_available_strategies():
+                    chosen = AlgorithmManager.DEFAULT_STRATEGY
+            else:
+                chosen = AlgorithmManager.DEFAULT_STRATEGY
         self.last_selected_strategy = chosen
         return self._dynamic_scheduling.run_once(chosen)
 
@@ -47,7 +58,7 @@ class DecisionManager:
     # 系统状态 / 性能指标
     # ------------------------------------------------------------------
     def get_system_status(self) -> Dict:
-        tasks = self.data_manager.get_tasks()
+        tasks = self.data_manager.get_visible_tasks()
         vehicles = self.data_manager.get_vehicles()
         stations = self.data_manager.get_charging_stations()
 

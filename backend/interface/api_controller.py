@@ -52,7 +52,7 @@ class APIController:
         # ------------------------- tasks -------------------------
         @self.router.get("/tasks", response_model=List[TaskModel])
         async def get_tasks():
-            return [DataTransformer.task_to_model(t) for t in self.data_manager.get_tasks()]
+            return [DataTransformer.task_to_model(t) for t in self.data_manager.get_visible_tasks()]
 
         @self.router.get("/tasks/{task_id}", response_model=TaskModel)
         async def get_task(task_id: int):
@@ -179,7 +179,7 @@ class APIController:
                 ],
                 tasks=[
                     DataTransformer.task_to_model(t)
-                    for t in self.data_manager.get_tasks()
+                    for t in self.data_manager.get_visible_tasks()
                 ],
                 charging_stations=[
                     DataTransformer.charging_station_to_model(s)

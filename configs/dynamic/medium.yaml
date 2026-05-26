@@ -1,7 +1,14 @@
 # 中规模配置：6 辆车 / 2 充电站 / 中等任务流量
 experiment:
-  name: "medium-scale-q_learning"
+  name: "medium-scale-tabu_search"
   log_dir: "log"
+
+optimization:
+  mode: "dynamic"   # dynamic | static
+  static:
+    strategy: "static_exact_solver"
+    solver: "gurobi"      # gurobi | cplex（未安装会自动回退）
+    max_exact_tasks: 10
 
 fleet:
   small_count:   2
@@ -42,7 +49,7 @@ task:
   total_task_budget:    80
 
 scheduling:
-  strategy:              "q_learning"
+  strategy:              "tabu_search"
   low_battery_pct:       20.0
   charge_until_pct:      90.0
   battery_safety_margin: 1.15

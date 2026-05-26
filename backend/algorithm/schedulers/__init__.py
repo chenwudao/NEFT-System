@@ -1,46 +1,27 @@
-"""所有具体算法在这里统一注册。
+"""统一调度算法注册入口（按 dynamic/static 文件夹组织）。"""
 
-新增算法的步骤：
-    1) 在 schedulers/xxx.py 里实现 `class XxxScheduler(Scheduler): name = "xxx"`
-    2) 在这里 import 并加入 `EXPORTED_SCHEDULERS`
-    3) config.SCHEDULING_CONFIG["strategy"] 改成 "xxx" 即可启用
-"""
-
-from .composite_score import CompositeScoreScheduler
-from .deadline_earliest import DeadlineEarliestScheduler
-from .dfs_score_search import DfsScoreSearchScheduler
-from .heaviest_task import HeaviestTaskScheduler
-from .hyper_heuristic_eps import HyperHeuristicEpsScheduler
-from .hyper_heuristic import HyperHeuristicScheduler
-from .insertion_heuristic import InsertionHeuristicScheduler
-from .multi_agent_contract_net import MultiAgentContractNetScheduler
-from .mst_batch import MstBatchScheduler
-from .multi_agent_auction import MultiAgentAuctionScheduler
-from .nearest_task import NearestTaskScheduler
-from .priority_task import PriorityTaskScheduler
-from .q_learning import QLearningScheduler
-from .random_baseline import RandomBaselineScheduler
-from .simulated_annealing import SimulatedAnnealingScheduler
-from .tabu_search import TabuSearchScheduler
-
-EXPORTED_SCHEDULERS = [
-    NearestTaskScheduler,
-    PriorityTaskScheduler,
-    HeaviestTaskScheduler,
-    DeadlineEarliestScheduler,
+from .dynamic import (
     CompositeScoreScheduler,
+    DeadlineEarliestScheduler,
     DfsScoreSearchScheduler,
-    MstBatchScheduler,
-    InsertionHeuristicScheduler,
-    SimulatedAnnealingScheduler,
-    TabuSearchScheduler,
-    QLearningScheduler,
-    HyperHeuristicScheduler,
+    DYNAMIC_SCHEDULERS,
+    HeaviestTaskScheduler,
     HyperHeuristicEpsScheduler,
+    HyperHeuristicScheduler,
+    InsertionHeuristicScheduler,
+    MstBatchScheduler,
     MultiAgentAuctionScheduler,
     MultiAgentContractNetScheduler,
+    NearestTaskScheduler,
+    PriorityTaskScheduler,
+    QLearningScheduler,
     RandomBaselineScheduler,
-]
+    SimulatedAnnealingScheduler,
+    TabuSearchScheduler,
+)
+from .static import StaticExactSolverScheduler, STATIC_SCHEDULERS
+
+EXPORTED_SCHEDULERS = list(DYNAMIC_SCHEDULERS) + list(STATIC_SCHEDULERS)
 
 __all__ = [
     "NearestTaskScheduler",
@@ -59,5 +40,8 @@ __all__ = [
     "MultiAgentAuctionScheduler",
     "MultiAgentContractNetScheduler",
     "RandomBaselineScheduler",
+    "StaticExactSolverScheduler",
+    "DYNAMIC_SCHEDULERS",
+    "STATIC_SCHEDULERS",
     "EXPORTED_SCHEDULERS",
 ]

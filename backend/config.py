@@ -226,6 +226,19 @@ _DEFAULT_SCORING: Dict[str, Any] = {
     "max_deadline_window": 7200,
 }
 
+_DEFAULT_OPTIMIZATION: Dict[str, Any] = {
+    # dynamic: 在线动态调度（默认）
+    # static:  上帝视角静态优化（任务全集已知）
+    "mode": "dynamic",
+    "static": {
+        "strategy": "static_exact_solver",
+        # 期望求解器（可选）：gurobi / cplex
+        "solver": "gurobi",
+        # 精确搜索的任务上限（超过后自动降级为近似分配）
+        "max_exact_tasks": 10,
+    },
+}
+
 
 # ----------------------------------------------------------------------
 # 实际配置（默认值 ⊕ yaml override）
@@ -255,6 +268,7 @@ class Config:
     ROUTING_CONFIG: Dict[str, Any]         = _section("routing", _DEFAULT_ROUTING)
     PERFORMANCE_METRICS: Dict[str, float]  = _section("performance_metrics", _DEFAULT_PERF)
     SCORING_CONFIG: Dict[str, Any]         = _section("scoring", _DEFAULT_SCORING)
+    OPTIMIZATION_CONFIG: Dict[str, Any]    = _section("optimization", _DEFAULT_OPTIMIZATION)
 
     # -------------------------------------------------------------------------
     # Getters（保持稳定接口）
@@ -296,6 +310,10 @@ class Config:
         return cls.SCORING_CONFIG
 
     @classmethod
+    def get_optimization_config(cls) -> Dict[str, Any]:
+        return cls.OPTIMIZATION_CONFIG
+
+    @classmethod
     def get_config_file_path(cls) -> Optional[str]:
         """返回当前使用的 YAML 配置文件路径（若无返回 None）。"""
         return _resolve_config_file_path()
@@ -313,6 +331,7 @@ class Config:
             "simulation":          cls.get_simulation_config(),
             "routing":             cls.get_routing_config(),
             "scoring":             cls.get_scoring_config(),
+            "optimization":        cls.get_optimization_config(),
             "performance_metrics": cls.PERFORMANCE_METRICS,
             "config_file":         cls.get_config_file_path(),
         }

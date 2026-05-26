@@ -138,6 +138,12 @@ class DataManager:
         with self.lock:
             return list(self.tasks.values())
 
+    def get_visible_tasks(self, now_ts: Optional[int] = None) -> List[Task]:
+        """返回当前可见任务（create_time <= now_ts）。"""
+        cur = int(datetime.now().timestamp()) if now_ts is None else int(now_ts)
+        with self.lock:
+            return [t for t in self.tasks.values() if int(getattr(t, "create_time", 0)) <= cur]
+
     def get_pending_tasks(self) -> List[Task]:
         with self.lock:
             return [task for task in self.tasks.values() if task.status == TaskStatus.PENDING]
@@ -146,10 +152,11 @@ class DataManager:
         with self.lock:
             return self.tasks.get(task_id)
 
-    def add_task(self, task: Task):
+    def add_task(self, task: Task, notify: bool = True):
         with self.lock:
             self.tasks[task.id] = task
-            self._notify_task_update(task)
+            if notify:
+                self._notify_task_update(task)
 
     def update_task_status(self, task_id: int, status: TaskStatus):
         with self.lock:
@@ -699,8 +706,13 @@ class DataManager:
                     map_edges.append([u, v])
             
             # 计算任务完成率
-            total_tasks = len(self.tasks)
-            completed_tasks = len([task for task in self.tasks.values() if task.status == TaskStatus.COMPLETED])
+            now_ts = int(datetime.now().timestamp())
+            visible_tasks = [
+                t for t in self.tasks.values()
+                if int(getattr(t, "create_time", 0)) <= now_ts
+            ]
+            total_tasks = len(visible_tasks)
+            completed_tasks = len([task for task in visible_tasks if task.status == TaskStatus.COMPLETED])
             completion_rate = completed_tasks / total_tasks if total_tasks > 0 else 0.0
             
             # 计算车辆利用率
@@ -715,7 +727,7 @@ class DataManager:
             )
             
             tasks_out = []
-            for task in self.tasks.values():
+            for task in visible_tasks:
                 td = task.to_dict()
                 enrich_wgs84_point_dict(td.get("position"))
                 tasks_out.append(td)

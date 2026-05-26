@@ -13,6 +13,7 @@ import random
 import sys
 import time
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, WebSocket
@@ -69,6 +70,8 @@ STOP_WHEN_ALL_TASKS_DONE: bool = bool(_sim_cfg.get("stop_when_all_tasks_done", T
 _sched_cfg = config.get_scheduling_config()
 DEFAULT_STRATEGY: str = str(_sched_cfg.get("strategy", "nearest_task"))
 CHARGE_UNTIL_PCT: float = float(_sched_cfg.get("charge_until_pct", 90.0))
+_opt_cfg = config.get_optimization_config()
+OPT_MODE: str = str(_opt_cfg.get("mode", "dynamic")).strip().lower()
 
 _task_cfg = config.get_task_config()
 TOTAL_TASK_BUDGET = _task_cfg.get("total_task_budget")  # None = 不限
@@ -78,6 +81,17 @@ DYNAMIC_SCHEDULE_INTERVAL_SEC: float = float(
 )
 # 连续多少次调度“无法继续派单”后，判定为不可完成并自动结束
 MAX_STUCK_SCHED_CYCLES: int = int(os.getenv("NEFT_MAX_STUCK_SCHED_CYCLES", "5"))
+
+
+def _is_static_mode() -> bool:
+    return OPT_MODE == "static"
+
+
+def _configured_strategy_name() -> str:
+    if _is_static_mode():
+        static_cfg = _opt_cfg.get("static") or {}
+        return str(static_cfg.get("strategy", "static_exact_solver"))
+    return DEFAULT_STRATEGY
 
 
 def _resolve_project_path(path: Optional[str]) -> Optional[str]:
@@ -205,6 +219,7 @@ async def lifespan(app: FastAPI):
     app.state.task_seed_controller = None
     app.state.task_generation_seed_artifact = None
     app.state.seed_note = ""
+    app.state.static_release_notified_ids = set()
 
     app.include_router(api_controller.get_router(), prefix="/api", tags=["API"])
 
@@ -256,9 +271,9 @@ async def start_simulation(_: SimulationStartRequest | None = None):
     app.state.task_seed_controller = _build_task_seed_controller()
     app.state.task_generation_seed_artifact = None
     app.state.seed_note = ""
+    app.state.static_release_notified_ids = set()
     _initialize_simulation(app, data_manager)
 
-    app.state.simulation_running = True
     app.state.sim_seconds_elapsed = 0.0
     app.state.last_dynamic_scheduling_ts = 0.0
     app.state.last_progress_log_sim = 0.0
@@ -283,8 +298,21 @@ async def start_simulation(_: SimulationStartRequest | None = None):
     else:
         app.state.seed_note = f"record(base_seed={seed_ctrl.base_seed})"
 
+    # 静态模式：先完成一次全局规划，再进入可视化执行阶段。
+    if _is_static_mode():
+        try:
+            pre_cmds = app.state.decision_manager.dynamic_scheduling()
+            experiment_logger.log(
+                f"[STATIC_PREPLAN] precomputed commands={len(pre_cmds)} before visualization start."
+            )
+        except Exception as exc:
+            print(f"[WARN] static preplan failed before start: {exc}")
+
+    app.state.simulation_running = True
+
     experiment_logger.log(
-        f"strategy={DEFAULT_STRATEGY}, fleet_size={len(data_manager.get_vehicles())}, "
+        f"mode={OPT_MODE}, strategy={_configured_strategy_name()}, "
+        f"fleet_size={len(data_manager.get_vehicles())}, "
         f"stations={len(data_manager.get_charging_stations())}, "
         f"initial_tasks={len(data_manager.get_tasks())}, "
         f"task_budget={TOTAL_TASK_BUDGET}, max_sim_seconds={MAX_SIM_SECONDS}, "
@@ -294,7 +322,8 @@ async def start_simulation(_: SimulationStartRequest | None = None):
     return {
         "success":       True,
         "running":       True,
-        "strategy":      DEFAULT_STRATEGY,
+        "strategy":      _configured_strategy_name(),
+        "optimization_mode": OPT_MODE,
         "tasks_count":   len(data_manager.get_tasks()),
         "vehicles_count": len(data_manager.get_vehicles()),
         "log_dir":       experiment_logger.run_dir,
@@ -344,7 +373,7 @@ async def reset_simulation():
 
     dsm = app.state.decision_manager._dynamic_scheduling
     dsm.last_commands = []
-    app.state.decision_manager.last_selected_strategy = DEFAULT_STRATEGY
+    app.state.decision_manager.last_selected_strategy = _configured_strategy_name()
     app.state.sim_seconds_elapsed = 0.0
     app.state.last_dynamic_scheduling_ts = 0.0
     app.state.last_progress_log_sim = 0.0
@@ -362,7 +391,8 @@ async def reset_simulation():
 async def get_simulation_status():
     return {
         "running":             bool(getattr(app.state, "simulation_running", False)),
-        "strategy":            DEFAULT_STRATEGY,
+        "strategy":            _configured_strategy_name(),
+        "optimization_mode":   OPT_MODE,
         "sim_seconds_elapsed": float(getattr(app.state, "sim_seconds_elapsed", 0.0)),
         "max_sim_seconds":     MAX_SIM_SECONDS,
         "log_dir":             experiment_logger.run_dir,
@@ -515,15 +545,18 @@ def _initialize_simulation(app: FastAPI, data_manager: DataManager) -> None:
                 charging_rate=0.022,
             ))
 
-    # 初始任务
+    # 任务初始化
     initial_tasks = int(task_cfg.get("initial_tasks", 0))
-    if initial_tasks > 0:
+    if _is_static_mode():
+        static_created = _generate_static_known_tasks(app, data_manager)
+        print(f"[Init-Static] preloaded known tasks={static_created}")
+    elif initial_tasks > 0:
         _generate_initial_tasks(app, data_manager, initial_tasks)
 
     print(
         f"[Init] fleet={vehicle_id - 1} (small={fleet_plan[0][1]} medium={fleet_plan[1][1]} "
         f"large={fleet_plan[2][1]}), stations={station_count}, "
-        f"initial_tasks={initial_tasks}, strategy={DEFAULT_STRATEGY}"
+        f"initial_tasks={initial_tasks}, strategy={_configured_strategy_name()}, mode={OPT_MODE}"
     )
 
 
@@ -535,6 +568,7 @@ def _create_task(
     priority: int,
     create_time: int,
     deadline_offset: int,
+    notify: bool = True,
 ) -> Task:
     deadline = int(create_time + int(deadline_offset))
     task = Task(
@@ -545,8 +579,92 @@ def _create_task(
         deadline=deadline,
         priority=int(priority),
     )
-    data_manager.add_task(task)
+    data_manager.add_task(task, notify=notify)
     return task
+
+
+def _generate_static_known_tasks(app: FastAPI, data_manager: DataManager) -> int:
+    """静态模式：一次性构建任务全集（上帝视角）。"""
+    global _task_id_counter, _runtime_tasks_generated
+    task_cfg = config.get_task_config()
+    seed_ctrl: TaskSeedController = app.state.task_seed_controller
+    created = 0
+
+    static_start_wall = int(time.time())
+
+    def _create_from_event(ev: Dict[str, Any]) -> Optional[Task]:
+        pos_raw = ev.get("position") or {}
+        pos = Position(
+            x=float(pos_raw.get("x", 0.0)),
+            y=float(pos_raw.get("y", 0.0)),
+        )
+        ev_sim = float(ev.get("sim_seconds", 0.0))
+        # 把“仿真秒时间线”映射为“墙钟释放时间”，保证未来任务不会被提前执行。
+        wall_release = static_start_wall + int(max(0.0, ev_sim) / max(1e-6, float(SIM_SPEED_FACTOR)))
+        t = _create_task(
+            data_manager=data_manager,
+            task_id=int(ev.get("task_id")),
+            pos=pos,
+            weight=float(ev.get("weight", 10.0)),
+            priority=int(ev.get("priority", 1)),
+            create_time=wall_release,
+            deadline_offset=int(ev.get("deadline_offset", 1800)),
+            notify=(wall_release <= static_start_wall),
+        )
+        return t
+
+    if seed_ctrl.is_replay:
+        events = sorted(
+            list(seed_ctrl.events),
+            key=lambda e: (float(e.get("sim_seconds", 0.0)), int(e.get("task_id", 0))),
+        )
+        for ev in events:
+            t = _create_from_event(ev)
+            if t is None:
+                continue
+            created += 1
+            _runtime_tasks_generated += 1
+            _task_id_counter = max(_task_id_counter, int(t.id))
+            seed_ctrl._replay_idx = min(len(seed_ctrl.events), seed_ctrl._replay_idx + 1)
+        return created
+
+    # record 模式：构造整段已知任务流（不再运行期追加）
+    initial_tasks = int(task_cfg.get("initial_tasks", 0))
+    budget = task_cfg.get("total_task_budget")
+    total = int(budget) if budget is not None else initial_tasks
+    total = max(total, initial_tasks)
+
+    interval_min = int(task_cfg.get("generation_interval_sec_min", 10))
+    interval_max = int(task_cfg.get("generation_interval_sec_max", 30))
+    cur_sim = 0.0
+    tid = 1
+    for i in range(total):
+        phase = "initial" if i < initial_tasks else "runtime"
+        if phase == "runtime":
+            cur_sim += float(seed_ctrl.rng.randint(interval_min, interval_max))
+        # 先按动态规则抽样参数并记录事件，再按静态时间线预创建任务（带未来 release 时间）。
+        t = generate_random_task(
+            app,
+            data_manager,
+            task_id=tid,
+            sim_seconds=cur_sim,
+            phase=phase,
+            notify=(phase == "initial"),
+        )
+        if t is None:
+            continue
+        # 覆盖 create_time 到静态时间线释放时刻（且同步 deadline）
+        wall_release = static_start_wall + int(max(0.0, cur_sim) / max(1e-6, float(SIM_SPEED_FACTOR)))
+        old_create = int(getattr(t, "create_time", wall_release))
+        old_deadline = int(getattr(t, "deadline", wall_release + 1800))
+        deadline_offset = max(0, old_deadline - old_create)
+        t.create_time = wall_release
+        t.deadline = wall_release + deadline_offset
+        created += 1
+        _runtime_tasks_generated += 1
+        _task_id_counter = max(_task_id_counter, int(t.id))
+        tid += 1
+    return created
 
 
 def _generate_initial_tasks(app: FastAPI, data_manager: DataManager, n: int) -> int:
@@ -603,6 +721,7 @@ def generate_random_task(
     sim_seconds: float,
     phase: str = "runtime",
     max_retries: int = 50,
+    notify: bool = True,
 ):
     """生成一个位置在路网连通分量中、可达仓库的随机任务。失败返回 None。"""
     task_cfg = config.get_task_config()
@@ -644,6 +763,7 @@ def generate_random_task(
         priority=priority,
         create_time=create_time,
         deadline_offset=deadline_offset,
+        notify=notify,
     )
     seed_ctrl.record_event(
         {
@@ -678,6 +798,10 @@ async def task_generator(app: FastAPI, data_manager: DataManager):
 
     while True:
         try:
+            if _is_static_mode():
+                await asyncio.sleep(max(0.5, TICK_INTERVAL_SEC))
+                continue
+
             if not getattr(app.state, "simulation_running", False):
                 await asyncio.sleep(max(0.5, TICK_INTERVAL_SEC))
                 continue
@@ -781,6 +905,8 @@ def _task_generation_stopped(app: FastAPI, data_manager: DataManager) -> bool:
           已有任务结算完毕）
     若两者都没设，则任务生成永不截止——只能手动 stop。
     """
+    if _is_static_mode():
+        return True
     seed_ctrl = getattr(app.state, "task_seed_controller", None)
     if isinstance(seed_ctrl, TaskSeedController) and seed_ctrl.is_replay:
         return seed_ctrl.replay_exhausted()
@@ -877,6 +1003,24 @@ def _flush_task_seed_artifact(app: FastAPI) -> Optional[str]:
     return path
 
 
+def _notify_released_static_tasks(app: FastAPI, data_manager: DataManager) -> None:
+    """静态模式：任务到释放时刻时再触发一次 task_update，供前端显示。"""
+    if not _is_static_mode():
+        return
+    notified = getattr(app.state, "static_release_notified_ids", None)
+    if not isinstance(notified, set):
+        notified = set()
+        app.state.static_release_notified_ids = notified
+    now_ts = int(time.time())
+    for t in data_manager.get_tasks():
+        if int(getattr(t, "create_time", 0)) > now_ts:
+            continue
+        if int(t.id) in notified:
+            continue
+        data_manager._notify_task_update(t)
+        notified.add(int(t.id))
+
+
 # ============================================================
 # 仿真主循环
 # ============================================================
@@ -932,6 +1076,7 @@ async def background_tasks(
             app.state.sim_seconds_elapsed = float(
                 getattr(app.state, "sim_seconds_elapsed", 0.0)
             ) + sim_dt
+            _notify_released_static_tasks(app, data_manager)
 
             # 周期性 progress 日志：每 ~300 仿真秒落一行到 log.txt
             last_prog = float(getattr(app.state, "last_progress_log_sim", 0.0))
@@ -1060,4 +1205,211 @@ async def background_tasks(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    def _consume_cli_flag(*names: str) -> bool:
+        hit = False
+        for name in names:
+            while name in sys.argv:
+                hit = True
+                sys.argv.remove(name)
+        return hit
+
+    def _run_headless_experiment() -> None:
+        """无前端模式：直接后端完成整次仿真并自动结束。"""
+        global _task_id_counter, _runtime_tasks_generated
+
+        data_manager = DataManager()
+        algorithm_manager = AlgorithmManager(data_manager.path_calculator)
+        decision_manager = DecisionManager(data_manager, algorithm_manager)
+
+        # 伪 app/state（复用现有 helper）
+        fake_app = SimpleNamespace()
+        fake_app.state = SimpleNamespace()
+        fake_app.state.simulation_running = True
+        fake_app.state.sim_seconds_elapsed = 0.0
+        fake_app.state.last_dynamic_scheduling_ts = 0.0
+        fake_app.state.last_progress_log_sim = 0.0
+        fake_app.state._gen_stop_logged = False
+        fake_app.state.no_assign_sched_streak = 0
+        fake_app.state.task_seed_controller = _build_task_seed_controller()
+        fake_app.state.task_generation_seed_artifact = None
+        fake_app.state.seed_note = ""
+        fake_app.state.static_release_notified_ids = set()
+
+        _task_id_counter = 1000
+        _runtime_tasks_generated = 0
+        data_manager.tasks.clear()
+        data_manager.vehicles.clear()
+        data_manager.charging_stations.clear()
+        _initialize_simulation(fake_app, data_manager)
+
+        experiment_logger.start_experiment(
+            config.get_experiment_config(),
+            config.snapshot(),
+        )
+        seed_ctrl: TaskSeedController = fake_app.state.task_seed_controller
+        seed_payload = seed_ctrl.to_payload(
+            note="replay from seed file" if seed_ctrl.is_replay else "recorded in this run"
+        )
+        artifact_path = experiment_logger.write_yaml_artifact(
+            "task_generation_seed.yaml",
+            seed_payload,
+        )
+        fake_app.state.task_generation_seed_artifact = artifact_path
+        fake_app.state.seed_note = (
+            f"replay={seed_ctrl.source_path}"
+            if seed_ctrl.is_replay
+            else f"record(base_seed={seed_ctrl.base_seed})"
+        )
+
+        experiment_logger.log(
+            f"[HEADLESS] mode={OPT_MODE}, strategy={_configured_strategy_name()}, "
+            f"fleet_size={len(data_manager.get_vehicles())}, "
+            f"stations={len(data_manager.get_charging_stations())}, "
+            f"initial_tasks={len(data_manager.get_tasks())}, "
+            f"task_budget={TOTAL_TASK_BUDGET}, max_sim_seconds={MAX_SIM_SECONDS}, "
+            f"task_seed={fake_app.state.seed_note}, seed_file={artifact_path or '(none)'}"
+        )
+
+        task_cfg = config.get_task_config()
+        interval_min = int(task_cfg.get("generation_interval_sec_min", 10))
+        interval_max = int(task_cfg.get("generation_interval_sec_max", 30))
+        batch_min = int(task_cfg.get("generation_batch_min", 1))
+        batch_max = int(task_cfg.get("generation_batch_max", 3))
+        max_pending = int(task_cfg.get("max_pending_tasks", 20))
+        # 将“真实秒间隔”映射为“仿真秒间隔”
+        next_gen_at_sim = float(seed_ctrl.rng.randint(interval_min, interval_max) * SIM_SPEED_FACTOR)
+
+        stop_reason = "manual_stop"
+        while fake_app.state.simulation_running:
+            sim_dt = SIM_SPEED_FACTOR * TICK_INTERVAL_SEC
+
+            for vehicle in data_manager.get_vehicles():
+                vehicle.tick_path = []
+
+            for vehicle in data_manager.get_vehicles():
+                if vehicle.is_moving():
+                    data_manager.advance_vehicle(vehicle.id, time_delta=sim_dt)
+                elif vehicle.status == VehicleStatus.CHARGING:
+                    rate = vehicle.charging_power if vehicle.charging_power > 0 else 0.022
+                    new_battery = min(vehicle.max_battery, vehicle.battery + rate * sim_dt)
+                    data_manager.update_vehicle_battery(vehicle.id, new_battery)
+                    if (
+                        vehicle.get_battery_percentage() >= CHARGE_UNTIL_PCT
+                        and vehicle.charging_station_id
+                    ):
+                        data_manager.remove_vehicle_from_charging_station(
+                            vehicle.id, vehicle.charging_station_id
+                        )
+
+            fake_app.state.sim_seconds_elapsed += sim_dt
+            _notify_released_static_tasks(fake_app, data_manager)
+
+            last_prog = float(getattr(fake_app.state, "last_progress_log_sim", 0.0))
+            if fake_app.state.sim_seconds_elapsed - last_prog >= 300.0:
+                _log_progress(
+                    data_manager,
+                    decision_manager,
+                    float(fake_app.state.sim_seconds_elapsed),
+                )
+                fake_app.state.last_progress_log_sim = float(fake_app.state.sim_seconds_elapsed)
+
+            # 任务生成（headless 同步版）
+            if seed_ctrl.is_replay:
+                due = seed_ctrl.pop_due_events(float(fake_app.state.sim_seconds_elapsed))
+                for ev in due:
+                    if str(ev.get("phase", "")) == "initial":
+                        continue
+                    pos_raw = ev.get("position") or {}
+                    pos = Position(x=float(pos_raw.get("x", 0.0)), y=float(pos_raw.get("y", 0.0)))
+                    t = _create_task(
+                        data_manager=data_manager,
+                        task_id=int(ev.get("task_id")),
+                        pos=pos,
+                        weight=float(ev.get("weight", 10.0)),
+                        priority=int(ev.get("priority", 1)),
+                        create_time=int(time.time()),
+                        deadline_offset=int(ev.get("deadline_offset", 1800)),
+                    )
+                    _runtime_tasks_generated += 1
+                    _task_id_counter = max(_task_id_counter, int(t.id))
+            else:
+                if (
+                    float(fake_app.state.sim_seconds_elapsed) >= next_gen_at_sim
+                    and not _task_generation_stopped(fake_app, data_manager)
+                ):
+                    pending = len(data_manager.get_pending_tasks())
+                    if pending < max_pending:
+                        batch = seed_ctrl.rng.randint(batch_min, batch_max)
+                        created = 0
+                        for _ in range(batch):
+                            if pending + created >= max_pending:
+                                break
+                            if _task_generation_stopped(fake_app, data_manager):
+                                break
+                            _task_id_counter += 1
+                            t = generate_random_task(
+                                fake_app,
+                                data_manager,
+                                _task_id_counter,
+                                sim_seconds=float(fake_app.state.sim_seconds_elapsed),
+                                phase="runtime",
+                            )
+                            if t is not None:
+                                created += 1
+                                _runtime_tasks_generated += 1
+                    next_gen_at_sim += float(seed_ctrl.rng.randint(interval_min, interval_max) * SIM_SPEED_FACTOR)
+
+            if STOP_WHEN_ALL_TASKS_DONE and _all_tasks_settled(fake_app, data_manager):
+                stop_reason = "all_tasks_done"
+                fake_app.state.simulation_running = False
+                break
+
+            commands = decision_manager.dynamic_scheduling()
+            if STOP_WHEN_ALL_TASKS_DONE and _task_generation_stopped(fake_app, data_manager):
+                from backend.data.task import TaskStatus
+
+                tasks_now = data_manager.get_tasks()
+                has_unsettled = any(
+                    t.status not in (TaskStatus.COMPLETED, TaskStatus.TIMEOUT)
+                    for t in tasks_now
+                )
+                deliver_count = sum(
+                    1 for c in (commands or []) if c.get("action") == "deliver"
+                )
+                if (
+                    has_unsettled
+                    and _all_vehicles_at_warehouse_and_idle(data_manager)
+                    and deliver_count == 0
+                ):
+                    fake_app.state.no_assign_sched_streak = int(
+                        getattr(fake_app.state, "no_assign_sched_streak", 0)
+                    ) + 1
+                else:
+                    fake_app.state.no_assign_sched_streak = 0
+
+                if int(getattr(fake_app.state, "no_assign_sched_streak", 0)) >= MAX_STUCK_SCHED_CYCLES:
+                    _mark_unfinished_tasks_zero(data_manager)
+                    stop_reason = "no_feasible_tasks_left"
+                    fake_app.state.simulation_running = False
+                    break
+            else:
+                fake_app.state.no_assign_sched_streak = 0
+
+        _flush_task_seed_artifact(fake_app)
+        experiment_logger.finalize_experiment(
+            data_manager,
+            float(getattr(fake_app.state, "sim_seconds_elapsed", 0.0)),
+            stop_reason=stop_reason,
+        )
+        print(
+            f"[Headless] finished. reason={stop_reason}, "
+            f"sim_seconds={float(getattr(fake_app.state, 'sim_seconds_elapsed', 0.0)):.0f}, "
+            f"log_dir={experiment_logger.run_dir}"
+        )
+
+    use_headless = _consume_cli_flag("-u", "--headless")
+    if use_headless:
+        _run_headless_experiment()
+    else:
+        uvicorn.run(app, host="0.0.0.0", port=8000)

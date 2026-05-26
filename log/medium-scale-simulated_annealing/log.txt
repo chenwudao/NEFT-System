@@ -1,0 +1,196 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): medium-scale-simulated_annealing
+启动时间:                 2026-05-26 18:12:22
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-simulated_annealing
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\configs\medium.yaml
+
+---- 事件日志 ----
+[2026-05-26 18:12:22] [START] Experiment 'medium-scale-simulated_annealing' started.
+[2026-05-26 18:12:22] [INFO] strategy=simulated_annealing, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=replay=F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-composite_score/task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-simulated_annealing\task_generation_seed.yaml
+[2026-05-26 18:12:26] [PROGRESS] sim_elapsed=360s strategy=simulated_annealing tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 18:12:30] [PROGRESS] sim_elapsed=720s strategy=simulated_annealing tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 18:12:34] [PROGRESS] sim_elapsed=1080s strategy=simulated_annealing tasks total=5 completed=2 pending=0 in_progress=3 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 18:12:37] [TASK] replay task t1001 weight=38.7 prio=3 deadline=1779795621 pending=1/20
+[2026-05-26 18:12:37] [TASK] replay task t1002 weight=256.2 prio=1 deadline=1779797421 pending=2/20
+[2026-05-26 18:12:38] [PROGRESS] sim_elapsed=1440s strategy=simulated_annealing tasks total=7 completed=4 pending=2 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 18:12:42] [PROGRESS] sim_elapsed=1800s strategy=simulated_annealing tasks total=7 completed=4 pending=0 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 18:12:45] [PROGRESS] sim_elapsed=2160s strategy=simulated_annealing tasks total=7 completed=4 pending=0 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 18:12:49] [PROGRESS] sim_elapsed=2520s strategy=simulated_annealing tasks total=7 completed=6 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 18:12:50] [TASK] replay task t1003 weight=183.3 prio=2 deadline=1779793383 pending=1/20
+[2026-05-26 18:12:50] [TASK] replay task t1004 weight=363.5 prio=2 deadline=1779793298 pending=2/20
+[2026-05-26 18:12:50] [TASK] replay task t1005 weight=145.7 prio=5 deadline=1779797090 pending=3/20
+[2026-05-26 18:12:50] [TASK] replay task t1006 weight=395.2 prio=3 deadline=1779795668 pending=4/20
+[2026-05-26 18:12:54] [PROGRESS] sim_elapsed=2880s strategy=simulated_annealing tasks total=11 completed=6 pending=0 in_progress=5 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 18:12:58] [PROGRESS] sim_elapsed=3240s strategy=simulated_annealing tasks total=11 completed=8 pending=0 in_progress=3 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 18:13:02] [TASK] replay task t1007 weight=413.1 prio=2 deadline=1779792944 pending=1/20
+[2026-05-26 18:13:02] [TASK] replay task t1008 weight=380.6 prio=5 deadline=1779792501 pending=2/20
+[2026-05-26 18:13:02] [PROGRESS] sim_elapsed=3600s strategy=simulated_annealing tasks total=13 completed=10 pending=2 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 18:13:06] [PROGRESS] sim_elapsed=3960s strategy=simulated_annealing tasks total=13 completed=11 pending=0 in_progress=2 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 18:13:10] [PROGRESS] sim_elapsed=4320s strategy=simulated_annealing tasks total=13 completed=11 pending=0 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 18:13:14] [PROGRESS] sim_elapsed=4680s strategy=simulated_annealing tasks total=13 completed=12 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 18:13:14] [TASK] replay task t1009 weight=372.5 prio=1 deadline=1779793908 pending=1/20
+[2026-05-26 18:13:14] [TASK] replay task t1010 weight=195.5 prio=4 deadline=1779792790 pending=2/20
+[2026-05-26 18:13:14] [TASK] replay task t1011 weight=448.4 prio=4 deadline=1779794647 pending=3/20
+[2026-05-26 18:13:18] [PROGRESS] sim_elapsed=5040s strategy=simulated_annealing tasks total=16 completed=13 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 18:13:22] [PROGRESS] sim_elapsed=5400s strategy=simulated_annealing tasks total=16 completed=15 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 18:13:22] [TASK] replay task t1012 weight=97.6 prio=4 deadline=1779796646 pending=1/20
+[2026-05-26 18:13:22] [TASK] replay task t1013 weight=101.2 prio=4 deadline=1779795563 pending=2/20
+[2026-05-26 18:13:22] [TASK] replay task t1014 weight=220.8 prio=1 deadline=1779793660 pending=3/20
+[2026-05-26 18:13:27] [PROGRESS] sim_elapsed=5760s strategy=simulated_annealing tasks total=19 completed=15 pending=0 in_progress=4 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 18:13:29] [TASK] replay task t1015 weight=162.9 prio=1 deadline=1779796228 pending=1/20
+[2026-05-26 18:13:29] [TASK] replay task t1016 weight=341.2 prio=2 deadline=1779795339 pending=2/20
+[2026-05-26 18:13:29] [TASK] replay task t1017 weight=329.2 prio=3 deadline=1779793213 pending=3/20
+[2026-05-26 18:13:33] [PROGRESS] sim_elapsed=6120s strategy=simulated_annealing tasks total=22 completed=17 pending=0 in_progress=5 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 18:13:37] [PROGRESS] sim_elapsed=6480s strategy=simulated_annealing tasks total=22 completed=17 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-26 18:13:40] [TASK] replay task t1018 weight=431.9 prio=4 deadline=1779796367 pending=1/20
+[2026-05-26 18:13:40] [TASK] replay task t1019 weight=368.9 prio=2 deadline=1779792758 pending=2/20
+[2026-05-26 18:13:40] [TASK] replay task t1020 weight=341.6 prio=2 deadline=1779792342 pending=3/20
+[2026-05-26 18:13:42] [PROGRESS] sim_elapsed=6840s strategy=simulated_annealing tasks total=25 completed=19 pending=0 in_progress=6 timeout=0 vehicles idle=2 moving=2 charging=2
+[2026-05-26 18:13:42] [INFO] task generation stopped at sim_elapsed=6840s (reason: budget/max_sim_seconds reached). continuing until all tasks settle.
+[2026-05-26 18:13:47] [PROGRESS] sim_elapsed=7200s strategy=simulated_annealing tasks total=25 completed=20 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 18:13:50] [PROGRESS] sim_elapsed=7560s strategy=simulated_annealing tasks total=25 completed=20 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 18:13:55] [PROGRESS] sim_elapsed=7920s strategy=simulated_annealing tasks total=25 completed=20 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 18:13:59] [PROGRESS] sim_elapsed=8280s strategy=simulated_annealing tasks total=25 completed=21 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=1 charging=5
+[2026-05-26 18:14:02] [PROGRESS] sim_elapsed=8640s strategy=simulated_annealing tasks total=25 completed=21 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=1 charging=5
+[2026-05-26 18:14:06] [PROGRESS] sim_elapsed=9000s strategy=simulated_annealing tasks total=25 completed=21 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=1 charging=5
+[2026-05-26 18:14:10] [PROGRESS] sim_elapsed=9360s strategy=simulated_annealing tasks total=25 completed=21 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=1 charging=5
+[2026-05-26 18:14:14] [PROGRESS] sim_elapsed=9720s strategy=simulated_annealing tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=2 charging=3
+[2026-05-26 18:14:18] [PROGRESS] sim_elapsed=10080s strategy=simulated_annealing tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 18:14:22] [PROGRESS] sim_elapsed=10440s strategy=simulated_annealing tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 18:14:26] [PROGRESS] sim_elapsed=10800s strategy=simulated_annealing tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=2 moving=2 charging=2
+[2026-05-26 18:14:29] [PROGRESS] sim_elapsed=11160s strategy=simulated_annealing tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=2 moving=2 charging=2
+[2026-05-26 18:14:33] [PROGRESS] sim_elapsed=11520s strategy=simulated_annealing tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-26 18:14:37] [PROGRESS] sim_elapsed=11880s strategy=simulated_annealing tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 18:14:41] [PROGRESS] sim_elapsed=12240s strategy=simulated_annealing tasks total=25 completed=23 pending=0 in_progress=2 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 18:14:45] [PROGRESS] sim_elapsed=12600s strategy=simulated_annealing tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 18:14:48] [PROGRESS] sim_elapsed=12960s strategy=simulated_annealing tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 18:14:52] [PROGRESS] sim_elapsed=13320s strategy=simulated_annealing tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 18:14:56] [PROGRESS] sim_elapsed=13680s strategy=simulated_annealing tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=1 charging=1
+
+[2026-05-26 18:14:57] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: medium-scale-simulated_annealing
+停止原因: all_tasks_done
+仿真时长: 13800 仿真秒 / 154.8 现实秒
+
+[ 任务 ]
+  总数=25 完成=25 按时=25 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=100.00% 超时率=0.00%
+
+[ 得分 ]
+  总分=3141.5 每任务平均=125.66 按时平均=125.66
+
+[ 时效 ]
+  平均完成时长=21.9s 平均超时=0.00min 吞吐=6.52 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=393175m 任务腿均长=14052m 里程方差(车均衡)=6806
+  总能耗=560.51kWh 单任务能耗=22.420kWh
+
+[ 车队 ]
+  总车数=6 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: medium-scale-simulated_annealing
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 13800.0
+wall_seconds_elapsed: 154.768793
+tasks:
+  total: 25
+  completed: 25
+  on_time: 25
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 1.0
+  timeout_rate: 0.0
+scores:
+  total: 3141.491573333377
+  per_task_average: 125.65966293333507
+  per_task_on_time_average: 125.65966293333507
+  average: 125.65966293333507
+timing:
+  avg_completion_duration_sec: 21.92
+  avg_overdue_minutes: 0.0
+  throughput_tasks_per_hour: 6.521739130434782
+distance_meters:
+  total_fleet_traveled: 393175.3700000027
+  average_completed_task_leg: 14051.688720000082
+  fleet_distance_stdev: 6806.0091630800825
+energy:
+  total_energy: 560.510777000007
+  energy_per_completed: 22.42043108000028
+vehicles_summary:
+  total: 6
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+    '4': 0
+    '5': 0
+    '6': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 43.8516400000008
+  battery_percentage: 73.086066666668
+  total_distance_traveled: 57548.359999999266
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 42.443113000001034
+  battery_percentage: 70.73852166666839
+  total_distance_traveled: 64356.886999999
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 73.51353400000343
+  battery_percentage: 73.51353400000343
+  total_distance_traveled: 63417.64399999778
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 4
+  type: medium
+  battery_final: 74.31858099999619
+  battery_percentage: 74.31858099999619
+  total_distance_traveled: 66400.9460000026
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 5
+  type: medium
+  battery_final: 59.48373700000064
+  battery_percentage: 59.48373700000064
+  total_distance_traveled: 78050.84199999965
+  energy_consumption_trip: 63.39491399999897
+  final_status: idle
+  completed_tasks: 0
+- id: 6
+  type: large
+  battery_final: 26.798617999991265
+  battery_percentage: 17.86574533332751
+  total_distance_traveled: 63400.69100000433
+  energy_consumption_trip: 106.72625400000665
+  final_status: charging
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 3
+  final_load: 0.16666666666666666
+  charging_vehicles:
+  - 6
+  queue_count: 1
+- id: cs2
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0
