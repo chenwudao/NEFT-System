@@ -9,6 +9,8 @@ optimization:
     strategy: "static_exact_solver"
     solver: "gurobi"      # gurobi | cplex（未安装会自动回退）
     max_exact_tasks: 10
+    strict_global_optimum: true
+    time_limit_s: null
 
 fleet:
   small_count:   2

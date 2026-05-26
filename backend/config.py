@@ -236,6 +236,10 @@ _DEFAULT_OPTIMIZATION: Dict[str, Any] = {
         "solver": "gurobi",
         # 精确搜索的任务上限（超过后自动降级为近似分配）
         "max_exact_tasks": 10,
+        # 严格模式：必须返回全局最优(OPTIMAL, MIPGap=0)，否则失败，不做近似降级
+        "strict_global_optimum": True,
+        # 严格模式下建议不设 time limit；若设置则可能导致非 OPTIMAL
+        "time_limit_s": None,
     },
 }
 

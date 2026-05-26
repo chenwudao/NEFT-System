@@ -35,9 +35,12 @@ class StaticExactSolverScheduler(Scheduler):
 
     def schedule(self, snapshot: Snapshot) -> List[Command]:
         commands: List[Command] = []
-        if self._vrptw_disabled_reason:
-            # 仅提示一次已降级，避免刷屏。
-            pass
+        planning_vehicles = [
+            v for v in snapshot.vehicles
+            if str(getattr(v.status, "value", "")) != "stranded"
+        ]
+        if not planning_vehicles:
+            return commands
 
         task_by_id_all = {t.id: t for t in snapshot.tasks}
         all_pending = [t for t in snapshot.tasks if str(getattr(t.status, "value", "")) == "pending"]
@@ -64,15 +67,34 @@ class StaticExactSolverScheduler(Scheduler):
             return commands
 
         # 计划签名按“全部未完成任务”而不是“当前已释放任务”，保证上帝视角全局已知。
-        signature = tuple(sorted(t.id for t in all_pending))
+        signature = (
+            tuple(sorted(t.id for t in all_pending)),
+            tuple(sorted(v.id for v in planning_vehicles)),
+        )
         if signature != self._plan_signature:
-            self._vehicle_routes = self._build_global_plan(wh_vehicles, all_pending, snapshot)
+            self._vehicle_routes = self._build_global_plan(planning_vehicles, all_pending, snapshot)
             self._plan_signature = signature
 
+        planned_global = {
+            tid
+            for tids in self._vehicle_routes.values()
+            for tid in tids
+        }
         for v in wh_vehicles:
             route_ids = [tid for tid in self._vehicle_routes.get(v.id, []) if tid in task_by_id_all]
             if not route_ids:
-                commands.append(utils.decide_at_warehouse(v, snapshot, lambda *_: []))
+                # 兜底：若全局路由缺失，至少从当前可释放任务中拿一单，避免“回仓-充电-不分配”循环。
+                available_now = [
+                    t for t in pending
+                    if int(getattr(t, "create_time", 0)) <= int(snapshot.timestamp)
+                    and t.id not in planned_global
+                ]
+                if available_now:
+                    available_now.sort(key=lambda t: snapshot.distance(v.position, t.position))
+                    fallback = available_now[0]
+                    commands.append(utils.make_deliver_command(v, fallback, assigned_tasks=[fallback.id]))
+                else:
+                    commands.append(utils.make_idle_command(v))
                 continue
             # 仅执行“已释放”的任务，未来任务只参与规划不提前执行
             released = [
@@ -102,11 +124,15 @@ class StaticExactSolverScheduler(Scheduler):
         static_cfg = opt_cfg.get("static") or {}
         solver = str(static_cfg.get("solver", "gurobi")).lower()
         max_exact_tasks = int(static_cfg.get("max_exact_tasks", 10))
+        strict = bool(static_cfg.get("strict_global_optimum", True))
 
         # 1) 优先尝试“一体化 VRPTW MIP”。
         route_plan = self._try_vrptw_solver(solver, vehicles, tasks, snapshot)
         if route_plan is not None:
             return route_plan
+        if strict:
+            msg = self._vrptw_disabled_reason or "VRPTW solver did not return OPTIMAL."
+            raise RuntimeError(f"[STRICT_STATIC] global optimum not proven: {msg}")
 
         # 2) 回退：先分配后排序。
         assign = self._try_solver_assignment(solver, vehicles, tasks, snapshot)
@@ -194,8 +220,12 @@ class StaticExactSolverScheduler(Scheduler):
 
         m = gp.Model("neft_static_vrptw")
         m.Params.OutputFlag = 0
-        m.Params.MIPGap = 0.01
-        m.Params.TimeLimit = float((config.get_optimization_config().get("static") or {}).get("time_limit_s", 60))
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        strict = bool(static_cfg.get("strict_global_optimum", True))
+        m.Params.MIPGap = 0.0 if strict else 0.01
+        tl = static_cfg.get("time_limit_s", None)
+        if tl is not None:
+            m.Params.TimeLimit = float(tl)
 
         K = [v.id for v in vehicles]
         v_by_id = {v.id: v for v in vehicles}
@@ -322,7 +352,12 @@ class StaticExactSolverScheduler(Scheduler):
             self._vrptw_disabled_reason = str(exc)
             return None
 
-        if m.status not in (GRB.OPTIMAL, GRB.TIME_LIMIT, GRB.SUBOPTIMAL):
+        strict = bool(((config.get_optimization_config().get("static") or {}).get("strict_global_optimum", True)))
+        if strict:
+            if m.status != GRB.OPTIMAL:
+                self._vrptw_disabled_reason = f"Gurobi status={int(m.status)} (STRICT requires OPTIMAL)."
+                return None
+        elif m.status not in (GRB.OPTIMAL, GRB.TIME_LIMIT, GRB.SUBOPTIMAL):
             return None
 
         # 提取每车任务顺序
