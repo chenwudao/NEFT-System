@@ -1,12 +1,11 @@
-"""贪心插入启发式（Insertion Heuristic）：批量在仓库时，迭代往车辆"路径"中
-插入边际成本最小（或综合得分最优）的任务，直到再插入会违约束为止。
+"""贪心插入启发式（进阶版）。
 
-特点：
-- 同时考虑路径距离与时效，目标：最小化 batch 内"额外里程 - 任务收益"
-- 单批任务数量不设上限，仅受 vehicle.max_load 限制
-- 没货可接时回退为 idle / 充电
-
-适合"一次出车送多单"且任务点比较密集时显著优于纯 nearest_task。
+流程：
+1) 维护一条当前路径 route（start -> ... -> tail）；
+2) 对每个候选任务计算“最佳插入位置”和“次优插入位置”；
+3) 用 regret-2（次优 - 最优）优先插入“错过代价大”的任务；
+4) 每次插入后做一次轻量 2-opt 本地优化；
+5) 全程受载重 + 充电可达性约束。
 """
 
 from __future__ import annotations
@@ -36,15 +35,16 @@ class InsertionHeuristicScheduler(Scheduler):
                 return []
 
             start_xy: Tuple[float, float] = (vehicle.position.x, vehicle.position.y)
-            wh_xy = snap.warehouse_xy
 
-            # 当前 route：起点 -> ... -> 仓库。初始仅含 start -> warehouse。
-            route: List[Tuple[float, float]] = [start_xy, wh_xy]
+            # 当前 route：起点 -> ... -> 末端。这里不强制回仓，由充电可达性兜底。
+            route: List[Tuple[float, float]] = [start_xy]
             chosen = []
             remaining_load = vehicle.get_remaining_load()
             remaining = list(available)
 
             def chain_length(rt):
+                if len(rt) <= 1:
+                    return 0.0
                 d = 0.0
                 for i in range(len(rt) - 1):
                     seg = snap.distance(rt[i], rt[i + 1])
@@ -53,65 +53,100 @@ class InsertionHeuristicScheduler(Scheduler):
                     d += seg
                 return d
 
-            cur_len = chain_length(route)
+            def route_feasible(rt: List[Tuple[float, float]]) -> bool:
+                return (
+                    utils.estimate_chain_distance_with_recharge(
+                        vehicle, rt[1:], snap, require_final_station_buffer=True
+                    )
+                    != float("inf")
+                )
+
+            def two_opt_local(rt: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
+                """对 route 做一次轻量 2-opt。"""
+                if len(rt) <= 4:
+                    return rt
+                best = list(rt)
+                best_len = chain_length(best)
+                n = len(rt)
+                for i in range(1, n - 2):
+                    for j in range(i + 1, n - 1):
+                        cand = best[:i] + list(reversed(best[i : j + 1])) + best[j + 1 :]
+                        clen = chain_length(cand)
+                        if clen + 1e-9 < best_len and route_feasible(cand):
+                            best, best_len = cand, clen
+                return best
 
             while remaining:
-                best_task = None
-                best_pos = None
-                best_score = float("-inf")
-                best_new_len = None
-
+                selected_task = None
+                selected_pos = None
+                selected_regret = float("-inf")
+                selected_best_delta = float("inf")
                 for t in remaining:
                     if t.weight > remaining_load:
                         continue
                     t_xy = (t.position.x, t.position.y)
-                    # 在 route 的每个"边"上尝试插入 t_xy（除最后一个位置）
-                    for pos in range(1, len(route)):
-                        prev = route[pos - 1]
-                        nxt = route[pos]
-                        d_prev_t = snap.distance(prev, t_xy)
-                        d_t_nxt = snap.distance(t_xy, nxt)
-                        d_prev_nxt = snap.distance(prev, nxt)
-                        if (d_prev_t == float("inf") or d_t_nxt == float("inf")
-                                or d_prev_nxt == float("inf")):
-                            continue
-                        delta = d_prev_t + d_t_nxt - d_prev_nxt
-                        # 得分：高优先级、低边际增量 → 高分
-                        bonus = float(t.priority) * 500.0
-                        score = bonus - delta * 0.5
-                        if score > best_score:
-                            best_score = score
-                            best_task = t
-                            best_pos = pos
-                            best_new_len = cur_len + delta
 
-                if best_task is None or best_pos is None:
+                    best_ins_len = float("inf")
+                    second_ins_len = float("inf")
+                    best_pos_for_t = None
+
+                    # 可插入位置：route[1:] 之间 + 末尾追加
+                    for pos in range(1, len(route) + 1):
+                        cand = list(route)
+                        cand.insert(pos, t_xy)
+                        if not route_feasible(cand):
+                            continue
+                        clen = chain_length(cand)
+                        if clen < best_ins_len:
+                            second_ins_len = best_ins_len
+                            best_ins_len = clen
+                            best_pos_for_t = pos
+                        elif clen < second_ins_len:
+                            second_ins_len = clen
+
+                    if best_pos_for_t is None:
+                        continue
+
+                    regret = (
+                        (second_ins_len - best_ins_len)
+                        if second_ins_len < float("inf")
+                        else 1e6
+                    )
+                    if (
+                        regret > selected_regret
+                        or (
+                            abs(regret - selected_regret) <= 1e-9
+                            and best_ins_len < selected_best_delta
+                        )
+                    ):
+                        selected_regret = regret
+                        selected_best_delta = best_ins_len
+                        selected_task = t
+                        selected_pos = best_pos_for_t
+
+                if selected_task is None or selected_pos is None:
                     break
 
-                # 把候选 task 插入 route 并做电量预判
+                # 插入 + 局部 2-opt 优化
                 candidate_route = list(route)
-                candidate_route.insert(best_pos, (best_task.position.x, best_task.position.y))
-                # waypoints 不含 vehicle.position 自身
-                if not utils.can_complete_chain(
-                    vehicle, candidate_route[1:], snap, require_station_buffer=False
-                ):
-                    # 装下这个就回不去了 → 跳过
-                    remaining.remove(best_task)
+                candidate_route.insert(selected_pos, (selected_task.position.x, selected_task.position.y))
+                candidate_route = two_opt_local(candidate_route)
+                if not route_feasible(candidate_route):
+                    remaining.remove(selected_task)
                     continue
 
                 route = candidate_route
-                cur_len = best_new_len if best_new_len is not None else chain_length(route)
-                chosen.append(best_task)
-                remaining_load -= best_task.weight
-                remaining.remove(best_task)
+                chosen.append(selected_task)
+                remaining_load -= selected_task.weight
+                remaining.remove(selected_task)
 
             if not chosen:
                 return []
 
-            # 按 route 内出现顺序回传（不含 start_xy 和 wh_xy）
+            # 按 route 内出现顺序回传（不含 start_xy）
             id_by_xy = {(t.position.x, t.position.y): t for t in chosen}
             ordered = []
-            for xy in route[1:-1]:
+            for xy in route[1:]:
                 t = id_by_xy.get(xy)
                 if t is not None:
                     ordered.append(t)

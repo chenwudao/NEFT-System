@@ -1,0 +1,207 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): medium-scale-composite_score
+启动时间:                 2026-05-26 15:35:29
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-composite_score
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\configs\medium.yaml
+
+---- 事件日志 ----
+[2026-05-26 15:35:29] [START] Experiment 'medium-scale-composite_score' started.
+[2026-05-26 15:35:29] [INFO] strategy=composite_score, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=replay=F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-composite_score/task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-composite_score\task_generation_seed.yaml
+[2026-05-26 15:35:33] [PROGRESS] sim_elapsed=360s strategy=composite_score tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 15:35:37] [PROGRESS] sim_elapsed=720s strategy=composite_score tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 15:35:40] [PROGRESS] sim_elapsed=1080s strategy=composite_score tasks total=5 completed=2 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 15:35:43] [TASK] replay task t1001 weight=38.7 prio=3 deadline=1779786207 pending=1/20
+[2026-05-26 15:35:43] [TASK] replay task t1002 weight=256.2 prio=1 deadline=1779788007 pending=2/20
+[2026-05-26 15:35:44] [PROGRESS] sim_elapsed=1440s strategy=composite_score tasks total=7 completed=4 pending=2 in_progress=1 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 15:35:48] [PROGRESS] sim_elapsed=1800s strategy=composite_score tasks total=7 completed=5 pending=0 in_progress=2 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 15:35:52] [PROGRESS] sim_elapsed=2160s strategy=composite_score tasks total=7 completed=5 pending=0 in_progress=2 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 15:35:56] [PROGRESS] sim_elapsed=2520s strategy=composite_score tasks total=7 completed=6 pending=0 in_progress=1 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 15:35:57] [TASK] replay task t1003 weight=183.3 prio=2 deadline=1779783970 pending=1/20
+[2026-05-26 15:35:57] [TASK] replay task t1004 weight=363.5 prio=2 deadline=1779783885 pending=2/20
+[2026-05-26 15:35:57] [TASK] replay task t1005 weight=145.7 prio=5 deadline=1779787677 pending=3/20
+[2026-05-26 15:35:57] [TASK] replay task t1006 weight=395.2 prio=3 deadline=1779786255 pending=4/20
+[2026-05-26 15:36:00] [PROGRESS] sim_elapsed=2880s strategy=composite_score tasks total=11 completed=6 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 15:36:04] [PROGRESS] sim_elapsed=3240s strategy=composite_score tasks total=11 completed=8 pending=0 in_progress=3 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 15:36:07] [TASK] replay task t1007 weight=413.1 prio=2 deadline=1779783529 pending=1/20
+[2026-05-26 15:36:07] [TASK] replay task t1008 weight=380.6 prio=5 deadline=1779783086 pending=2/20
+[2026-05-26 15:36:08] [PROGRESS] sim_elapsed=3600s strategy=composite_score tasks total=13 completed=11 pending=2 in_progress=0 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 15:36:12] [PROGRESS] sim_elapsed=3960s strategy=composite_score tasks total=13 completed=11 pending=0 in_progress=2 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 15:36:15] [PROGRESS] sim_elapsed=4320s strategy=composite_score tasks total=13 completed=11 pending=0 in_progress=2 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 15:36:19] [PROGRESS] sim_elapsed=4680s strategy=composite_score tasks total=13 completed=12 pending=0 in_progress=1 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 15:36:19] [TASK] replay task t1009 weight=372.5 prio=1 deadline=1779784493 pending=1/20
+[2026-05-26 15:36:19] [TASK] replay task t1010 weight=195.5 prio=4 deadline=1779783375 pending=2/20
+[2026-05-26 15:36:19] [TASK] replay task t1011 weight=448.4 prio=4 deadline=1779785232 pending=3/20
+[2026-05-26 15:36:23] [PROGRESS] sim_elapsed=5040s strategy=composite_score tasks total=16 completed=13 pending=2 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=3
+[2026-05-26 15:36:27] [PROGRESS] sim_elapsed=5400s strategy=composite_score tasks total=16 completed=14 pending=1 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=3
+[2026-05-26 15:36:27] [TASK] replay task t1012 weight=97.6 prio=4 deadline=1779787231 pending=2/20
+[2026-05-26 15:36:27] [TASK] replay task t1013 weight=101.2 prio=4 deadline=1779786148 pending=3/20
+[2026-05-26 15:36:27] [TASK] replay task t1014 weight=220.8 prio=1 deadline=1779784245 pending=4/20
+[2026-05-26 15:36:31] [PROGRESS] sim_elapsed=5760s strategy=composite_score tasks total=19 completed=15 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 15:36:33] [TASK] replay task t1015 weight=162.9 prio=1 deadline=1779786812 pending=5/20
+[2026-05-26 15:36:33] [TASK] replay task t1016 weight=341.2 prio=2 deadline=1779785923 pending=6/20
+[2026-05-26 15:36:33] [TASK] replay task t1017 weight=329.2 prio=3 deadline=1779783797 pending=7/20
+[2026-05-26 15:36:34] [PROGRESS] sim_elapsed=6120s strategy=composite_score tasks total=22 completed=15 pending=7 in_progress=0 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 15:36:40] [PROGRESS] sim_elapsed=6480s strategy=composite_score tasks total=22 completed=15 pending=6 in_progress=1 timeout=0 vehicles idle=0 moving=2 charging=4
+[2026-05-26 15:36:43] [TASK] replay task t1018 weight=431.9 prio=4 deadline=1779786950 pending=7/20
+[2026-05-26 15:36:43] [TASK] replay task t1019 weight=368.9 prio=2 deadline=1779783341 pending=8/20
+[2026-05-26 15:36:43] [TASK] replay task t1020 weight=341.6 prio=2 deadline=1779782925 pending=9/20
+[2026-05-26 15:36:44] [PROGRESS] sim_elapsed=6840s strategy=composite_score tasks total=25 completed=16 pending=9 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=4
+[2026-05-26 15:36:44] [INFO] task generation stopped at sim_elapsed=6840s (reason: budget/max_sim_seconds reached). continuing until all tasks settle.
+[2026-05-26 15:36:47] [PROGRESS] sim_elapsed=7200s strategy=composite_score tasks total=25 completed=16 pending=9 in_progress=0 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 15:36:51] [PROGRESS] sim_elapsed=7560s strategy=composite_score tasks total=25 completed=16 pending=9 in_progress=0 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 15:36:55] [PROGRESS] sim_elapsed=7920s strategy=composite_score tasks total=25 completed=16 pending=9 in_progress=0 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 15:37:02] [PROGRESS] sim_elapsed=8280s strategy=composite_score tasks total=25 completed=16 pending=8 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=3
+[2026-05-26 15:37:09] [PROGRESS] sim_elapsed=8640s strategy=composite_score tasks total=25 completed=16 pending=7 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 15:37:14] [PROGRESS] sim_elapsed=9000s strategy=composite_score tasks total=25 completed=17 pending=6 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 15:37:18] [PROGRESS] sim_elapsed=9360s strategy=composite_score tasks total=25 completed=18 pending=6 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 15:37:21] [PROGRESS] sim_elapsed=9720s strategy=composite_score tasks total=25 completed=18 pending=6 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 15:37:27] [PROGRESS] sim_elapsed=10080s strategy=composite_score tasks total=25 completed=19 pending=5 in_progress=1 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-26 15:37:32] [PROGRESS] sim_elapsed=10440s strategy=composite_score tasks total=25 completed=19 pending=4 in_progress=2 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-26 15:37:36] [PROGRESS] sim_elapsed=10800s strategy=composite_score tasks total=25 completed=19 pending=4 in_progress=2 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-26 15:37:40] [PROGRESS] sim_elapsed=11160s strategy=composite_score tasks total=25 completed=20 pending=4 in_progress=1 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-26 15:37:45] [PROGRESS] sim_elapsed=11520s strategy=composite_score tasks total=25 completed=21 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-26 15:37:49] [PROGRESS] sim_elapsed=11880s strategy=composite_score tasks total=25 completed=21 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 15:37:52] [PROGRESS] sim_elapsed=12240s strategy=composite_score tasks total=25 completed=21 pending=2 in_progress=2 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 15:37:57] [PROGRESS] sim_elapsed=12600s strategy=composite_score tasks total=25 completed=21 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 15:38:00] [PROGRESS] sim_elapsed=12960s strategy=composite_score tasks total=25 completed=23 pending=2 in_progress=0 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 15:38:04] [PROGRESS] sim_elapsed=13320s strategy=composite_score tasks total=25 completed=23 pending=1 in_progress=1 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 15:38:08] [PROGRESS] sim_elapsed=13680s strategy=composite_score tasks total=25 completed=23 pending=1 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 15:38:12] [PROGRESS] sim_elapsed=14040s strategy=composite_score tasks total=25 completed=23 pending=1 in_progress=1 timeout=0 vehicles idle=0 moving=2 charging=4
+[2026-05-26 15:38:15] [PROGRESS] sim_elapsed=14400s strategy=composite_score tasks total=25 completed=23 pending=1 in_progress=1 timeout=0 vehicles idle=0 moving=2 charging=4
+[2026-05-26 15:38:19] [PROGRESS] sim_elapsed=14760s strategy=composite_score tasks total=25 completed=24 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=4
+[2026-05-26 15:38:23] [PROGRESS] sim_elapsed=15120s strategy=composite_score tasks total=25 completed=24 pending=1 in_progress=0 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 15:38:27] [PROGRESS] sim_elapsed=15480s strategy=composite_score tasks total=25 completed=24 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 15:38:31] [PROGRESS] sim_elapsed=15840s strategy=composite_score tasks total=25 completed=24 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 15:38:34] [PROGRESS] sim_elapsed=16200s strategy=composite_score tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 15:38:38] [PROGRESS] sim_elapsed=16560s strategy=composite_score tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 15:38:42] [PROGRESS] sim_elapsed=16920s strategy=composite_score tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 15:38:45] [PROGRESS] sim_elapsed=17280s strategy=composite_score tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=2 moving=3 charging=1
+
+[2026-05-26 15:38:48] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: medium-scale-composite_score
+停止原因: all_tasks_done
+仿真时长: 17520 仿真秒 / 198.6 现实秒
+
+[ 任务 ]
+  总数=25 完成=25 按时=25 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=100.00% 超时率=0.00%
+
+[ 得分 ]
+  总分=3959.4 每任务平均=158.38 按时平均=158.38
+
+[ 时效 ]
+  平均完成时长=34.4s 平均超时=0.00min 吞吐=5.14 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=624812m 任务腿均长=9495m 里程方差(车均衡)=8676
+  总能耗=878.90kWh 单任务能耗=35.156kWh
+
+[ 车队 ]
+  总车数=6 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: medium-scale-composite_score
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 17520.0
+wall_seconds_elapsed: 198.551659
+tasks:
+  total: 25
+  completed: 25
+  on_time: 25
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 1.0
+  timeout_rate: 0.0
+scores:
+  total: 3959.412213333362
+  per_task_average: 158.37648853333448
+  per_task_on_time_average: 158.37648853333448
+  average: 158.37648853333448
+timing:
+  avg_completion_duration_sec: 34.4
+  avg_overdue_minutes: 0.0
+  throughput_tasks_per_hour: 5.136986301369864
+distance_meters:
+  total_fleet_traveled: 624811.5889999961
+  average_completed_task_leg: 9495.378119999948
+  fleet_distance_stdev: 8675.767280724363
+energy:
+  total_energy: 878.8959954999948
+  energy_per_completed: 35.15583981999979
+vehicles_summary:
+  total: 6
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+    '4': 0
+    '5': 0
+    '6': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 43.585118000001756
+  battery_percentage: 72.64186333333626
+  total_distance_traveled: 104614.8819999984
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 41.9367069999994
+  battery_percentage: 69.89451166666566
+  total_distance_traveled: 100863.29300000053
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 54.19011850000243
+  battery_percentage: 54.19011850000243
+  total_distance_traveled: 107979.92099999847
+  energy_consumption_trip: 18.093896999998265
+  final_status: charging
+  completed_tasks: 0
+- id: 4
+  type: medium
+  battery_final: 18.75734800000211
+  battery_percentage: 18.75734800000211
+  total_distance_traveled: 114001.76799999864
+  energy_consumption_trip: 18.093896999998265
+  final_status: charging
+  completed_tasks: 0
+- id: 5
+  type: medium
+  battery_final: 53.38551100000084
+  battery_percentage: 53.38551100000084
+  total_distance_traveled: 108516.32599999967
+  energy_consumption_trip: 20.753362500003174
+  final_status: idle
+  completed_tasks: 0
+- id: 6
+  type: large
+  battery_final: 134.32920199999924
+  battery_percentage: 89.55280133333284
+  total_distance_traveled: 88835.39900000037
+  energy_consumption_trip: 25.948052000000192
+  final_status: moving_to_warehouse
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0
+- id: cs2
+  capacity: 3
+  final_load: 0.3333333333333333
+  charging_vehicles:
+  - 3
+  - 4
+  queue_count: 2

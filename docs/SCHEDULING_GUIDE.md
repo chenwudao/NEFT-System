@@ -1,186 +1,173 @@
-# 调度策略说明文档（现状版）
+# 调度策略说明文档（规划增强版）
 
-本文面向当前 `backend/algorithm` 实现，目标是把“调度流程”和“每个策略在做什么”讲清楚，便于后续逐个改造。
+本文面向当前 `backend/algorithm` 实现，重点说明：调度闭环、通用约束、以及每个策略的可执行流程（含 DFS、元启发式、强化学习、超启发式、多智能体）。
 
 ---
 
 ## 1. 调度在系统里的位置
 
-每一轮调度的主链路如下：
+每一轮调度主链路：
 
-1. `DynamicSchedulingModule.run_once(strategy)` 先把超时任务标记为 `TIMEOUT`。
-2. 调用 `Snapshot.capture(data_manager)` 拍一张当前状态快照。
-3. `AlgorithmManager.schedule(strategy, snapshot)` 根据策略名分发到具体 `Scheduler`。
-4. `Scheduler.schedule(snapshot)` 输出一组 `Command`（每辆待决策车一条）。
-5. `DynamicSchedulingModule._execute()` 把命令落地到 `DataManager`（启动路径、装货、充电等）。
-6. 主循环推进车辆运动，到站后下一轮继续拍快照并调度。
+1. `DynamicSchedulingModule.run_once(strategy)` 处理超时任务。
+2. `Snapshot.capture(data_manager)` 拍快照。
+3. `AlgorithmManager.schedule(strategy, snapshot)` 分发策略。
+4. `Scheduler.schedule(snapshot)` 输出每车一条 `Command`。
+5. `_execute()` 落地命令，推进车辆状态。
+6. 主循环推进移动，到点后进入下一轮。
 
-核心特征：这是 **闭环控制**，不是预测模型。即 `state_t -> action_t -> state_(t+1)`。
+本系统是闭环在线决策：`state_t -> action_t -> state_(t+1)`。
 
 ---
 
-## 2. Snapshot 提供了什么
+## 2. 快照与通用模板
 
-算法只看 `Snapshot`，不直接改底层状态。常用接口：
+算法只读 `Snapshot`，常用接口：
 
-- `vehicles_need_decision()`：当前需要发命令的车（`IDLE` 且无 target）
-- `idle_vehicles_at_warehouse()`：仓库内待命车
-- `idle_vehicles_not_at_warehouse()`：仓库外待命车（通常是刚送完）
+- `idle_vehicles_at_warehouse()`：仓库内可派单车辆
+- `idle_vehicles_not_at_warehouse()`：仓库外待命车辆
 - `available_tasks()`：`PENDING` 任务
-- `vehicle_undelivered_tasks(v)`：车上未送达任务
-- `distance(a, b)`：路网最短距离（米，带缓存）
+- `vehicle_undelivered_tasks(v)`：车上未完成任务
+- `distance(a, b)`：路网最短距离
 
----
-
-## 3. 公共决策模板（所有策略共享）
-
-大多数策略不是“从零写完整流程”，而是复用 `backend/algorithm/utils.py` 里的模板：
+所有策略统一复用：
 
 - `decide_at_warehouse(vehicle, snapshot, pick_tasks)`
 - `decide_en_route(vehicle, snapshot)`
 
-### 3.1 仓库内决策 `decide_at_warehouse`
+模板自动继承：
 
-统一流程：
-
-1. 低电阈值命中（`low_battery_pct`）则先充电。
-2. 调用各策略自己的 `pick_tasks(...)` 选一批候选任务。
-3. 用 `feasible_task_batch_for` 再按载重过滤（不设任务数量上限）。
-4. 做电量安全预判 `_need_charge_at_warehouse`：
-   - 新增了“首跳安全约束”：到下一目的地后必须还能到充电站；
-   - 不再做“整条链回仓”预判，避免过度保守导致可执行单被拦截。
-5. 若整批不安全，尝试缩批；缩到 1 单也不安全则先充电。
-
-### 3.2 仓库外决策 `decide_en_route`
-
-统一流程：
-
-1. 若低电则优先去可达充电站。
-2. 若车上还有未送任务，选下一站（默认最近），并检查“到站后还能否去充电站”。
-3. 若车上已无未送任务，尝试回仓；若回仓后不能继续去充电站，则先充电。
-
-### 3.3 落地前二次兜底（执行层）
-
-`DynamicSchedulingModule._guard_battery_before_motion` 会在命令落地前再做一次检查：
-
-- 如果目标点/充电站当前电量不可达，会改派到“可达充电站”；
-- 若连可达充电站都没有，则 `idle`，避免硬开到抛锚。
+- 低电量先充电
+- 首跳安全（到目标后还能到充电站）
+- 执行层二次电量兜底（不可达则改派充电/待机）
 
 ---
 
-## 4. 策略名如何映射
+## 3. 策略名映射规则
 
-配置里 `scheduling.strategy` 最终映射到 `Scheduler.name`。
+`scheduling.strategy` 支持短名、类名、去后缀类名、大小写与连字符变体，例如：
 
-当前支持多种写法（通过 `AlgorithmManager._resolve_scheduler`）：
-
-- 短名：`deadline_earliest`
-- 类名：`DeadlineEarliestScheduler`
-- 去后缀类名：`DeadlineEarliest`
-- 大小写/连字符变体：`DEADLINE_EARLIEST`、`deadline-earliest`
+- `deadline_earliest`
+- `DeadlineEarliestScheduler`
+- `DeadlineEarliest`
+- `DEADLINE-EARLIEST`
 
 ---
 
-## 5. 全部调度方法说明（当前 9 个）
+## 4. 全部调度方法（13 个）
 
 以下策略均已注册在 `backend/algorithm/schedulers/__init__.py`。
 
-## 5.1 `nearest_task`（最近点贪心基线）
+### 4.1 基础启发式（快速基线）
 
-- 仓库外：走 `decide_en_route`。
-- 仓库内：反复选当前最近任务构成有序批次，再交给公共模板落地。
-- 优点：快、稳定、可解释性强。
-- 风险：可能牺牲截止时间和高优任务。
+- `nearest_task`：按最近距离逐个装单，直到不可行。
+- `priority_task`：按优先级降序逐个装单，直到不可行。
+- `heaviest_task`：按重量降序逐个装单，直到不可行。
+- `deadline_earliest`：按截止时间升序逐个装单，直到不可行。
+- `random_baseline`：随机顺序基线（对照组）。
 
-## 5.2 `priority_task`（优先级优先）
+### 4.2 结构化路径策略
 
-- 任务排序：`priority` 降序，同优先级按距离近优先。
-- 批量装载只受载重限制。
-- 适合“高优任务必须先处理”的场景。
+- `mst_batch`：MST + DFS 顺序，强调整体路网结构。
 
-## 5.3 `heaviest_task`（重货优先）
+- `insertion_heuristic`（进阶插入）：
+  1. 初始化路径 `start`；
+  2. 对每个候选任务计算最佳/次佳插入位置；
+  3. 用 regret-2（次佳代价 - 最佳代价）选“错过损失最大”的任务；
+  4. 插入后做轻量 2-opt 局部优化；
+  5. 每步用充电可达约束验证可行性。
 
-- 任务排序：`weight` 降序，同重量按距离近优先。
-- 目标是提升单趟载重利用率，先清理大件。
-- 可能导致远距离高重量任务占据运力。
+### 4.3 评分规划策略
 
-## 5.4 `deadline_earliest`（EDF 最早截止时间优先）
+- `composite_score`（复合评分规划）：
+  1. 单任务打分（优先级+紧迫度+载重-距离）；
+  2. 取 top-k 候选；
+  3. 在 top-k 上做 beam DFS（保留前 `beam_width` 状态）；
+  4. 目标函数：`总评分 - 距离惩罚`；
+  5. 输出最优集合并给出有序路径。
 
-- 任务排序：`deadline` 升序，同 deadline 按距离近优先。
-- 核心目标是提高按时率，减少超时。
-- 当路网拥堵或距离很大时，需要依赖公共电量/可达性模板兜底。
+- `dfs_score_search`（DFS 评分搜索）：
+  1. DFS 枚举候选子集（按载重剪枝）；
+  2. 每个子集用 `greedy_chain` 生成访问序；
+  3. 用 `estimate_chain_distance_with_recharge` 校验可行；
+  4. 目标函数：`assignment_score 累计 - 距离惩罚`；
+  5. 选全局最优可行子集。
 
-## 5.5 `composite_score`（复合评分）
+### 4.4 元启发式方法（Meta-heuristics）
 
-- 对每个任务打综合分，默认包含：
-  - 优先级收益
-  - 紧迫度收益（deadline 越近越高）
-  - 载重收益
-  - 距离惩罚
-- 权重来自 `scheduling.composite_weights`。
-- 适合做“多目标折中”。
+- `simulated_annealing`（模拟退火）：
+  1. 初始解：按优先级/距离构造车辆-任务分配；
+  2. 邻域：车内交换、跨车挪单、子序列反转；
+  3. 目标：`总距离 - alpha * 总任务得分`；
+  4. 以温度控制接受概率，允许早期“爬山下坡”；
+  5. 长时间无改进触发轻微重热避免早熟。
 
-## 5.6 `mst_batch`（MST 批量）
+- `tabu_search`（禁忌搜索）：
+  1. 构造可行初始序列；
+  2. 邻域使用交换操作；
+  3. 用 tabu 表记录近期 move，抑制回退；
+  4. 使用特赦准则允许“打破禁忌”的全局改进；
+  5. 输出当前最优可行序列。
 
-- 仓库内：先按重量贪心装一批，再让公共模板决定首跳。
-- 仓库外：对车上未送任务用 `mst_order` 计算访问顺序，首跳按 MST 顺序走。
-- 特点：比纯最近邻更关注整体访问结构。
+### 4.5 超启发式方法（Hyper-heuristics）
 
-## 5.7 `insertion_heuristic`（贪心插入）
+- `hyper_heuristic`（UCB1）：
+  1. 把 `nearest/priority/deadline/heaviest` 作为低层算子；
+  2. 用 UCB1 在“算子平均收益 + 探索奖励”上选算子；
+  3. 执行并回写 reward；
+  4. 动态偏向近期有效算子。
 
-- 从 `start -> warehouse` 初始路径开始。
-- 迭代尝试把任务插入路径中“边际成本最优”的位置。
-- 每次插入都做载重和电量链路可行性检查。
-- 适合多任务批配送，通常比简单贪心更省路程。
+- `hyper_heuristic_eps`（epsilon-greedy）：
+  1. 同样使用低层算子池；
+  2. 以 `epsilon` 概率探索随机算子；
+  3. 否则选择当前平均奖励最高算子；
+  4. 在线更新算子价值。
 
-## 5.8 `simulated_annealing`（模拟退火）
+### 4.6 强化学习方法（Reinforcement Learning）
 
-- 对“仓库待命车辆 + 可分配任务”做一次组合优化。
-- 目标函数：`总距离 - alpha * 总任务得分`（得分与系统评分函数一致）。
-- 邻域操作：车内交换、跨车挪单、子序列反转。
-- 约束：载重 + 电量可完成链路。
-- 计算开销最高，但在复杂任务集上可能给出更优批分配。
+- `q_learning`（在线表格型强化学习）：
+  1. 状态离散：电量桶、载重利用率桶、候选数桶；
+  2. 动作：选择下一任务加入批次；
+  3. 策略：`epsilon-greedy`；
+  4. 奖励：优先级收益 - 距离惩罚 - 逾期风险；
+  5. 在线更新 `Q(s,a)`，逐轮自适应。
 
-## 5.9 `random_baseline`（随机基线）
+### 4.7 多智能体方法（Multi-agent）
 
-- 随机打乱候选任务后装批。
-- 主要用于对比实验下界，不建议线上策略使用。
+- `multi_agent_auction`（拍卖分配）：
+  1. 每车对每任务计算 bid（收益-成本）；
+  2. 每个任务分配给最高 bid 车辆；
+  3. 车内再做路径排序与可行性裁剪；
+  4. 形成并行多车批配送方案。
+
+- `multi_agent_contract_net`（合同网协议）：
+  1. 管理者广播任务；
+  2. 车辆 agent 报价；
+  3. 逐轮授标给当前最高 bid agent；
+  4. 每车本地排序并做可行性裁剪后下发指令。
 
 ---
 
-## 6. 当前策略的共同约束
+## 5. 共同硬约束
 
-所有策略都会受到以下硬约束（模板或执行层）：
+所有策略统一受以下约束：
 
-- 载重约束：不能超 `vehicle.max_load`
-- 批量约束：只受车辆最大载重约束
-- 电量约束：下一站可达、链路可达、充电站可达
-- 路网约束：`snapshot.distance == inf` 的不可达点会被过滤
-- 防抢单：仓库派单时用 `claimed` 避免同轮重复派同一任务
-
----
-
-## 7. 后续“逐个修改”建议顺序
-
-为了便于定位效果，建议按下面顺序迭代：
-
-1. `deadline_earliest`（最容易验证按时率变化）
-2. `composite_score`（可通过权重做可控实验）
-3. `insertion_heuristic`（提升批量路径质量）
-4. `mst_batch`（强化外场多点访问顺序）
-5. `simulated_annealing`（最后再调，避免早期开销太大）
-
-每次改完建议固定同一 YAML（如 `configs/medium.yaml`）跑多组，对比日志中的完成率、按时率、总里程、能耗效率。
+- 载重：`<= vehicle.max_load`
+- 任务数量：不设上限，仅受载重限制
+- 电量：到下一目标可达，且目标后可到充电站
+- 路网：不可达边自动过滤（`distance == inf`）
+- 防抢单：同轮用 `claimed` 避免重复派发
 
 ---
 
-## 8. 你改算法时的最小改动点
+## 6. 推荐实验对比
 
-如果要新增/改造一个策略，优先只改这三处：
+建议固定同一配置（如 `configs/medium.yaml`）跑多组，比较：
 
-1. `backend/algorithm/schedulers/<your_strategy>.py`
-2. `backend/algorithm/schedulers/__init__.py`（注册）
-3. `configs/*.yaml` 的 `scheduling.strategy`（切换策略）
+- 完成率 / 按时率
+- 平均任务完成时长
+- 总里程与能耗效率
+- 超时任务占比
+- 算法运行耗时（调度开销）
 
-只要继续复用 `decide_at_warehouse / decide_en_route`，就能自动继承当前的充电和安全兜底规则。
+建议从 `nearest_task` 和 `deadline_earliest` 作为基线，再对比 `composite_score / dfs_score_search / simulated_annealing / q_learning / multi_agent_auction`。
 

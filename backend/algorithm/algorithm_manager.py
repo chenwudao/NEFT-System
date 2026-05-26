@@ -92,6 +92,16 @@ class AlgorithmManager:
                 return sch
         return None
 
+    def resolve_strategy_name(self, strategy: str) -> str:
+        """把用户输入策略名解析为注册表中的规范短名。
+
+        解析失败时回退到 DEFAULT_STRATEGY。
+        """
+        scheduler = self._resolve_scheduler(strategy)
+        if scheduler is None:
+            return self.DEFAULT_STRATEGY
+        return scheduler.name
+
     # ------------------------------------------------------------------
     # 调度入口
     # ------------------------------------------------------------------

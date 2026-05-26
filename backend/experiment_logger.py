@@ -210,6 +210,19 @@ class ExperimentLogger:
     def is_active(self) -> bool:
         return self.run_dir is not None and not self._finalized
 
+    def write_yaml_artifact(self, filename: str, payload: Dict[str, Any]) -> Optional[str]:
+        """在当前实验目录写一个 YAML 工件文件（覆盖写）。"""
+        if not self.run_dir:
+            return None
+        try:
+            path = os.path.join(self.run_dir, filename)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(_safe_dump_yaml(payload))
+            return path
+        except Exception as exc:
+            print(f"[Experiment] WARN: failed to write artifact '{filename}': {exc}")
+            return None
+
     # ------------------------------------------------------------------
     # 收集指标
     # ------------------------------------------------------------------

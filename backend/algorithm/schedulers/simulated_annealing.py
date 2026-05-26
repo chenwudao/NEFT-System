@@ -28,7 +28,6 @@ from backend.algorithm.scoring_config import calculate_assignment_score
 from backend.algorithm.snapshot import Snapshot
 from backend.algorithm.utils import (
     best_charging_station,
-    can_complete_chain,
     decide_en_route,
     make_charge_command,
     make_deliver_command,
@@ -48,22 +47,13 @@ from backend.data.vehicle import Vehicle
 def _route_distance(
     vehicle: Vehicle, task_seq: List[Task], snapshot: Snapshot
 ) -> float:
-    """车辆从当前位置出发 → 依次访问 task_seq → 回仓库的总距离。"""
+    """车辆从当前位置出发执行 task_seq 的总距离（含中途充电绕行）。"""
     if not task_seq:
         return 0.0
-    total = 0.0
-    cur = (vehicle.position.x, vehicle.position.y)
-    for t in task_seq:
-        nxt = (t.position.x, t.position.y)
-        d = snapshot.distance(cur, nxt)
-        if d == float("inf"):
-            return float("inf")
-        total += d
-        cur = nxt
-    back = snapshot.distance(cur, snapshot.warehouse_xy)
-    if back == float("inf"):
-        return float("inf")
-    return total + back
+    waypoints = [(t.position.x, t.position.y) for t in task_seq]
+    return utils.estimate_chain_distance_with_recharge(
+        vehicle, waypoints, snapshot, require_final_station_buffer=True
+    )
 
 
 def _evaluate(
@@ -103,7 +93,7 @@ def _is_feasible(
     tasks_by_id: Dict[int, Task],
     snapshot: Snapshot,
 ) -> bool:
-    """硬约束：载重 + 电量能跑完整条 chain（含回仓）。"""
+    """硬约束：载重 + 可达性（允许中途充电）。"""
     for vid, tids in solution.items():
         v = vehicles_by_id.get(vid)
         if v is None:
@@ -120,8 +110,10 @@ def _is_feasible(
             chain.append((t.position.x, t.position.y))
         if total_w > v.get_remaining_load() + 1e-9:
             return False
-        chain.append(snapshot.warehouse_xy)
-        if not can_complete_chain(v, chain, snapshot, require_station_buffer=False):
+        dist = utils.estimate_chain_distance_with_recharge(
+            v, chain, snapshot, require_final_station_buffer=True
+        )
+        if dist == float("inf"):
             return False
     return True
 
@@ -278,12 +270,13 @@ class SimulatedAnnealingScheduler(Scheduler):
         best = {vid: list(tids) for vid, tids in current.items()}
         best_cost = current_cost
 
-        # 冷却
+        # 冷却（支持轻微重热，避免早熟）
         if iters <= 0 or t_start <= t_end:
             cooling = 1.0
         else:
             cooling = (t_end / t_start) ** (1.0 / iters)
         temperature = t_start
+        no_improve = 0
 
         for _ in range(max(0, iters)):
             cand = _neighbor(current, vehicle_ids, rng)
@@ -303,6 +296,16 @@ class SimulatedAnnealingScheduler(Scheduler):
                 if cand_cost < best_cost:
                     best = {vid: list(tids) for vid, tids in cand.items()}
                     best_cost = cand_cost
+                    no_improve = 0
+                else:
+                    no_improve += 1
+            else:
+                no_improve += 1
+
+            # 长时间无改进则轻微重热，增强跳出能力
+            if no_improve > 150 and t_start > 0:
+                temperature = min(t_start, temperature * 1.2)
+                no_improve = 0
             temperature *= cooling
 
         # 落地：每辆车的第一个 task 作为 deliver

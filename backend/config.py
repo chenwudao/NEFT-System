@@ -180,6 +180,8 @@ _DEFAULT_TASK: Dict[str, Any] = {
     "max_deadline_offset":         7200,
     # 整次仿真内最多生成多少个任务，None=不限。yaml 里通常会设一个数。
     "total_task_budget":           None,
+    # 可复现实验：读取任务生成种子流文件；None 表示随机生成并在日志目录落盘。
+    "generation_seed_file":        None,
 }
 
 _DEFAULT_SIMULATION: Dict[str, Any] = {

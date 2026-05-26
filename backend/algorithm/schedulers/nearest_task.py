@@ -36,15 +36,29 @@ class NearestTaskScheduler(Scheduler):
             if not unclaimed:
                 return []
 
-            ordered = []
-            cur = (vehicle.position.x, vehicle.position.y)
-            remaining = list(unclaimed)
-            while remaining:
-                nxt = min(remaining, key=lambda t: snap.distance(cur, t.position))
-                ordered.append(nxt)
-                remaining.remove(nxt)
-                cur = (nxt.position.x, nxt.position.y)
-            return utils.feasible_task_batch_for(vehicle, ordered)
+            start_xy = (vehicle.position.x, vehicle.position.y)
+            unclaimed.sort(key=lambda t: snap.distance(vehicle.position, t.position))
+
+            chosen = []
+            for t in unclaimed:
+                cand = chosen + [t]
+                ordered = utils.greedy_chain(
+                    start_xy,
+                    [(x.position.x, x.position.y) for x in cand],
+                    snap,
+                )
+                if not ordered:
+                    break
+                dist = utils.estimate_chain_distance_with_recharge(
+                    vehicle,
+                    ordered,
+                    snap,
+                    require_final_station_buffer=True,
+                )
+                if dist == float("inf"):
+                    break
+                chosen = cand
+            return chosen
 
         for v in snapshot.idle_vehicles_at_warehouse():
             cmd = utils.decide_at_warehouse(v, snapshot, pick_batch)

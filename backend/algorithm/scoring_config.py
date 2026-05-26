@@ -63,8 +63,7 @@ def calculate_assignment_score(
     
     # 综合得分
     score = task_reward + priority_reward - distance_cost + early_reward - overdue_cost
-    
-    return score
+    return max(0.0, float(score))
 
 
 def calculate_plan_score(

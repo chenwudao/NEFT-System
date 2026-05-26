@@ -25,13 +25,35 @@ class PriorityTaskScheduler(Scheduler):
             unclaimed = utils.feasible_tasks_for(vehicle, unclaimed)
             if not unclaimed:
                 return []
+
+            start_xy = (vehicle.position.x, vehicle.position.y)
             unclaimed.sort(
                 key=lambda t: (
-                    -t.priority,
+                    -float(t.priority),
                     snap.distance(vehicle.position, t.position),
                 )
             )
-            return utils.feasible_task_batch_for(vehicle, unclaimed)
+
+            chosen = []
+            for t in unclaimed:
+                cand = chosen + [t]
+                ordered = utils.greedy_chain(
+                    start_xy,
+                    [(x.position.x, x.position.y) for x in cand],
+                    snap,
+                )
+                if not ordered:
+                    break
+                dist = utils.estimate_chain_distance_with_recharge(
+                    vehicle,
+                    ordered,
+                    snap,
+                    require_final_station_buffer=True,
+                )
+                if dist == float("inf"):
+                    break
+                chosen = cand
+            return chosen
 
         for v in snapshot.idle_vehicles_at_warehouse():
             cmd = utils.decide_at_warehouse(v, snapshot, pick_batch)

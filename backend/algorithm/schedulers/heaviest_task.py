@@ -34,7 +34,28 @@ class HeaviestTaskScheduler(Scheduler):
                     snap.distance(vehicle.position, t.position),
                 )
             )
-            return utils.feasible_task_batch_for(vehicle, unclaimed)
+
+            start_xy = (vehicle.position.x, vehicle.position.y)
+            chosen = []
+            for t in unclaimed:
+                cand = chosen + [t]
+                ordered = utils.greedy_chain(
+                    start_xy,
+                    [(x.position.x, x.position.y) for x in cand],
+                    snap,
+                )
+                if not ordered:
+                    break
+                dist = utils.estimate_chain_distance_with_recharge(
+                    vehicle,
+                    ordered,
+                    snap,
+                    require_final_station_buffer=True,
+                )
+                if dist == float("inf"):
+                    break
+                chosen = cand
+            return chosen
 
         for v in snapshot.idle_vehicles_at_warehouse():
             cmd = utils.decide_at_warehouse(v, snapshot, pick_heaviest)

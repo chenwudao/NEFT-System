@@ -1,6 +1,6 @@
 # 中规模配置：6 辆车 / 2 充电站 / 中等任务流量
 experiment:
-  name: "medium-scale-deadline_earliest"
+  name: "medium-scale-priority_task"
   log_dir: "log"
 
 fleet:
@@ -26,14 +26,15 @@ vehicle:
 
 
 task:
+  generation_seed_file: "F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-composite_score/task_generation_seed.yaml"
   initial_tasks:               5
-  generation_interval_sec_min: 10
-  generation_interval_sec_max: 30
-  generation_batch_min:        1
-  generation_batch_max:        3
+  generation_interval_sec_min: 5
+  generation_interval_sec_max: 15
+  generation_batch_min:        2
+  generation_batch_max:        4
   max_pending_tasks:           20
   min_weight:           10.0
-  max_weight:           1500.0
+  max_weight:           500.0
   min_priority:         1
   max_priority:         5
   min_deadline_offset:  1800
@@ -41,7 +42,7 @@ task:
   total_task_budget:    80
 
 scheduling:
-  strategy:              "deadline_earliest"
+  strategy:              "priority_task"
   low_battery_pct:       20.0
   charge_until_pct:      90.0
   battery_safety_margin: 1.15

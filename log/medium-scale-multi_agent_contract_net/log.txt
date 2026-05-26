@@ -1,0 +1,218 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): medium-scale-multi_agent_contract_net
+启动时间:                 2026-05-26 17:33:13
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-multi_agent_contract_net
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\configs\medium.yaml
+
+---- 事件日志 ----
+[2026-05-26 17:33:13] [START] Experiment 'medium-scale-multi_agent_contract_net' started.
+[2026-05-26 17:33:13] [INFO] strategy=multi_agent_contract_net, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=replay=F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-composite_score/task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-multi_agent_contract_net\task_generation_seed.yaml
+[2026-05-26 17:33:16] [PROGRESS] sim_elapsed=360s strategy=multi_agent_contract_net tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:33:20] [PROGRESS] sim_elapsed=720s strategy=multi_agent_contract_net tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:33:24] [PROGRESS] sim_elapsed=1080s strategy=multi_agent_contract_net tasks total=5 completed=1 pending=0 in_progress=4 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:33:26] [TASK] replay task t1001 weight=38.7 prio=3 deadline=1779793270 pending=1/20
+[2026-05-26 17:33:26] [TASK] replay task t1002 weight=256.2 prio=1 deadline=1779795070 pending=2/20
+[2026-05-26 17:33:28] [PROGRESS] sim_elapsed=1440s strategy=multi_agent_contract_net tasks total=7 completed=1 pending=0 in_progress=6 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 17:33:32] [PROGRESS] sim_elapsed=1800s strategy=multi_agent_contract_net tasks total=7 completed=1 pending=0 in_progress=6 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 17:33:35] [PROGRESS] sim_elapsed=2160s strategy=multi_agent_contract_net tasks total=7 completed=3 pending=0 in_progress=4 timeout=0 vehicles idle=6 moving=0 charging=0
+[2026-05-26 17:33:39] [PROGRESS] sim_elapsed=2520s strategy=multi_agent_contract_net tasks total=7 completed=3 pending=0 in_progress=4 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 17:33:40] [TASK] replay task t1003 weight=183.3 prio=2 deadline=1779791033 pending=1/20
+[2026-05-26 17:33:40] [TASK] replay task t1004 weight=363.5 prio=2 deadline=1779790948 pending=2/20
+[2026-05-26 17:33:40] [TASK] replay task t1005 weight=145.7 prio=5 deadline=1779794740 pending=3/20
+[2026-05-26 17:33:40] [TASK] replay task t1006 weight=395.2 prio=3 deadline=1779793318 pending=4/20
+[2026-05-26 17:33:43] [PROGRESS] sim_elapsed=2880s strategy=multi_agent_contract_net tasks total=11 completed=4 pending=0 in_progress=7 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 17:33:47] [PROGRESS] sim_elapsed=3240s strategy=multi_agent_contract_net tasks total=11 completed=5 pending=0 in_progress=6 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 17:33:50] [TASK] replay task t1007 weight=413.1 prio=2 deadline=1779790592 pending=1/20
+[2026-05-26 17:33:50] [TASK] replay task t1008 weight=380.6 prio=5 deadline=1779790149 pending=2/20
+[2026-05-26 17:33:51] [PROGRESS] sim_elapsed=3600s strategy=multi_agent_contract_net tasks total=13 completed=7 pending=2 in_progress=4 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 17:33:55] [PROGRESS] sim_elapsed=3960s strategy=multi_agent_contract_net tasks total=13 completed=8 pending=0 in_progress=5 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 17:33:59] [PROGRESS] sim_elapsed=4320s strategy=multi_agent_contract_net tasks total=13 completed=8 pending=0 in_progress=5 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 17:34:03] [PROGRESS] sim_elapsed=4680s strategy=multi_agent_contract_net tasks total=13 completed=11 pending=0 in_progress=2 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-26 17:34:03] [TASK] replay task t1009 weight=372.5 prio=1 deadline=1779791557 pending=1/20
+[2026-05-26 17:34:03] [TASK] replay task t1010 weight=195.5 prio=4 deadline=1779790439 pending=2/20
+[2026-05-26 17:34:03] [TASK] replay task t1011 weight=448.4 prio=4 deadline=1779792296 pending=3/20
+[2026-05-26 17:34:08] [PROGRESS] sim_elapsed=5040s strategy=multi_agent_contract_net tasks total=16 completed=12 pending=0 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 17:34:11] [PROGRESS] sim_elapsed=5400s strategy=multi_agent_contract_net tasks total=16 completed=12 pending=0 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 17:34:11] [TASK] replay task t1012 weight=97.6 prio=4 deadline=1779794295 pending=1/20
+[2026-05-26 17:34:11] [TASK] replay task t1013 weight=101.2 prio=4 deadline=1779793212 pending=2/20
+[2026-05-26 17:34:11] [TASK] replay task t1014 weight=220.8 prio=1 deadline=1779791309 pending=3/20
+[2026-05-26 17:34:16] [PROGRESS] sim_elapsed=5760s strategy=multi_agent_contract_net tasks total=19 completed=13 pending=0 in_progress=6 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 17:34:18] [TASK] replay task t1015 weight=162.9 prio=1 deadline=1779793877 pending=1/20
+[2026-05-26 17:34:18] [TASK] replay task t1016 weight=341.2 prio=2 deadline=1779792988 pending=2/20
+[2026-05-26 17:34:18] [TASK] replay task t1017 weight=329.2 prio=3 deadline=1779790862 pending=3/20
+[2026-05-26 17:34:20] [PROGRESS] sim_elapsed=6120s strategy=multi_agent_contract_net tasks total=22 completed=15 pending=1 in_progress=6 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 17:34:24] [PROGRESS] sim_elapsed=6480s strategy=multi_agent_contract_net tasks total=22 completed=16 pending=1 in_progress=5 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 17:34:27] [TASK] replay task t1018 weight=431.9 prio=4 deadline=1779794014 pending=2/20
+[2026-05-26 17:34:27] [TASK] replay task t1019 weight=368.9 prio=2 deadline=1779790405 pending=3/20
+[2026-05-26 17:34:27] [TASK] replay task t1020 weight=341.6 prio=2 deadline=1779789989 pending=4/20
+[2026-05-26 17:34:28] [PROGRESS] sim_elapsed=6840s strategy=multi_agent_contract_net tasks total=25 completed=17 pending=4 in_progress=4 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 17:34:28] [INFO] task generation stopped at sim_elapsed=6840s (reason: budget/max_sim_seconds reached). continuing until all tasks settle.
+[2026-05-26 17:34:32] [PROGRESS] sim_elapsed=7200s strategy=multi_agent_contract_net tasks total=25 completed=18 pending=4 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 17:34:35] [PROGRESS] sim_elapsed=7560s strategy=multi_agent_contract_net tasks total=25 completed=18 pending=4 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 17:34:40] [PROGRESS] sim_elapsed=7920s strategy=multi_agent_contract_net tasks total=25 completed=20 pending=4 in_progress=1 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-26 17:34:45] [PROGRESS] sim_elapsed=8280s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-26 17:34:50] [PROGRESS] sim_elapsed=8640s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-26 17:34:53] [PROGRESS] sim_elapsed=9000s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-26 17:34:57] [PROGRESS] sim_elapsed=9360s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 17:35:01] [PROGRESS] sim_elapsed=9720s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=4
+[2026-05-26 17:35:05] [PROGRESS] sim_elapsed=10080s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=4
+[2026-05-26 17:35:09] [PROGRESS] sim_elapsed=10440s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=4
+[2026-05-26 17:35:12] [PROGRESS] sim_elapsed=10800s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=6
+[2026-05-26 17:35:16] [PROGRESS] sim_elapsed=11160s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=6
+[2026-05-26 17:35:20] [PROGRESS] sim_elapsed=11520s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=5
+[2026-05-26 17:35:23] [PROGRESS] sim_elapsed=11880s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=5
+[2026-05-26 17:35:27] [PROGRESS] sim_elapsed=12240s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=5
+[2026-05-26 17:35:31] [PROGRESS] sim_elapsed=12600s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=4 in_progress=0 timeout=0 vehicles idle=1 moving=0 charging=5
+[2026-05-26 17:35:35] [PROGRESS] sim_elapsed=12960s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=1 charging=5
+[2026-05-26 17:35:39] [PROGRESS] sim_elapsed=13320s strategy=multi_agent_contract_net tasks total=25 completed=21 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 17:35:43] [PROGRESS] sim_elapsed=13680s strategy=multi_agent_contract_net tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-26 17:35:47] [PROGRESS] sim_elapsed=14040s strategy=multi_agent_contract_net tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 17:35:50] [PROGRESS] sim_elapsed=14400s strategy=multi_agent_contract_net tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 17:35:54] [PROGRESS] sim_elapsed=14760s strategy=multi_agent_contract_net tasks total=25 completed=22 pending=0 in_progress=3 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-26 17:35:57] [PROGRESS] sim_elapsed=15120s strategy=multi_agent_contract_net tasks total=25 completed=23 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:36:01] [PROGRESS] sim_elapsed=15480s strategy=multi_agent_contract_net tasks total=25 completed=23 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:36:05] [PROGRESS] sim_elapsed=15840s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:36:08] [PROGRESS] sim_elapsed=16200s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:36:12] [PROGRESS] sim_elapsed=16560s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:36:15] [PROGRESS] sim_elapsed=16920s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-26 17:36:19] [PROGRESS] sim_elapsed=17280s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-26 17:36:22] [PROGRESS] sim_elapsed=17640s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-26 17:36:26] [PROGRESS] sim_elapsed=18000s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-26 17:36:29] [PROGRESS] sim_elapsed=18360s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-26 17:36:33] [PROGRESS] sim_elapsed=18720s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-26 17:36:37] [PROGRESS] sim_elapsed=19080s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-26 17:36:40] [PROGRESS] sim_elapsed=19440s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-26 17:36:44] [PROGRESS] sim_elapsed=19800s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-26 17:36:47] [PROGRESS] sim_elapsed=20160s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-26 17:36:51] [PROGRESS] sim_elapsed=20520s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:36:54] [PROGRESS] sim_elapsed=20880s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:36:58] [PROGRESS] sim_elapsed=21240s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:37:01] [PROGRESS] sim_elapsed=21600s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 17:37:05] [PROGRESS] sim_elapsed=21960s strategy=multi_agent_contract_net tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+
+[2026-05-26 17:37:06] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: medium-scale-multi_agent_contract_net
+停止原因: all_tasks_done
+仿真时长: 22080 仿真秒 / 233.5 现实秒
+
+[ 任务 ]
+  总数=25 完成=25 按时=25 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=100.00% 超时率=0.00%
+
+[ 得分 ]
+  总分=2485.8 每任务平均=99.43 按时平均=99.43
+
+[ 时效 ]
+  平均完成时长=34.6s 平均超时=0.00min 吞吐=4.08 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=467356m 任务腿均长=17878m 里程方差(车均衡)=26692
+  总能耗=684.76kWh 单任务能耗=27.390kWh
+
+[ 车队 ]
+  总车数=6 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: medium-scale-multi_agent_contract_net
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 22080.0
+wall_seconds_elapsed: 233.495831
+tasks:
+  total: 25
+  completed: 25
+  on_time: 25
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 1.0
+  timeout_rate: 0.0
+scores:
+  total: 2485.814933333437
+  per_task_average: 99.43259733333747
+  per_task_on_time_average: 99.43259733333747
+  average: 99.43259733333747
+timing:
+  avg_completion_duration_sec: 34.64
+  avg_overdue_minutes: 0.0
+  throughput_tasks_per_hour: 4.076086956521739
+distance_meters:
+  total_fleet_traveled: 467355.6949999986
+  average_completed_task_leg: 17877.808319999815
+  fleet_distance_stdev: 26692.472793873603
+energy:
+  total_energy: 684.7611759999976
+  energy_per_completed: 27.390447039999902
+vehicles_summary:
+  total: 6
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+    '4': 0
+    '5': 0
+    '6': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 43.57987699999877
+  battery_percentage: 72.63312833333127
+  total_distance_traveled: 61420.12300000125
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 44.211985999999406
+  battery_percentage: 73.68664333333234
+  total_distance_traveled: 53588.01400000053
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 65.52470649999847
+  battery_percentage: 65.52470649999847
+  total_distance_traveled: 128583.52900000112
+  energy_consumption_trip: 85.37870399999971
+  final_status: idle
+  completed_tasks: 0
+- id: 4
+  type: medium
+  battery_final: 73.4878165000068
+  battery_percentage: 73.4878165000068
+  total_distance_traveled: 72234.78899999555
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 5
+  type: medium
+  battery_final: 72.96124600000115
+  battery_percentage: 72.96124600000115
+  total_distance_traveled: 69065.83599999927
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 6
+  type: large
+  battery_final: 111.07319199999819
+  battery_percentage: 74.04879466666546
+  total_distance_traveled: 82463.40400000093
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0
+- id: cs2
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0

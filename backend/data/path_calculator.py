@@ -580,8 +580,7 @@ class PathCalculator:
         
         # 综合得分
         total_score = task_reward + priority_reward - distance_cost + early_reward - overdue_cost
-        
-        return total_score
+        return max(0.0, float(total_score))
 
     def calculate_round_trip_energy(
         self,

@@ -203,6 +203,100 @@ def can_complete_chain(
     return vehicle.battery + 1e-9 >= need
 
 
+def estimate_chain_distance_with_recharge(
+    vehicle: Vehicle,
+    waypoints: List[Tuple[float, float]],
+    snapshot: Snapshot,
+    *,
+    require_final_station_buffer: bool = True,
+) -> float:
+    """估算车辆完成一条任务链的实际车程（允许中途绕行充电站）。
+
+    返回值：
+      - 可行时：车行驶总距离（米），不含回仓；
+      - 不可行时：float("inf")。
+    """
+    if not waypoints:
+        return 0.0
+
+    if float(getattr(vehicle, "max_battery", 0.0)) <= 0:
+        return float("inf")
+
+    stations = list(getattr(snapshot, "charging_stations", []) or [])
+    margin = _safety_margin()
+    cur = (float(vehicle.position.x), float(vehicle.position.y))
+    battery = float(vehicle.battery)
+    total_d = 0.0
+
+    def _best_reachable_station_from(
+        xy: Tuple[float, float], cur_battery: float
+    ) -> Optional[Tuple[ChargingStation, float]]:
+        best: Optional[Tuple[ChargingStation, float]] = None
+        best_d = float("inf")
+        for st in stations:
+            st_xy = (st.position.x, st.position.y)
+            d = snapshot.distance(xy, st_xy)
+            if d == float("inf"):
+                continue
+            need = energy_required_for_distance(vehicle, d) * margin
+            if cur_battery + 1e-9 < need:
+                continue
+            if d < best_d:
+                best_d = d
+                best = (st, d)
+        return best
+
+    for i, target in enumerate(waypoints):
+        while True:
+            leg_d = snapshot.distance(cur, target)
+            if leg_d == float("inf"):
+                return float("inf")
+
+            need_buffer = require_final_station_buffer or (i < len(waypoints) - 1)
+            extra = 0.0
+            if need_buffer and stations:
+                d_buf = min_distance_to_any_station(target, stations, snapshot)
+                if d_buf == float("inf"):
+                    return float("inf")
+                extra = d_buf
+
+            need = energy_required_for_distance(vehicle, leg_d + extra) * margin
+            if battery + 1e-9 >= need:
+                total_d += leg_d
+                battery -= energy_required_for_distance(vehicle, leg_d)
+                cur = target
+                break
+
+            # 不能直接安全到下一任务点，先尝试去可达充电站补能
+            if not stations:
+                return float("inf")
+            choice = _best_reachable_station_from(cur, battery)
+            if choice is None:
+                return float("inf")
+
+            st, d_to_station = choice
+            total_d += d_to_station
+            battery -= energy_required_for_distance(vehicle, d_to_station)
+            cur = (st.position.x, st.position.y)
+            battery = float(vehicle.max_battery)
+
+            # 满电仍达不到目标 + buffer，判不可行，避免死循环
+            check_leg = snapshot.distance(cur, target)
+            if check_leg == float("inf"):
+                return float("inf")
+            check_extra = 0.0
+            if need_buffer and stations:
+                check_buf = min_distance_to_any_station(target, stations, snapshot)
+                if check_buf == float("inf"):
+                    return float("inf")
+                check_extra = check_buf
+            max_need = energy_required_for_distance(vehicle, check_leg + check_extra) * margin
+            if float(vehicle.max_battery) + 1e-9 < max_need:
+                return float("inf")
+
+    return total_d
+
+
 def best_charging_station(
     vehicle: Vehicle, snapshot: Snapshot
 ) -> Optional[ChargingStation]:
@@ -481,10 +575,18 @@ def decide_at_warehouse(
 
     picked = pick_tasks(vehicle, pending, snapshot)
     if not picked:
+        # 仍有待分配任务，但当前电量/可达性下一个都接不了：
+        # 优先补能，避免车辆在仓库“长期空闲卡住”。
+        station = best_charging_station(vehicle, snapshot)
+        if station is not None:
+            return make_charge_command(vehicle, station)
         return make_idle_command(vehicle)
 
     picked = feasible_task_batch_for(vehicle, picked)
     if not picked:
+        station = best_charging_station(vehicle, snapshot)
+        if station is not None:
+            return make_charge_command(vehicle, station)
         return make_idle_command(vehicle)
 
     order = greedy_chain(
