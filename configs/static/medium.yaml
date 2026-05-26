@@ -45,7 +45,7 @@ vehicle:
 
 
 task:
-  generation_seed_file: "F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-composite_score/task_generation_seed.yaml"
+  generation_seed_file: null
   initial_tasks:               5
   generation_interval_sec_min: 5
   generation_interval_sec_max: 15

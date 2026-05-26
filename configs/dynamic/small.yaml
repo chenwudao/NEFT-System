@@ -10,6 +10,13 @@ experiment:
   name: "small-scale-nearest-baseline"
   log_dir: "log"
 
+optimization:
+  mode: "dynamic"   # dynamic | static
+  static:
+    strategy: "static_exact_solver"
+    solver: "gurobi"      # gurobi | cplex（未安装会自动回退）
+    max_exact_tasks: 10
+
 # =============================================================
 # 仿真规模：小
 # =============================================================
@@ -24,6 +31,7 @@ charging_station:
   max_queue_time:   600
 
 task:
+  generation_seed_file: null
   initial_tasks:               3
   generation_interval_sec_min: 15
   generation_interval_sec_max: 40
@@ -63,3 +71,14 @@ simulation:
   marker_tween_adaptive: true
   # 全部任务结算后是否自动停止仿真（唯一的自动停止条件）
   stop_when_all_tasks_done: true
+
+scoring:
+  task_assign_reward: 120.0
+  priority_reward: 30.0
+  distance_penalty: 0.02
+  early_completion_reward_per_min: 2.0
+  overdue_penalty_per_min: 50.0
+  idle_penalty: 5.0
+  assumed_speed_mps: 10.0
+  urgent_deadline_window: 1800
+  max_deadline_window: 7200

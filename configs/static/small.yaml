@@ -1,0 +1,80 @@
+# 小规模配置（静态上帝视角）
+experiment:
+  name: "small-scale-static_exact_solver"
+  log_dir: "log"
+
+optimization:
+  mode: "static"   # dynamic | static
+  static:
+    strategy: "static_exact_solver"
+    solver: "gurobi"
+    max_exact_tasks: 30
+    full_exact_global: true
+    full_exact_max_tasks: 30
+    strict_global_optimum: true
+    mip_gap_threshold: 0.02
+    time_limit_s: 180
+    live_gap_log: true
+    live_gap_log_interval_s: 2.0
+    max_lateness_s: 3600
+    gurobi_tuning:
+      mip_focus: 1
+      heuristics: 0.25
+      cuts: 2
+      presolve: 2
+      threads: 0
+
+fleet:
+  small_count:   2
+  medium_count:  1
+  large_count:   0
+  station_count: 1
+
+charging_station:
+  default_capacity: 2
+  max_queue_time:   600
+
+task:
+  # 建议先用 null 生成一份小规模 seed，再用于动态/静态对比回放
+  generation_seed_file: null
+  initial_tasks:               3
+  generation_interval_sec_min: 15
+  generation_interval_sec_max: 40
+  generation_batch_min:        1
+  generation_batch_max:        2
+  max_pending_tasks:           8
+  min_weight:           10.0
+  max_weight:           800.0
+  min_priority:         1
+  max_priority:         5
+  min_deadline_offset:  900
+  max_deadline_offset:  3600
+  total_task_budget:    30
+
+scheduling:
+  # static 模式下该字段不作为主策略，仅保留兼容
+  strategy:              "nearest_task"
+  low_battery_pct:       25.0
+  charge_until_pct:      90.0
+  battery_safety_margin: 1.15
+  charge_load_weight_m:  8000.0
+  charge_queue_weight_m: 2000.0
+
+simulation:
+  speed_factor:    120
+  tick_interval:   1.0
+  max_sim_seconds: 3600
+  marker_tween_ms: 900
+  marker_tween_adaptive: true
+  stop_when_all_tasks_done: true
+
+scoring:
+  task_assign_reward: 120.0
+  priority_reward: 30.0
+  distance_penalty: 0.02
+  early_completion_reward_per_min: 2.0
+  overdue_penalty_per_min: 50.0
+  idle_penalty: 5.0
+  assumed_speed_mps: 10.0
+  urgent_deadline_window: 1800
+  max_deadline_window: 7200

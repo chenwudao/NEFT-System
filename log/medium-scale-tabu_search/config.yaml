@@ -62,7 +62,7 @@ task:
   min_deadline_offset: 1800
   max_deadline_offset: 7200
   total_task_budget: 80
-  generation_seed_file: F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-composite_score/task_generation_seed.yaml
+  generation_seed_file: null
 simulation:
   speed_factor: 120
   tick_interval: 1.0
@@ -91,6 +91,18 @@ optimization:
     strategy: static_exact_solver
     solver: gurobi
     max_exact_tasks: 10
+    strict_global_optimum: false
+    mip_gap_threshold: 0.02
+    time_limit_s: 300
+    live_gap_log: true
+    live_gap_log_interval_s: 2.0
+    max_lateness_s: 7200
+    gurobi_tuning:
+      mip_focus: 1
+      heuristics: 0.25
+      cuts: 2
+      presolve: 2
+      threads: 0
 performance_metrics:
   completion_weight: 0.5
   time_weight: 0.3

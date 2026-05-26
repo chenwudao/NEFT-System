@@ -3,6 +3,13 @@ experiment:
   name: "large-scale-simulated-annealing"
   log_dir: "log"
 
+optimization:
+  mode: "dynamic"   # dynamic | static
+  static:
+    strategy: "static_exact_solver"
+    solver: "gurobi"      # gurobi | cplex（未安装会自动回退）
+    max_exact_tasks: 10
+
 fleet:
   small_count:   4
   medium_count:  6
@@ -14,6 +21,7 @@ charging_station:
   max_queue_time:   900
 
 task:
+  generation_seed_file: null
   initial_tasks:               12
   generation_interval_sec_min: 6
   generation_interval_sec_max: 18
@@ -50,3 +58,14 @@ simulation:
   marker_tween_ms: 900
   marker_tween_adaptive: true
   stop_when_all_tasks_done: true
+
+scoring:
+  task_assign_reward: 120.0
+  priority_reward: 30.0
+  distance_penalty: 0.02
+  early_completion_reward_per_min: 2.0
+  overdue_penalty_per_min: 50.0
+  idle_penalty: 5.0
+  assumed_speed_mps: 10.0
+  urgent_deadline_window: 1800
+  max_deadline_window: 7200

@@ -1,97 +1,72 @@
 # NEFT 仿真实验日志
 实验名 (experiment.name): medium-scale-hyper_heuristic
-启动时间:                 2026-05-26 15:27:47
+启动时间:                 2026-05-26 23:53:21
 日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-hyper_heuristic
-配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\configs\medium.yaml
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\configs\dynamic\medium.yaml
 
 ---- 事件日志 ----
-[2026-05-26 15:27:47] [START] Experiment 'medium-scale-hyper_heuristic' started.
-[2026-05-26 15:27:48] [INFO] strategy=hyper_heuristic, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=replay=F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-composite_score/task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-hyper_heuristic\task_generation_seed.yaml
-[2026-05-26 15:27:52] [PROGRESS] sim_elapsed=360s strategy=hyper_heuristic tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-26 15:27:55] [PROGRESS] sim_elapsed=720s strategy=hyper_heuristic tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-26 15:27:59] [PROGRESS] sim_elapsed=1080s strategy=hyper_heuristic tasks total=5 completed=2 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-26 15:28:03] [TASK] replay task t1001 weight=38.7 prio=3 deadline=1779785747 pending=1/20
-[2026-05-26 15:28:03] [TASK] replay task t1002 weight=256.2 prio=1 deadline=1779787547 pending=2/20
-[2026-05-26 15:28:03] [PROGRESS] sim_elapsed=1440s strategy=hyper_heuristic tasks total=7 completed=3 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=4 charging=2
-[2026-05-26 15:28:07] [PROGRESS] sim_elapsed=1800s strategy=hyper_heuristic tasks total=7 completed=3 pending=0 in_progress=4 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-26 15:28:11] [PROGRESS] sim_elapsed=2160s strategy=hyper_heuristic tasks total=7 completed=3 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-26 15:28:15] [PROGRESS] sim_elapsed=2520s strategy=hyper_heuristic tasks total=7 completed=4 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-26 15:28:15] [TASK] replay task t1003 weight=183.3 prio=2 deadline=1779783508 pending=1/20
-[2026-05-26 15:28:15] [TASK] replay task t1004 weight=363.5 prio=2 deadline=1779783423 pending=2/20
-[2026-05-26 15:28:15] [TASK] replay task t1005 weight=145.7 prio=5 deadline=1779787215 pending=3/20
-[2026-05-26 15:28:15] [TASK] replay task t1006 weight=395.2 prio=3 deadline=1779785793 pending=4/20
-[2026-05-26 15:28:18] [PROGRESS] sim_elapsed=2880s strategy=hyper_heuristic tasks total=11 completed=5 pending=4 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-26 15:28:22] [PROGRESS] sim_elapsed=3240s strategy=hyper_heuristic tasks total=11 completed=5 pending=0 in_progress=6 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-26 15:28:25] [TASK] replay task t1007 weight=413.1 prio=2 deadline=1779783067 pending=1/20
-[2026-05-26 15:28:25] [TASK] replay task t1008 weight=380.6 prio=5 deadline=1779782624 pending=2/20
-[2026-05-26 15:28:27] [PROGRESS] sim_elapsed=3600s strategy=hyper_heuristic tasks total=13 completed=7 pending=0 in_progress=6 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-26 15:28:31] [PROGRESS] sim_elapsed=3960s strategy=hyper_heuristic tasks total=13 completed=9 pending=0 in_progress=4 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-26 15:28:35] [PROGRESS] sim_elapsed=4320s strategy=hyper_heuristic tasks total=13 completed=10 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=4 charging=1
-[2026-05-26 15:28:39] [PROGRESS] sim_elapsed=4680s strategy=hyper_heuristic tasks total=13 completed=11 pending=0 in_progress=2 timeout=0 vehicles idle=3 moving=2 charging=1
-[2026-05-26 15:28:39] [TASK] replay task t1009 weight=372.5 prio=1 deadline=1779784033 pending=1/20
-[2026-05-26 15:28:39] [TASK] replay task t1010 weight=195.5 prio=4 deadline=1779782915 pending=2/20
-[2026-05-26 15:28:39] [TASK] replay task t1011 weight=448.4 prio=4 deadline=1779784772 pending=3/20
-[2026-05-26 15:28:43] [PROGRESS] sim_elapsed=5040s strategy=hyper_heuristic tasks total=16 completed=13 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=4 charging=1
-[2026-05-26 15:28:47] [PROGRESS] sim_elapsed=5400s strategy=hyper_heuristic tasks total=16 completed=14 pending=0 in_progress=2 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-26 15:28:47] [TASK] replay task t1012 weight=97.6 prio=4 deadline=1779786771 pending=1/20
-[2026-05-26 15:28:47] [TASK] replay task t1013 weight=101.2 prio=4 deadline=1779785688 pending=2/20
-[2026-05-26 15:28:47] [TASK] replay task t1014 weight=220.8 prio=1 deadline=1779783785 pending=3/20
-[2026-05-26 15:28:51] [PROGRESS] sim_elapsed=5760s strategy=hyper_heuristic tasks total=19 completed=14 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-26 15:28:53] [TASK] replay task t1015 weight=162.9 prio=1 deadline=1779786352 pending=1/20
-[2026-05-26 15:28:53] [TASK] replay task t1016 weight=341.2 prio=2 deadline=1779785463 pending=2/20
-[2026-05-26 15:28:53] [TASK] replay task t1017 weight=329.2 prio=3 deadline=1779783337 pending=3/20
-[2026-05-26 15:28:55] [PROGRESS] sim_elapsed=6120s strategy=hyper_heuristic tasks total=22 completed=14 pending=3 in_progress=5 timeout=0 vehicles idle=0 moving=5 charging=1
-[2026-05-26 15:28:59] [PROGRESS] sim_elapsed=6480s strategy=hyper_heuristic tasks total=22 completed=15 pending=3 in_progress=4 timeout=0 vehicles idle=0 moving=4 charging=2
-[2026-05-26 15:29:02] [TASK] replay task t1018 weight=431.9 prio=4 deadline=1779786489 pending=4/20
-[2026-05-26 15:29:02] [TASK] replay task t1019 weight=368.9 prio=2 deadline=1779782880 pending=5/20
-[2026-05-26 15:29:02] [TASK] replay task t1020 weight=341.6 prio=2 deadline=1779782464 pending=6/20
-[2026-05-26 15:29:02] [PROGRESS] sim_elapsed=6840s strategy=hyper_heuristic tasks total=25 completed=16 pending=6 in_progress=3 timeout=0 vehicles idle=2 moving=2 charging=2
-[2026-05-26 15:29:02] [INFO] task generation stopped at sim_elapsed=6840s (reason: budget/max_sim_seconds reached). continuing until all tasks settle.
-[2026-05-26 15:29:07] [PROGRESS] sim_elapsed=7200s strategy=hyper_heuristic tasks total=25 completed=17 pending=2 in_progress=6 timeout=0 vehicles idle=0 moving=4 charging=2
-[2026-05-26 15:29:11] [PROGRESS] sim_elapsed=7560s strategy=hyper_heuristic tasks total=25 completed=18 pending=2 in_progress=5 timeout=0 vehicles idle=0 moving=2 charging=4
-[2026-05-26 15:29:15] [PROGRESS] sim_elapsed=7920s strategy=hyper_heuristic tasks total=25 completed=18 pending=2 in_progress=5 timeout=0 vehicles idle=0 moving=2 charging=4
-[2026-05-26 15:29:18] [PROGRESS] sim_elapsed=8280s strategy=hyper_heuristic tasks total=25 completed=19 pending=2 in_progress=4 timeout=0 vehicles idle=0 moving=2 charging=4
-[2026-05-26 15:29:22] [PROGRESS] sim_elapsed=8640s strategy=hyper_heuristic tasks total=25 completed=19 pending=2 in_progress=4 timeout=0 vehicles idle=0 moving=1 charging=5
-[2026-05-26 15:29:26] [PROGRESS] sim_elapsed=9000s strategy=hyper_heuristic tasks total=25 completed=19 pending=2 in_progress=4 timeout=0 vehicles idle=0 moving=1 charging=5
-[2026-05-26 15:29:30] [PROGRESS] sim_elapsed=9360s strategy=hyper_heuristic tasks total=25 completed=19 pending=2 in_progress=4 timeout=0 vehicles idle=0 moving=1 charging=5
-[2026-05-26 15:29:33] [PROGRESS] sim_elapsed=9720s strategy=hyper_heuristic tasks total=25 completed=20 pending=2 in_progress=3 timeout=0 vehicles idle=0 moving=2 charging=4
-[2026-05-26 15:29:37] [PROGRESS] sim_elapsed=10080s strategy=hyper_heuristic tasks total=25 completed=20 pending=2 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=3
-[2026-05-26 15:29:41] [PROGRESS] sim_elapsed=10440s strategy=hyper_heuristic tasks total=25 completed=20 pending=2 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=3
-[2026-05-26 15:29:44] [PROGRESS] sim_elapsed=10800s strategy=hyper_heuristic tasks total=25 completed=20 pending=2 in_progress=3 timeout=0 vehicles idle=3 moving=1 charging=2
-[2026-05-26 15:29:49] [PROGRESS] sim_elapsed=11160s strategy=hyper_heuristic tasks total=25 completed=20 pending=1 in_progress=4 timeout=0 vehicles idle=1 moving=3 charging=2
-[2026-05-26 15:29:52] [PROGRESS] sim_elapsed=11520s strategy=hyper_heuristic tasks total=25 completed=20 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=4 charging=2
-[2026-05-26 15:29:56] [PROGRESS] sim_elapsed=11880s strategy=hyper_heuristic tasks total=25 completed=21 pending=0 in_progress=4 timeout=0 vehicles idle=1 moving=3 charging=2
-[2026-05-26 15:30:00] [PROGRESS] sim_elapsed=12240s strategy=hyper_heuristic tasks total=25 completed=23 pending=0 in_progress=2 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-26 15:30:04] [PROGRESS] sim_elapsed=12600s strategy=hyper_heuristic tasks total=25 completed=23 pending=0 in_progress=2 timeout=0 vehicles idle=1 moving=4 charging=1
-[2026-05-26 15:30:08] [PROGRESS] sim_elapsed=12960s strategy=hyper_heuristic tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=1 moving=4 charging=1
-[2026-05-26 15:30:12] [PROGRESS] sim_elapsed=13320s strategy=hyper_heuristic tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=1 moving=4 charging=1
-[2026-05-26 15:30:15] [PROGRESS] sim_elapsed=13680s strategy=hyper_heuristic tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=1 charging=1
-[2026-05-26 15:30:19] [PROGRESS] sim_elapsed=14040s strategy=hyper_heuristic tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=2 charging=1
-[2026-05-26 15:30:23] [PROGRESS] sim_elapsed=14400s strategy=hyper_heuristic tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=1 charging=1
-[2026-05-26 15:30:27] [PROGRESS] sim_elapsed=14760s strategy=hyper_heuristic tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=1 charging=1
-[2026-05-26 15:30:31] [PROGRESS] sim_elapsed=15120s strategy=hyper_heuristic tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=1 charging=1
-[2026-05-26 15:30:35] [PROGRESS] sim_elapsed=15480s strategy=hyper_heuristic tasks total=25 completed=24 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=1 charging=1
+[2026-05-26 23:53:21] [START] Experiment 'medium-scale-hyper_heuristic' started.
+[2026-05-26 23:53:21] [INFO] [HEADLESS] mode=dynamic, strategy=hyper_heuristic, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=record(base_seed=1813934988), seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-hyper_heuristic\task_generation_seed.yaml
+[2026-05-26 23:53:22] [PROGRESS] sim_elapsed=360s strategy=hyper_heuristic tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 23:53:22] [PROGRESS] sim_elapsed=720s strategy=hyper_heuristic tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 23:53:22] [PROGRESS] sim_elapsed=1080s strategy=hyper_heuristic tasks total=5 completed=1 pending=0 in_progress=4 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 23:53:22] [PROGRESS] sim_elapsed=1440s strategy=hyper_heuristic tasks total=5 completed=3 pending=0 in_progress=2 timeout=0 vehicles idle=2 moving=2 charging=2
+[2026-05-26 23:53:22] [PROGRESS] sim_elapsed=1800s strategy=hyper_heuristic tasks total=7 completed=3 pending=2 in_progress=2 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 23:53:22] [PROGRESS] sim_elapsed=2160s strategy=hyper_heuristic tasks total=7 completed=3 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 23:53:22] [PROGRESS] sim_elapsed=2520s strategy=hyper_heuristic tasks total=11 completed=3 pending=6 in_progress=2 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 23:53:23] [PROGRESS] sim_elapsed=2880s strategy=hyper_heuristic tasks total=11 completed=3 pending=5 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-26 23:53:24] [PROGRESS] sim_elapsed=3240s strategy=hyper_heuristic tasks total=11 completed=4 pending=0 in_progress=7 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 23:53:24] [PROGRESS] sim_elapsed=3600s strategy=hyper_heuristic tasks total=11 completed=4 pending=0 in_progress=7 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 23:53:24] [PROGRESS] sim_elapsed=3960s strategy=hyper_heuristic tasks total=13 completed=6 pending=0 in_progress=7 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 23:53:25] [PROGRESS] sim_elapsed=4320s strategy=hyper_heuristic tasks total=13 completed=8 pending=0 in_progress=5 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-26 23:53:25] [PROGRESS] sim_elapsed=4680s strategy=hyper_heuristic tasks total=13 completed=8 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 23:53:25] [PROGRESS] sim_elapsed=5040s strategy=hyper_heuristic tasks total=13 completed=9 pending=0 in_progress=4 timeout=0 vehicles idle=2 moving=2 charging=2
+[2026-05-26 23:53:25] [PROGRESS] sim_elapsed=5400s strategy=hyper_heuristic tasks total=16 completed=10 pending=2 in_progress=4 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 23:53:25] [PROGRESS] sim_elapsed=5760s strategy=hyper_heuristic tasks total=16 completed=11 pending=2 in_progress=3 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-26 23:53:25] [PROGRESS] sim_elapsed=6120s strategy=hyper_heuristic tasks total=16 completed=12 pending=0 in_progress=4 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=6480s strategy=hyper_heuristic tasks total=18 completed=12 pending=2 in_progress=4 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=6840s strategy=hyper_heuristic tasks total=18 completed=13 pending=2 in_progress=3 timeout=0 vehicles idle=2 moving=1 charging=3
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=7200s strategy=hyper_heuristic tasks total=18 completed=13 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=7560s strategy=hyper_heuristic tasks total=18 completed=14 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=7920s strategy=hyper_heuristic tasks total=18 completed=15 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=8280s strategy=hyper_heuristic tasks total=18 completed=15 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=8640s strategy=hyper_heuristic tasks total=18 completed=15 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=2 charging=3
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=9000s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=2 moving=1 charging=3
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=9360s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=2 moving=1 charging=3
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=9720s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=4 moving=0 charging=2
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=10080s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=4 moving=1 charging=1
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=10440s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=10800s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=11160s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=11520s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=11880s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=12240s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=12600s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=12960s strategy=hyper_heuristic tasks total=18 completed=16 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=13320s strategy=hyper_heuristic tasks total=18 completed=17 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=13680s strategy=hyper_heuristic tasks total=18 completed=17 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-26 23:53:26] [PROGRESS] sim_elapsed=14040s strategy=hyper_heuristic tasks total=18 completed=17 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
 
-[2026-05-26 15:30:36] [STOP] reason=all_tasks_done
+[2026-05-26 23:53:26] [STOP] reason=all_tasks_done
 
 ---- 最终结果 ----
 实验名: medium-scale-hyper_heuristic
 停止原因: all_tasks_done
-仿真时长: 15600 仿真秒 / 168.4 现实秒
+仿真时长: 14160 仿真秒 / 5.3 现实秒
 
 [ 任务 ]
-  总数=25 完成=25 按时=25 超时=0 进行中=0 待派=0
+  总数=18 完成=18 按时=18 超时=0 进行中=0 待派=0
   完成率=100.00% 按时率=100.00% 超时率=0.00%
 
 [ 得分 ]
-  总分=2893.1 每任务平均=115.72 按时平均=115.72
+  总分=1943.2 每任务平均=107.96 按时平均=107.96
 
 [ 时效 ]
-  平均完成时长=29.2s 平均超时=0.00min 吞吐=5.77 任务/小时
+  平均完成时长=1.8s 平均超时=0.00min 吞吐=4.58 任务/小时
 
 [ 距离 / 能耗 ]
-  车队总里程=521104m 任务腿均长=16029m 里程方差(车均衡)=12548
-  总能耗=731.17kWh 单任务能耗=29.247kWh
+  车队总里程=416439m 任务腿均长=20718m 里程方差(车均衡)=13625
+  总能耗=596.12kWh 单任务能耗=33.118kWh
 
 [ 车队 ]
   总车数=6 抛锚=0 抛锚ID=[]
@@ -99,12 +74,12 @@
 ---- 完整结果（YAML） ----
 experiment_name: medium-scale-hyper_heuristic
 stop_reason: all_tasks_done
-sim_seconds_elapsed: 15600.0
-wall_seconds_elapsed: 168.435079
+sim_seconds_elapsed: 14160.0
+wall_seconds_elapsed: 5.335041
 tasks:
-  total: 25
-  completed: 25
-  on_time: 25
+  total: 18
+  completed: 18
+  on_time: 18
   timeout: 0
   pending: 0
   in_progress: 0
@@ -112,21 +87,21 @@ tasks:
   on_time_rate: 1.0
   timeout_rate: 0.0
 scores:
-  total: 2893.0815800001133
-  per_task_average: 115.72326320000452
-  per_task_on_time_average: 115.72326320000452
-  average: 115.72326320000452
+  total: 1943.2236066666323
+  per_task_average: 107.95686703703512
+  per_task_on_time_average: 107.95686703703512
+  average: 107.95686703703512
 timing:
-  avg_completion_duration_sec: 29.2
+  avg_completion_duration_sec: 1.8333333333333333
   avg_overdue_minutes: 0.0
-  throughput_tasks_per_hour: 5.76923076923077
+  throughput_tasks_per_hour: 4.576271186440678
 distance_meters:
-  total_fleet_traveled: 521104.31100000255
-  average_completed_task_leg: 16028.770759999974
-  fleet_distance_stdev: 12548.275111622832
+  total_fleet_traveled: 416438.79300000344
+  average_completed_task_leg: 20717.769777777787
+  fleet_distance_stdev: 13624.785338890635
 energy:
-  total_energy: 731.1745809999989
-  energy_per_completed: 29.246983239999953
+  total_energy: 596.1181830000045
+  energy_per_completed: 33.11767683333358
 vehicles_summary:
   total: 6
   stranded: 0
@@ -141,49 +116,49 @@ vehicles_summary:
 fleet:
 - id: 1
   type: small
-  battery_final: 28.842927999995673
-  battery_percentage: 48.07154666665945
-  total_distance_traveled: 81557.07200000431
+  battery_final: 43.5326629999977
+  battery_percentage: 72.5544383333295
+  total_distance_traveled: 65067.33700000223
   energy_consumption_trip: 0.0
   final_status: idle
   completed_tasks: 0
 - id: 2
   type: small
-  battery_final: 49.820537999999026
-  battery_percentage: 83.03422999999837
-  total_distance_traveled: 92979.46200000102
-  energy_consumption_trip: 25.044374000002712
-  final_status: charging
+  battery_final: 43.39910300000009
+  battery_percentage: 72.3318383333335
+  total_distance_traveled: 54400.89699999988
+  energy_consumption_trip: 0.0
+  final_status: idle
   completed_tasks: 0
 - id: 3
   type: medium
-  battery_final: 27.204056500001023
-  battery_percentage: 27.204056500001023
-  total_distance_traveled: 101330.62899999946
+  battery_final: 75.4238334999987
+  battery_percentage: 75.4238334999987
+  total_distance_traveled: 69184.11100000092
   energy_consumption_trip: 0.0
   final_status: idle
   completed_tasks: 0
 - id: 4
   type: medium
-  battery_final: 75.1062640000024
-  battery_percentage: 75.1062640000024
-  total_distance_traveled: 72915.82399999839
-  energy_consumption_trip: 0.0
+  battery_final: 47.91610150000339
+  battery_percentage: 47.91610150000339
+  total_distance_traveled: 94562.5989999977
+  energy_consumption_trip: 108.55853849999623
   final_status: idle
   completed_tasks: 0
 - id: 5
   type: medium
-  battery_final: 62.75715849999513
-  battery_percentage: 62.75715849999513
-  total_distance_traveled: 98748.56100000333
-  energy_consumption_trip: 81.55212150000412
+  battery_final: 35.98655799999727
+  battery_percentage: 35.98655799999727
+  total_distance_traveled: 70835.62800000189
+  energy_consumption_trip: 0.0
   final_status: idle
   completed_tasks: 0
 - id: 6
   type: large
-  battery_final: 114.45447400000796
-  battery_percentage: 76.30298266667197
-  total_distance_traveled: 73572.76299999593
+  battery_final: 32.42355799999837
+  battery_percentage: 21.61570533333225
+  total_distance_traveled: 62388.22100000078
   energy_consumption_trip: 0.0
   final_status: idle
   completed_tasks: 0
@@ -195,7 +170,6 @@ charging_stations:
   queue_count: 0
 - id: cs2
   capacity: 3
-  final_load: 0.16666666666666666
-  charging_vehicles:
-  - 2
-  queue_count: 1
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0
