@@ -125,6 +125,7 @@ class StaticExactSolverScheduler(Scheduler):
         solver = str(static_cfg.get("solver", "gurobi")).lower()
         max_exact_tasks = int(static_cfg.get("max_exact_tasks", 10))
         strict = bool(static_cfg.get("strict_global_optimum", True))
+        gap_th = float(static_cfg.get("mip_gap_threshold", 0.02))
 
         # 1) 优先尝试“一体化 VRPTW MIP”。
         route_plan = self._try_vrptw_solver(solver, vehicles, tasks, snapshot)
@@ -133,6 +134,8 @@ class StaticExactSolverScheduler(Scheduler):
         if strict:
             msg = self._vrptw_disabled_reason or "VRPTW solver did not return OPTIMAL."
             raise RuntimeError(f"[STRICT_STATIC] global optimum not proven: {msg}")
+        if self._vrptw_disabled_reason:
+            print(f"[STATIC] VRPTW exact solver not accepted, fallback enabled: {self._vrptw_disabled_reason} (gap_th={gap_th:.4f})")
 
         # 2) 回退：先分配后排序。
         assign = self._try_solver_assignment(solver, vehicles, tasks, snapshot)
@@ -222,7 +225,8 @@ class StaticExactSolverScheduler(Scheduler):
         m.Params.OutputFlag = 0
         static_cfg = (config.get_optimization_config().get("static") or {})
         strict = bool(static_cfg.get("strict_global_optimum", True))
-        m.Params.MIPGap = 0.0 if strict else 0.01
+        gap_th = float(static_cfg.get("mip_gap_threshold", 0.02))
+        m.Params.MIPGap = 0.0 if strict else max(0.0, gap_th)
         tl = static_cfg.get("time_limit_s", None)
         if tl is not None:
             m.Params.TimeLimit = float(tl)
@@ -353,12 +357,25 @@ class StaticExactSolverScheduler(Scheduler):
             return None
 
         strict = bool(((config.get_optimization_config().get("static") or {}).get("strict_global_optimum", True)))
+        gap_th = float(((config.get_optimization_config().get("static") or {}).get("mip_gap_threshold", 0.02)))
         if strict:
             if m.status != GRB.OPTIMAL:
                 self._vrptw_disabled_reason = f"Gurobi status={int(m.status)} (STRICT requires OPTIMAL)."
                 return None
-        elif m.status not in (GRB.OPTIMAL, GRB.TIME_LIMIT, GRB.SUBOPTIMAL):
-            return None
+        else:
+            # 非严格：允许 time_limit/suboptimal，但必须有可行解且 MIPGap 在阈值内
+            if m.status not in (GRB.OPTIMAL, GRB.TIME_LIMIT, GRB.SUBOPTIMAL):
+                self._vrptw_disabled_reason = f"Gurobi status={int(m.status)} (accepted: OPTIMAL/TIME_LIMIT/SUBOPTIMAL)."
+                return None
+            if int(getattr(m, "SolCount", 0)) <= 0:
+                self._vrptw_disabled_reason = "No feasible incumbent solution."
+                return None
+            mip_gap = float(getattr(m, "MIPGap", 1.0))
+            if m.status != GRB.OPTIMAL and mip_gap > gap_th + 1e-9:
+                self._vrptw_disabled_reason = (
+                    f"MIPGap={mip_gap:.6f} exceeds threshold={gap_th:.6f}."
+                )
+                return None
 
         # 提取每车任务顺序
         out: Dict[int, List[int]] = {k: [] for k in K}
