@@ -242,6 +242,19 @@ _DEFAULT_OPTIMIZATION: Dict[str, Any] = {
         "mip_gap_threshold": 0.02,
         # 求解时限（秒）；None 表示不限
         "time_limit_s": 300,
+        # 实时打印gap
+        "live_gap_log": True,
+        "live_gap_log_interval_s": 2.0,
+        # 允许的最大逾期上界（秒），用于收紧变量范围与大M
+        "max_lateness_s": 7200,
+        # Gurobi 调优参数（可在yaml覆盖）
+        "gurobi_tuning": {
+            "mip_focus": 1,
+            "heuristics": 0.25,
+            "cuts": 2,
+            "presolve": 2,
+            "threads": 0,
+        },
     },
 }
 

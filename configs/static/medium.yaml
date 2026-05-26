@@ -12,6 +12,15 @@ optimization:
     strict_global_optimum: false
     mip_gap_threshold: 0.02
     time_limit_s: 300
+    live_gap_log: true
+    live_gap_log_interval_s: 2.0
+    max_lateness_s: 7200
+    gurobi_tuning:
+      mip_focus: 1
+      heuristics: 0.25
+      cuts: 2
+      presolve: 2
+      threads: 0
 
 fleet:
   small_count:   2

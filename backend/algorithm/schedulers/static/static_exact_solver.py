@@ -214,27 +214,41 @@ class StaticExactSolverScheduler(Scheduler):
 
         release = {}
         deadline = {}
+        latest = {}
         weight = {}
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        max_lateness_s = float(static_cfg.get("max_lateness_s", 7200.0))
         for n in task_nodes:
             t = task_by_node[n]
             release[n] = max(0.0, float(t.create_time) - float(now_ts))
             deadline[n] = max(0.0, float(t.deadline) - float(now_ts))
+            latest[n] = deadline[n] + max_lateness_s
             weight[n] = float(t.weight)
 
         m = gp.Model("neft_static_vrptw")
-        m.Params.OutputFlag = 0
-        static_cfg = (config.get_optimization_config().get("static") or {})
+        m.Params.OutputFlag = 1 if bool(static_cfg.get("live_gap_log", True)) else 0
         strict = bool(static_cfg.get("strict_global_optimum", True))
         gap_th = float(static_cfg.get("mip_gap_threshold", 0.02))
         m.Params.MIPGap = 0.0 if strict else max(0.0, gap_th)
         tl = static_cfg.get("time_limit_s", None)
         if tl is not None:
             m.Params.TimeLimit = float(tl)
+        tuning = static_cfg.get("gurobi_tuning") or {}
+        if "mip_focus" in tuning:
+            m.Params.MIPFocus = int(tuning.get("mip_focus"))
+        if "heuristics" in tuning:
+            m.Params.Heuristics = float(tuning.get("heuristics"))
+        if "cuts" in tuning:
+            m.Params.Cuts = int(tuning.get("cuts"))
+        if "presolve" in tuning:
+            m.Params.Presolve = int(tuning.get("presolve"))
+        if "threads" in tuning:
+            m.Params.Threads = int(tuning.get("threads"))
 
         K = [v.id for v in vehicles]
         v_by_id = {v.id: v for v in vehicles}
         max_cap = max(float(v.get_remaining_load()) for v in vehicles) if vehicles else 0.0
-        max_route_time = max(36000.0, max(deadline.values()) + 7200.0) if deadline else 36000.0
+        max_route_time = max(36000.0, max(latest.values()) + 600.0) if latest else 36000.0
 
         # x[k,i,j] 是否走弧 i->j
         x = {}
@@ -249,12 +263,12 @@ class StaticExactSolverScheduler(Scheduler):
         y = {(k, n): m.addVar(vtype=GRB.BINARY, name=f"y_{k}_{n}") for k in K for n in task_nodes}
 
         # t[k,n] 车辆k到达节点n的时刻（仿真秒）
-        tvar = {(k, n): m.addVar(lb=0.0, ub=max_route_time, vtype=GRB.CONTINUOUS, name=f"t_{k}_{n}")
+        tvar = {(k, n): m.addVar(lb=0.0, ub=latest[n], vtype=GRB.CONTINUOUS, name=f"t_{k}_{n}")
                 for k in K for n in task_nodes}
 
         # 每个任务的完成时刻 c[n] 与迟到 tard[n]
-        c = {n: m.addVar(lb=0.0, ub=max_route_time, vtype=GRB.CONTINUOUS, name=f"c_{n}") for n in task_nodes}
-        tard = {n: m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name=f"tard_{n}") for n in task_nodes}
+        c = {n: m.addVar(lb=0.0, ub=latest[n], vtype=GRB.CONTINUOUS, name=f"c_{n}") for n in task_nodes}
+        tard = {n: m.addVar(lb=0.0, ub=max_lateness_s, vtype=GRB.CONTINUOUS, name=f"tard_{n}") for n in task_nodes}
 
         # start / end 是否启用
         use_k = {k: m.addVar(vtype=GRB.BINARY, name=f"use_{k}") for k in K}
@@ -291,20 +305,20 @@ class StaticExactSolverScheduler(Scheduler):
                 name=f"cap_{k}",
             )
 
-        # 时间窗与弧时序
-        M = max_route_time + max(travel.values()) + 1000.0 if travel else max_route_time + 1000.0
+        # 时间窗与弧时序（使用更紧的弧级大M）
         for k in K:
             for n in task_nodes:
                 # release
-                m.addConstr(tvar[(k, n)] >= release[n] - M * (1 - y[(k, n)]), name=f"rel_{k}_{n}")
+                m.addConstr(tvar[(k, n)] >= release[n] - latest[n] * (1 - y[(k, n)]), name=f"rel_{k}_{n}")
                 # 关联 c[n]
-                m.addConstr(c[n] >= tvar[(k, n)] - M * (1 - y[(k, n)]), name=f"c_lb_{k}_{n}")
-                m.addConstr(c[n] <= tvar[(k, n)] + M * (1 - y[(k, n)]), name=f"c_ub_{k}_{n}")
+                m.addConstr(c[n] >= tvar[(k, n)] - latest[n] * (1 - y[(k, n)]), name=f"c_lb_{k}_{n}")
+                m.addConstr(c[n] <= tvar[(k, n)] + latest[n] * (1 - y[(k, n)]), name=f"c_ub_{k}_{n}")
 
             # start->j
             for j in task_nodes:
+                m_start_j = max(0.0, travel[(start, j)] - release[j])
                 m.addConstr(
-                    tvar[(k, j)] >= travel[(start, j)] - M * (1 - x[(k, start, j)]),
+                    tvar[(k, j)] >= travel[(start, j)] - m_start_j * (1 - x[(k, start, j)]),
                     name=f"time_start_{k}_{j}",
                 )
             # i->j
@@ -312,8 +326,9 @@ class StaticExactSolverScheduler(Scheduler):
                 for j in task_nodes:
                     if i == j:
                         continue
+                    m_ij = max(0.0, latest[i] + travel[(i, j)] - release[j])
                     m.addConstr(
-                        tvar[(k, j)] >= tvar[(k, i)] + travel[(i, j)] - M * (1 - x[(k, i, j)]),
+                        tvar[(k, j)] >= tvar[(k, i)] + travel[(i, j)] - m_ij * (1 - x[(k, i, j)]),
                         name=f"time_{k}_{i}_{j}",
                     )
 
@@ -333,7 +348,6 @@ class StaticExactSolverScheduler(Scheduler):
             for j in nodes
             if (k, i, j) in x
         )
-        total_completion = gp.quicksum(c[n] for n in task_nodes)
         total_tard = gp.quicksum(tard[n] for n in task_nodes)
         priority_term = gp.quicksum(
             float(task_by_node[n].priority) * float(PRIORITY_REWARD)
@@ -345,18 +359,16 @@ class StaticExactSolverScheduler(Scheduler):
             assign_term
             + priority_term
             - float(DISTANCE_PENALTY) * total_distance
-            - float(EARLY_COMPLETION_REWARD_PER_MIN) / 60.0 * total_completion
             - float(OVERDUE_PENALTY_PER_MIN) / 60.0 * total_tard
         )
         m.setObjective(obj, GRB.MAXIMIZE)
+
         try:
             m.optimize()
         except Exception as exc:
             # 典型情况：size-limited license 模型过大
             self._vrptw_disabled_reason = str(exc)
             return None
-
-        print(f"[STATIC_VRPTW] MIPGap={float(getattr(m, 'MIPGap', 1.0)):.6f}")
 
         strict = bool(((config.get_optimization_config().get("static") or {}).get("strict_global_optimum", True)))
         gap_th = float(((config.get_optimization_config().get("static") or {}).get("mip_gap_threshold", 0.02)))
