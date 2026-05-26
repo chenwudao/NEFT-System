@@ -356,6 +356,8 @@ class StaticExactSolverScheduler(Scheduler):
             self._vrptw_disabled_reason = str(exc)
             return None
 
+        print(f"[STATIC_VRPTW] MIPGap={float(getattr(m, 'MIPGap', 1.0)):.6f}")
+
         strict = bool(((config.get_optimization_config().get("static") or {}).get("strict_global_optimum", True)))
         gap_th = float(((config.get_optimization_config().get("static") or {}).get("mip_gap_threshold", 0.02)))
         if strict:
