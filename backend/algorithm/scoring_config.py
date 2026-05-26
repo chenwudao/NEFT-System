@@ -7,20 +7,29 @@
 参考：meta_strategy_selector.py 的评分公式
 """
 
+from backend.config import config
+
+# 从 YAML/config 读取评分参数；未配置时沿用默认值。
+_SCORING = config.get_scoring_config()
+
 # 任务分配评分参数
-TASK_ASSIGN_REWARD = 120.0          # 分配一个任务的奖励
-PRIORITY_REWARD = 30.0              # 每点优先级的奖励
-DISTANCE_PENALTY = 0.02             # 每米距离的惩罚
-EARLY_COMPLETION_REWARD_PER_MIN = 2.0   # 每分钟提前完成奖励（弱于逾期惩罚）
-OVERDUE_PENALTY_PER_MIN = 50.0      # 每分钟逾期的惩罚
-IDLE_PENALTY = 5.0                  # 车辆空闲的惩罚
+TASK_ASSIGN_REWARD = float(_SCORING.get("task_assign_reward", 120.0))  # 分配一个任务的奖励
+PRIORITY_REWARD = float(_SCORING.get("priority_reward", 30.0))  # 每点优先级的奖励
+DISTANCE_PENALTY = float(_SCORING.get("distance_penalty", 0.02))  # 每米距离的惩罚
+EARLY_COMPLETION_REWARD_PER_MIN = float(
+    _SCORING.get("early_completion_reward_per_min", 2.0)
+)  # 每分钟提前完成奖励（弱于逾期惩罚）
+OVERDUE_PENALTY_PER_MIN = float(
+    _SCORING.get("overdue_penalty_per_min", 50.0)
+)  # 每分钟逾期的惩罚
+IDLE_PENALTY = float(_SCORING.get("idle_penalty", 5.0))  # 车辆空闲的惩罚
 
 # 速度假设（用于估算完成时间）
-ASSUMED_SPEED_MPS = 10.0            # 假设平均速度 10m/s
+ASSUMED_SPEED_MPS = float(_SCORING.get("assumed_speed_mps", 10.0))  # 假设平均速度 10m/s
 
 # 时间窗口配置（与 CompositeScoreStrategy 对齐）
-URGENT_DEADLINE_WINDOW = 1800       # 30分钟内视为紧急
-MAX_DEADLINE_WINDOW = 7200          # 2小时内的任务
+URGENT_DEADLINE_WINDOW = int(_SCORING.get("urgent_deadline_window", 1800))  # 30分钟内视为紧急
+MAX_DEADLINE_WINDOW = int(_SCORING.get("max_deadline_window", 7200))  # 2小时内的任务
 
 
 def calculate_assignment_score(

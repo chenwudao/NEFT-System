@@ -1,0 +1,52 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): medium-scale-q_learning
+启动时间:                 2026-05-26 18:06:59
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-q_learning
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\configs\medium.yaml
+
+---- 事件日志 ----
+[2026-05-26 18:06:59] [START] Experiment 'medium-scale-q_learning' started.
+[2026-05-26 18:06:59] [INFO] strategy=q_learning, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=replay=F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-composite_score/task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-q_learning\task_generation_seed.yaml
+[2026-05-26 18:07:03] [PROGRESS] sim_elapsed=360s strategy=q_learning tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 18:07:07] [PROGRESS] sim_elapsed=720s strategy=q_learning tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 18:07:10] [PROGRESS] sim_elapsed=1080s strategy=q_learning tasks total=5 completed=2 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 18:07:13] [TASK] replay task t1001 weight=38.7 prio=3 deadline=1779795297 pending=1/20
+[2026-05-26 18:07:13] [TASK] replay task t1002 weight=256.2 prio=1 deadline=1779797097 pending=2/20
+[2026-05-26 18:07:14] [PROGRESS] sim_elapsed=1440s strategy=q_learning tasks total=7 completed=3 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 18:07:18] [PROGRESS] sim_elapsed=1800s strategy=q_learning tasks total=7 completed=3 pending=0 in_progress=4 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 18:07:22] [PROGRESS] sim_elapsed=2160s strategy=q_learning tasks total=7 completed=3 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 18:07:26] [PROGRESS] sim_elapsed=2520s strategy=q_learning tasks total=7 completed=4 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-26 18:07:26] [TASK] replay task t1003 weight=183.3 prio=2 deadline=1779793059 pending=1/20
+[2026-05-26 18:07:26] [TASK] replay task t1004 weight=363.5 prio=2 deadline=1779792974 pending=2/20
+[2026-05-26 18:07:26] [TASK] replay task t1005 weight=145.7 prio=5 deadline=1779796766 pending=3/20
+[2026-05-26 18:07:26] [TASK] replay task t1006 weight=395.2 prio=3 deadline=1779795344 pending=4/20
+[2026-05-26 18:07:30] [PROGRESS] sim_elapsed=2880s strategy=q_learning tasks total=11 completed=5 pending=4 in_progress=2 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-26 18:07:34] [PROGRESS] sim_elapsed=3240s strategy=q_learning tasks total=11 completed=5 pending=0 in_progress=6 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-26 18:07:37] [TASK] replay task t1007 weight=413.1 prio=2 deadline=1779792619 pending=1/20
+[2026-05-26 18:07:37] [TASK] replay task t1008 weight=380.6 prio=5 deadline=1779792176 pending=2/20
+[2026-05-26 18:07:37] [PROGRESS] sim_elapsed=3600s strategy=q_learning tasks total=13 completed=7 pending=2 in_progress=4 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-26 18:07:42] [PROGRESS] sim_elapsed=3960s strategy=q_learning tasks total=13 completed=9 pending=0 in_progress=4 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-26 18:07:45] [PROGRESS] sim_elapsed=4320s strategy=q_learning tasks total=13 completed=10 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-26 18:07:49] [PROGRESS] sim_elapsed=4680s strategy=q_learning tasks total=13 completed=11 pending=0 in_progress=2 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-26 18:07:50] [TASK] replay task t1009 weight=372.5 prio=1 deadline=1779793584 pending=1/20
+[2026-05-26 18:07:50] [TASK] replay task t1010 weight=195.5 prio=4 deadline=1779792466 pending=2/20
+[2026-05-26 18:07:50] [TASK] replay task t1011 weight=448.4 prio=4 deadline=1779794323 pending=3/20
+[2026-05-26 18:07:54] [PROGRESS] sim_elapsed=5040s strategy=q_learning tasks total=16 completed=12 pending=0 in_progress=4 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-26 18:07:57] [PROGRESS] sim_elapsed=5400s strategy=q_learning tasks total=16 completed=13 pending=0 in_progress=3 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-26 18:07:58] [TASK] replay task t1012 weight=97.6 prio=4 deadline=1779796322 pending=1/20
+[2026-05-26 18:07:58] [TASK] replay task t1013 weight=101.2 prio=4 deadline=1779795239 pending=2/20
+[2026-05-26 18:07:58] [TASK] replay task t1014 weight=220.8 prio=1 deadline=1779793336 pending=3/20
+[2026-05-26 18:08:01] [PROGRESS] sim_elapsed=5760s strategy=q_learning tasks total=19 completed=13 pending=0 in_progress=6 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-26 18:08:03] [TASK] replay task t1015 weight=162.9 prio=1 deadline=1779795902 pending=1/20
+[2026-05-26 18:08:03] [TASK] replay task t1016 weight=341.2 prio=2 deadline=1779795013 pending=2/20
+[2026-05-26 18:08:03] [TASK] replay task t1017 weight=329.2 prio=3 deadline=1779792887 pending=3/20
+[2026-05-26 18:08:05] [PROGRESS] sim_elapsed=6120s strategy=q_learning tasks total=22 completed=13 pending=3 in_progress=6 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-26 18:08:09] [PROGRESS] sim_elapsed=6480s strategy=q_learning tasks total=22 completed=14 pending=3 in_progress=5 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 18:08:12] [TASK] replay task t1018 weight=431.9 prio=4 deadline=1779796039 pending=4/20
+[2026-05-26 18:08:12] [TASK] replay task t1019 weight=368.9 prio=2 deadline=1779792430 pending=5/20
+[2026-05-26 18:08:12] [TASK] replay task t1020 weight=341.6 prio=2 deadline=1779792014 pending=6/20
+[2026-05-26 18:08:13] [PROGRESS] sim_elapsed=6840s strategy=q_learning tasks total=25 completed=15 pending=6 in_progress=4 timeout=0 vehicles idle=1 moving=3 charging=2
+[2026-05-26 18:08:13] [INFO] task generation stopped at sim_elapsed=6840s (reason: budget/max_sim_seconds reached). continuing until all tasks settle.
+[2026-05-26 18:08:19] [PROGRESS] sim_elapsed=7200s strategy=q_learning tasks total=25 completed=16 pending=2 in_progress=7 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-26 18:08:23] [PROGRESS] sim_elapsed=7560s strategy=q_learning tasks total=25 completed=16 pending=2 in_progress=7 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-26 18:08:26] [PROGRESS] sim_elapsed=7920s strategy=q_learning tasks total=25 completed=17 pending=2 in_progress=6 timeout=0 vehicles idle=0 moving=3 charging=3

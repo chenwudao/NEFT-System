@@ -1,6 +1,6 @@
 # 中规模配置：6 辆车 / 2 充电站 / 中等任务流量
 experiment:
-  name: "medium-scale-priority_task"
+  name: "medium-scale-q_learning"
   log_dir: "log"
 
 fleet:
@@ -42,7 +42,7 @@ task:
   total_task_budget:    80
 
 scheduling:
-  strategy:              "priority_task"
+  strategy:              "q_learning"
   low_battery_pct:       20.0
   charge_until_pct:      90.0
   battery_safety_margin: 1.15
@@ -64,3 +64,15 @@ simulation:
   marker_tween_ms: 900
   marker_tween_adaptive: true
   stop_when_all_tasks_done: true
+
+scoring:
+  # 默认评分参数（与当前系统原始默认值一致）
+  task_assign_reward: 120.0
+  priority_reward: 30.0
+  distance_penalty: 0.02
+  early_completion_reward_per_min: 2.0
+  overdue_penalty_per_min: 50.0
+  idle_penalty: 5.0
+  assumed_speed_mps: 10.0
+  urgent_deadline_window: 1800
+  max_deadline_window: 7200
