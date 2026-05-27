@@ -9,6 +9,7 @@ optimization:
     strategy: "static_exact_solver"
     solver: "gurobi"      # gurobi | cplex（未安装会自动回退）
     force_gurobi_only: true
+    accept_feasible_when_force_gurobi_only: true
     objective_mode: "proxy"   # proxy | simulation_score
     charge_time_penalty_per_s: 0.02
     charge_event_penalty: 20.0

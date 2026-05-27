@@ -1153,6 +1153,10 @@ class StaticExactSolverScheduler(Scheduler):
 
         strict = bool(((config.get_optimization_config().get("static") or {}).get("strict_global_optimum", True)))
         gap_th = float(((config.get_optimization_config().get("static") or {}).get("mip_gap_threshold", 0.02)))
+        force_gurobi_only = bool(((config.get_optimization_config().get("static") or {}).get("force_gurobi_only", False)))
+        accept_feasible_force_only = bool(
+            ((config.get_optimization_config().get("static") or {}).get("accept_feasible_when_force_gurobi_only", True))
+        )
         if strict:
             if m.status != GRB.OPTIMAL:
                 self._vrptw_disabled_reason = f"Gurobi status={int(m.status)} (STRICT requires OPTIMAL)."
@@ -1166,7 +1170,17 @@ class StaticExactSolverScheduler(Scheduler):
                 self._vrptw_disabled_reason = "No feasible incumbent solution."
                 return None
             mip_gap = float(getattr(m, "MIPGap", 1.0))
-            if m.status != GRB.OPTIMAL and mip_gap > gap_th + 1e-9:
+            if (
+                force_gurobi_only
+                and accept_feasible_force_only
+                and m.status in (GRB.TIME_LIMIT, GRB.SUBOPTIMAL, GRB.OPTIMAL)
+            ):
+                if m.status != GRB.OPTIMAL and mip_gap > gap_th + 1e-9:
+                    print(
+                        "[STATIC][GUROBI] force mode accepted feasible incumbent "
+                        f"with large gap={mip_gap:.6f} (threshold={gap_th:.6f})."
+                    )
+            elif m.status != GRB.OPTIMAL and mip_gap > gap_th + 1e-9:
                 self._vrptw_disabled_reason = (
                     f"MIPGap={mip_gap:.6f} exceeds threshold={gap_th:.6f}."
                 )
