@@ -200,6 +200,13 @@ class StaticExactSolverScheduler(Scheduler):
             self._warehouse_plan_cursor = {v.id: 0 for v in vehicles}
             return route_plan
 
+        # GPU 严格全枚举：不做分支定界/剪枝，枚举所有仓库派遣命令。
+        if solver in ("gpu_exhaustive", "gpu_full_enum", "gpu_enum"):
+            route_plan, wh_plan = self._gpu_exhaustive_warehouse_plan(vehicles, tasks, snapshot)
+            self._warehouse_command_plan = wh_plan
+            self._warehouse_plan_cursor = {v.id: 0 for v in vehicles}
+            return route_plan
+
         # PyTorch/GPU anytime 搜索：持续输出当前最优，避免“长时间无响应”。
         if solver in ("gpu_search", "torch_search", "gpu"):
             route_plan = self._gpu_anytime_search_plan(vehicles, tasks, snapshot)
@@ -1031,13 +1038,357 @@ class StaticExactSolverScheduler(Scheduler):
                 route_map[vid].extend(list(item.get("task_ids", []) or []))
         return route_map, best_cmds
 
+    def _gpu_exhaustive_warehouse_plan(
+        self, vehicles, tasks, snapshot: Snapshot
+    ) -> Tuple[Dict[int, List[int]], Dict[int, List[Dict[str, Any]]]]:
+        """GPU 严格全枚举（无定界/无剪枝）：
+
+        - 仅在仓库时做决策；
+        - 每次决策枚举：等待 + 所有满足载重的任务子集派单；
+        - 车在外面按固定规则执行（送货/充电/回仓）；
+        - 对每个叶子完整计算总分，返回最高分方案。
+        """
+        if not vehicles or not tasks:
+            return ({v.id: [] for v in vehicles}, {v.id: [] for v in vehicles})
+
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        log_interval_s = max(1.0, float(static_cfg.get("exact_log_interval_s", 5.0)))
+        require_cuda = bool(static_cfg.get("gpu_require_cuda", True))
+
+        try:
+            import torch  # type: ignore
+            has_cuda = bool(torch.cuda.is_available())
+            device = torch.device("cuda" if has_cuda else "cpu")
+        except Exception:
+            torch = None  # type: ignore
+            has_cuda = False
+            device = None
+
+        if torch is None:
+            raise RuntimeError("[STATIC][GPU-EXHAUSTIVE] torch unavailable.")
+        if require_cuda and not has_cuda:
+            raise RuntimeError("[STATIC][GPU-EXHAUSTIVE] gpu_require_cuda=true but CUDA unavailable.")
+
+        print(
+            f"[STATIC][GPU-EXHAUSTIVE] torch={torch.__version__} "
+            f"cuda_available={has_cuda} device={device}"
+        )
+
+        now_ts = float(int(snapshot.timestamp))
+        wh_xy = (float(snapshot.warehouse_xy[0]), float(snapshot.warehouse_xy[1]))
+        stations = list(getattr(snapshot, "charging_stations", []) or [])
+        sched_cfg = config.get_scheduling_config() or {}
+        charge_until_pct = max(1.0, min(100.0, float(sched_cfg.get("charge_until_pct", 90.0))))
+        margin = max(1.0, float(sched_cfg.get("battery_safety_margin", 1.15)))
+
+        tasks = list(tasks)
+        vehicles = list(vehicles)
+        t_by_id = {t.id: t for t in tasks}
+        v_by_id = {v.id: v for v in vehicles}
+        vids = [v.id for v in vehicles]
+
+        init_vehicle_state: Dict[int, Dict[str, Any]] = {
+            v.id: {
+                "available_ts": now_ts,
+                "battery": float(v.battery),
+                "parked": False,
+            }
+            for v in vehicles
+        }
+        init_task_status: Dict[int, str] = {t.id: "pending" for t in tasks}
+        init_commands: Dict[int, List[Dict[str, Any]]] = {v.id: [] for v in vehicles}
+
+        best_score = float("-inf")
+        best_cmds = {v.id: [] for v in vids}
+        nodes = 0
+        leaves = 0
+        t0 = time.monotonic()
+        t_last = t0
+
+        def _clone_vehicle_state(vs: Dict[int, Dict[str, Any]]) -> Dict[int, Dict[str, Any]]:
+            return {vid: dict(st) for vid, st in vs.items()}
+
+        def _clone_task_status(ts: Dict[int, str]) -> Dict[int, str]:
+            return dict(ts)
+
+        def _clone_commands(cmds: Dict[int, List[Dict[str, Any]]]) -> Dict[int, List[Dict[str, Any]]]:
+            return {
+                vid: [
+                    {
+                        "dispatch_ts": int(it.get("dispatch_ts", 0)),
+                        "task_ids": list(it.get("task_ids", []) or []),
+                        "first_task_id": int(it.get("first_task_id", -1)),
+                    }
+                    for it in items
+                ]
+                for vid, items in cmds.items()
+            }
+
+        def _pending_ids(ts: Dict[int, str]) -> List[int]:
+            return [tid for tid, st in ts.items() if st == "pending"]
+
+        def _choose_station_for_target(
+            vid: int, cur_xy: Tuple[float, float], cur_t: float, cur_b: float, target_xy: Tuple[float, float]
+        ) -> Optional[Tuple[Any, float, float, float]]:
+            v = v_by_id[vid]
+            speed = max(1e-6, float(getattr(v, "speed", 10.0)))
+            power = max(1e-6, float(getattr(v, "charging_power", 0.022)))
+            best = None
+            best_finish = float("inf")
+            for st in stations:
+                st_xy = (float(st.position.x), float(st.position.y))
+                d_to = snapshot.distance(cur_xy, st_xy)
+                if d_to == float("inf"):
+                    continue
+                e_to = utils.energy_required_for_distance(v, d_to)
+                if e_to == float("inf") or cur_b + 1e-9 < e_to:
+                    continue
+                after_arrival = cur_b - e_to
+                d_after = snapshot.distance(st_xy, target_xy)
+                if d_after == float("inf"):
+                    continue
+                extra = utils.min_distance_to_any_station(target_xy, stations, snapshot) if stations else 0.0
+                if extra == float("inf"):
+                    continue
+                need = utils.energy_required_for_distance(v, float(d_after) + float(extra)) * margin
+                if need > float(v.max_battery) + 1e-9:
+                    continue
+                charge_to = min(float(v.max_battery), max(float(v.max_battery) * charge_until_pct / 100.0, need))
+                arr = cur_t + float(d_to) / speed
+                finish = arr + max(0.0, charge_to - after_arrival) / power
+                finish_target = finish + float(d_after) / speed
+                if finish_target < best_finish:
+                    best_finish = finish_target
+                    best = (st, float(d_to), float(finish), float(charge_to))
+            return best
+
+        def _simulate_batch(
+            vid: int, start_t: float, start_batt: float, batch_tids: List[int]
+        ) -> Optional[Tuple[float, float, Dict[int, float], int]]:
+            v = v_by_id[vid]
+            cur_xy = wh_xy
+            cur_t = float(start_t)
+            cur_b = float(start_batt)
+            onboard = list(batch_tids)
+            task_dist = {tid: 0.0 for tid in onboard}
+            first_tid = onboard[0] if onboard else -1
+
+            def _move_to(dst_xy: Tuple[float, float]) -> Optional[float]:
+                nonlocal cur_xy, cur_t, cur_b
+                d = snapshot.distance(cur_xy, dst_xy)
+                if d == float("inf"):
+                    return None
+                e = utils.energy_required_for_distance(v, d)
+                if e == float("inf") or cur_b + 1e-9 < e:
+                    return None
+                cur_b -= float(e)
+                cur_t += float(d) / max(1e-6, float(getattr(v, "speed", 10.0)))
+                cur_xy = dst_xy
+                return float(d)
+
+            task_scores: Dict[int, float] = {}
+            while onboard:
+                target_tid = min(
+                    onboard,
+                    key=lambda tid: snapshot.distance(cur_xy, (t_by_id[tid].position.x, t_by_id[tid].position.y)),
+                )
+                if first_tid == -1:
+                    first_tid = target_tid
+                target_xy = (float(t_by_id[target_tid].position.x), float(t_by_id[target_tid].position.y))
+
+                safety = 0
+                while True:
+                    safety += 1
+                    if safety > max(6, len(stations) * 4 + 2):
+                        return None
+                    d_leg = snapshot.distance(cur_xy, target_xy)
+                    if d_leg == float("inf"):
+                        return None
+                    extra = utils.min_distance_to_any_station(target_xy, stations, snapshot) if stations else 0.0
+                    if extra == float("inf"):
+                        return None
+                    need = utils.energy_required_for_distance(v, float(d_leg) + float(extra)) * margin
+                    if cur_b + 1e-9 >= need:
+                        break
+                    choice = _choose_station_for_target(vid, cur_xy, cur_t, cur_b, target_xy)
+                    if choice is None:
+                        return None
+                    st, _, finish_charge, charge_to = choice
+                    d_move = _move_to((float(st.position.x), float(st.position.y)))
+                    if d_move is None:
+                        return None
+                    for tid in onboard:
+                        task_dist[tid] += float(d_move)
+                    cur_t = max(cur_t, float(finish_charge))
+                    cur_b = float(charge_to)
+
+                d_move = _move_to(target_xy)
+                if d_move is None:
+                    return None
+                for tid in onboard:
+                    task_dist[tid] += float(d_move)
+
+                completion_ts = max(cur_t, float(getattr(t_by_id[target_tid], "create_time", cur_t)))
+                deadline = float(getattr(t_by_id[target_tid], "deadline", completion_ts))
+                early_minutes = max(0.0, deadline - completion_ts) / 60.0
+                overdue_minutes = max(0.0, completion_ts - deadline) / 60.0
+                score = (
+                    float(TASK_ASSIGN_REWARD)
+                    + float(getattr(t_by_id[target_tid], "priority", 1.0)) * float(PRIORITY_REWARD)
+                    - float(task_dist[target_tid]) * float(DISTANCE_PENALTY)
+                    + early_minutes * float(EARLY_COMPLETION_REWARD_PER_MIN)
+                    - overdue_minutes * float(OVERDUE_PENALTY_PER_MIN)
+                )
+                task_scores[target_tid] = max(0.0, float(score))
+                onboard.remove(target_tid)
+
+            while abs(cur_xy[0] - wh_xy[0]) > 1e-4 or abs(cur_xy[1] - wh_xy[1]) > 1e-4:
+                d_back = snapshot.distance(cur_xy, wh_xy)
+                if d_back == float("inf"):
+                    return None
+                need_back = utils.energy_required_for_distance(v, d_back) * margin
+                if cur_b + 1e-9 >= need_back:
+                    if _move_to(wh_xy) is None:
+                        return None
+                    break
+                choice = _choose_station_for_target(vid, cur_xy, cur_t, cur_b, wh_xy)
+                if choice is None:
+                    return None
+                st, _, finish_charge, charge_to = choice
+                if _move_to((float(st.position.x), float(st.position.y))) is None:
+                    return None
+                cur_t = max(cur_t, float(finish_charge))
+                cur_b = float(charge_to)
+
+            return float(cur_t), float(cur_b), task_scores, int(first_tid)
+
+        def _enumerate_feasible_subsets_gpu(released: List[int], cap: float) -> List[List[int]]:
+            if not released:
+                return []
+            m = len(released)
+            if m >= 62:
+                # 极端保护：避免 2^m 过大导致张量爆炸。
+                return []
+            weights = torch.tensor([float(getattr(t_by_id[tid], "weight", 0.0)) for tid in released], device=device)
+            mask_ids = torch.arange(1, 1 << m, device=device, dtype=torch.int64)
+            bits = ((mask_ids.unsqueeze(1) >> torch.arange(m, device=device)) & 1).to(torch.float32)
+            wsum = torch.matmul(bits, weights)
+            feasible_masks = mask_ids[wsum <= float(cap) + 1e-9].detach().cpu().tolist()
+            out: List[List[int]] = []
+            for mask in feasible_masks:
+                subset = [released[i] for i in range(m) if (mask >> i) & 1]
+                if subset:
+                    out.append(subset)
+            return out
+
+        def dfs(
+            cur_score: float,
+            vs: Dict[int, Dict[str, Any]],
+            ts: Dict[int, str],
+            cmds: Dict[int, List[Dict[str, Any]]],
+        ) -> None:
+            nonlocal best_score, best_cmds, nodes, leaves, t_last
+            nodes += 1
+            pending = _pending_ids(ts)
+            active_vids = [vid for vid in vids if not bool(vs[vid]["parked"])]
+
+            if not pending or not active_vids:
+                leaves += 1
+                if cur_score > best_score + 1e-9:
+                    best_score = cur_score
+                    best_cmds = _clone_commands(cmds)
+                    print(f"[STATIC][GPU-EXHAUSTIVE] best={best_score:.2f} leaves={leaves} nodes={nodes}")
+                return
+
+            now_m = time.monotonic()
+            if now_m - t_last >= log_interval_s:
+                elapsed = max(1e-6, now_m - t0)
+                mem_msg = ""
+                try:
+                    alloc_mb = torch.cuda.memory_allocated(device) / (1024 * 1024)
+                    reserv_mb = torch.cuda.memory_reserved(device) / (1024 * 1024)
+                    mem_msg = f" alloc_mb={alloc_mb:.1f} reserved_mb={reserv_mb:.1f}"
+                except Exception:
+                    mem_msg = ""
+                print(
+                    "[STATIC][GPU-EXHAUSTIVE] "
+                    f"elapsed={elapsed:.1f}s nodes={nodes} leaves={leaves} "
+                    f"pending={len(pending)} best={best_score:.2f}{mem_msg}"
+                )
+                t_last = now_m
+
+            vid = min(active_vids, key=lambda x: float(vs[x]["available_ts"]))
+            t_now = float(vs[vid]["available_ts"])
+            v = v_by_id[vid]
+            released = [
+                tid for tid in pending
+                if float(getattr(t_by_id[tid], "create_time", t_now)) <= t_now + 1e-9
+            ]
+            future_rel = [
+                float(getattr(t_by_id[tid], "create_time", t_now))
+                for tid in pending
+                if float(getattr(t_by_id[tid], "create_time", t_now)) > t_now + 1e-9
+            ]
+
+            # 分支1：等待（完整枚举的一种情况）
+            nvs = _clone_vehicle_state(vs)
+            nts = _clone_task_status(ts)
+            ncmds = _clone_commands(cmds)
+            if future_rel:
+                nvs[vid]["available_ts"] = min(future_rel)
+            else:
+                nvs[vid]["parked"] = True
+            dfs(cur_score, nvs, nts, ncmds)
+
+            # 分支2：所有可行子集派单（完整枚举）
+            if not released:
+                return
+            cap = float(getattr(v, "max_load", 0.0))
+            subsets = _enumerate_feasible_subsets_gpu(released, cap)
+            for subset in subsets:
+                sim = _simulate_batch(vid, t_now, float(vs[vid]["battery"]), subset)
+                if sim is None:
+                    continue
+                ret_ts, ret_b, task_scores, first_tid = sim
+                nvs2 = _clone_vehicle_state(vs)
+                nts2 = _clone_task_status(ts)
+                ncmds2 = _clone_commands(cmds)
+                nvs2[vid]["battery"] = float(ret_b)
+                nvs2[vid]["available_ts"] = float(ret_ts)
+                nvs2[vid]["parked"] = False
+                for tid in subset:
+                    nts2[tid] = "completed"
+                ncmds2[vid].append(
+                    {
+                        "dispatch_ts": int(t_now),
+                        "task_ids": list(subset),
+                        "first_task_id": int(first_tid if first_tid > 0 else subset[0]),
+                    }
+                )
+                gain = sum(float(task_scores.get(tid, 0.0)) for tid in subset)
+                dfs(cur_score + gain, nvs2, nts2, ncmds2)
+
+        dfs(0.0, init_vehicle_state, init_task_status, init_commands)
+        elapsed = max(1e-6, time.monotonic() - t0)
+        print(
+            f"[STATIC][GPU-EXHAUSTIVE] done elapsed={elapsed:.1f}s "
+            f"nodes={nodes} leaves={leaves} best={best_score:.2f}"
+        )
+
+        route_map: Dict[int, List[int]] = {vid: [] for vid in vids}
+        for vid in vids:
+            for item in best_cmds.get(vid, []):
+                route_map[vid].extend(list(item.get("task_ids", []) or []))
+        return route_map, best_cmds
+
     def _gpu_anytime_search_plan(self, vehicles, tasks, snapshot: Snapshot) -> Dict[int, List[int]]:
         """PyTorch anytime 搜索（有 CUDA 则用 GPU 采样动作）。"""
         if not vehicles or not tasks:
             return {v.id: [] for v in vehicles}
 
         static_cfg = (config.get_optimization_config().get("static") or {})
-        time_limit_s = max(5.0, float(static_cfg.get("gpu_time_limit_s", 90.0)))
+        time_limit_raw = static_cfg.get("gpu_time_limit_s", 90.0)
+        time_limit_s = None if time_limit_raw is None else max(5.0, float(time_limit_raw))
         batch_size = max(4, int(static_cfg.get("gpu_batch_size", 64)))
         generations_per_iter = max(1, int(static_cfg.get("gpu_generations_per_iter", 4)))
         topk_eval = max(1, int(static_cfg.get("gpu_topk_eval", max(4, batch_size // 8))))
@@ -1046,6 +1397,8 @@ class StaticExactSolverScheduler(Scheduler):
         search_order = str(static_cfg.get("gpu_search_order", "breadth_first")).strip().lower()
         require_cuda = bool(static_cfg.get("gpu_require_cuda", False))
         reserve_mb = max(0, int(static_cfg.get("gpu_vram_reserve_mb", 0)))
+        auto_batch_from_vram = bool(static_cfg.get("gpu_auto_batch_from_vram", True))
+        vram_util_ratio = min(0.98, max(0.1, float(static_cfg.get("gpu_vram_util_ratio", 0.9))))
 
         try:
             import torch  # type: ignore
@@ -1084,6 +1437,27 @@ class StaticExactSolverScheduler(Scheduler):
             except Exception as exc:
                 print(f"[STATIC][GPU] WARN reserve_vram failed: {exc}")
                 gpu_reserve = None
+
+        # 按可用显存自动估算 batch（优先吃满显存）。
+        if torch is not None and has_cuda and auto_batch_from_vram:
+            try:
+                free_b, total_b = torch.cuda.mem_get_info(device)
+                # 粗估：每候选在本算法中的中间张量字节（noise+scores+rank相关缓冲）
+                bytes_per_candidate = max(32, 24 * max(1, len(tasks)))
+                budget_b = int(max(1, free_b) * vram_util_ratio)
+                eff_batch = max(1, budget_b // bytes_per_candidate)
+                auto_batch = max(4, eff_batch // max(1, generations_per_iter))
+                # 防止极端爆内存，给个上限；可用配置继续放大。
+                auto_batch = min(auto_batch, int(static_cfg.get("gpu_batch_cap", 262144)))
+                if auto_batch > batch_size:
+                    batch_size = auto_batch
+                    topk_eval = max(topk_eval, min(batch_size, max(256, batch_size // 8)))
+                print(
+                    f"[STATIC][GPU] auto_batch enabled: free_mb={free_b/(1024*1024):.1f} "
+                    f"total_mb={total_b/(1024*1024):.1f} batch={batch_size} topk={topk_eval}"
+                )
+            except Exception as exc:
+                print(f"[STATIC][GPU] WARN auto_batch failed: {exc}")
 
         t0 = time.monotonic()
         t_last_log = t0
@@ -1147,7 +1521,9 @@ class StaticExactSolverScheduler(Scheduler):
                     rem_cap[best_vid] -= float(t.weight)
             return route_map
 
-        while time.monotonic() - t0 < time_limit_s:
+        while True:
+            if time_limit_s is not None and (time.monotonic() - t0) >= time_limit_s:
+                break
             if torch is not None:
                 eff_batch = batch_size * generations_per_iter
                 noise = torch.rand((eff_batch, n_tasks), device=device) * explore_scale
@@ -1200,10 +1576,18 @@ class StaticExactSolverScheduler(Scheduler):
             now_m = time.monotonic()
             if now_m - t_last_log >= log_interval_s:
                 mode = "cuda" if has_cuda else "cpu"
+                mem_msg = ""
+                if torch is not None and has_cuda:
+                    try:
+                        alloc_mb = torch.cuda.memory_allocated(device) / (1024 * 1024)
+                        reserv_mb = torch.cuda.memory_reserved(device) / (1024 * 1024)
+                        mem_msg = f" alloc_mb={alloc_mb:.1f} reserved_mb={reserv_mb:.1f}"
+                    except Exception:
+                        mem_msg = ""
                 print(
                     f"[STATIC][GPU] mode={mode} elapsed={now_m-t0:.1f}s "
                     f"eval={eval_count} best={best_score:.2f} "
-                    f"batch={batch_size} gens={generations_per_iter} topk={topk_eval}"
+                    f"batch={batch_size} gens={generations_per_iter} topk={topk_eval}{mem_msg}"
                 )
                 t_last_log = now_m
 
