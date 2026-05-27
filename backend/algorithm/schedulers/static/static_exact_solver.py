@@ -1041,6 +1041,8 @@ class StaticExactSolverScheduler(Scheduler):
         batch_size = max(4, int(static_cfg.get("gpu_batch_size", 64)))
         log_interval_s = max(1.0, float(static_cfg.get("gpu_log_interval_s", 2.0)))
         explore_scale = max(0.01, float(static_cfg.get("gpu_explore_scale", 3.0)))
+        search_order = str(static_cfg.get("gpu_search_order", "breadth_first")).strip().lower()
+        require_cuda = bool(static_cfg.get("gpu_require_cuda", False))
 
         try:
             import torch  # type: ignore
@@ -1050,6 +1052,21 @@ class StaticExactSolverScheduler(Scheduler):
             torch = None  # type: ignore
             has_cuda = False
             device = None
+
+        # 先判断并打印 CUDA 可用性（按你的要求）
+        if torch is None:
+            print("[STATIC][GPU] torch import failed, fallback to CPU search.")
+            if require_cuda:
+                raise RuntimeError("[STATIC][GPU] gpu_require_cuda=true but torch is unavailable.")
+        else:
+            cuda_ver = str(getattr(torch.version, "cuda", None))
+            dev_cnt = int(torch.cuda.device_count()) if has_cuda else 0
+            print(
+                f"[STATIC][GPU] torch={torch.__version__} cuda_available={has_cuda} "
+                f"cuda_version={cuda_ver} device_count={dev_cnt} search_order={search_order}"
+            )
+            if require_cuda and not has_cuda:
+                raise RuntimeError("[STATIC][GPU] gpu_require_cuda=true but CUDA is unavailable.")
 
         t0 = time.monotonic()
         t_last_log = t0
@@ -1073,6 +1090,7 @@ class StaticExactSolverScheduler(Scheduler):
         best_score = float("-inf")
         best_route = {vid: [] for vid in vids}
         eval_count = 0
+        best_order_ids: List[int] = []
 
         def plan_score(route_map: Dict[int, List[int]]) -> float:
             repaired = self._repair_plan_with_energy(vehicles, task_list, route_map, snapshot)
@@ -1123,7 +1141,27 @@ class StaticExactSolverScheduler(Scheduler):
                     random.shuffle(idxs)
                     ranked.append(idxs)
 
-            for idx_order in ranked:
+            if search_order in ("depth_first", "dfs_first", "deep_first"):
+                # 深度优先：优先围绕当前最优顺序做邻域精修，再补充少量全局随机样本。
+                candidate_idx_orders: List[List[int]] = []
+                if best_order_ids:
+                    idx_by_tid = {task_list[i].id: i for i in range(n_tasks)}
+                    base_idx = [idx_by_tid[tid] for tid in best_order_ids if tid in idx_by_tid]
+                    for _ in range(max(8, batch_size // 2)):
+                        cand = list(base_idx)
+                        if len(cand) >= 2:
+                            i = random.randrange(len(cand))
+                            j = random.randrange(len(cand))
+                            cand[i], cand[j] = cand[j], cand[i]
+                        candidate_idx_orders.append(cand)
+                # 混入一部分全局样本，避免陷入局部最优。
+                keep_global = max(4, batch_size // 4)
+                candidate_idx_orders.extend(ranked[:keep_global])
+            else:
+                # 广度优先：尽可能覆盖不同候选。
+                candidate_idx_orders = ranked
+
+            for idx_order in candidate_idx_orders:
                 order_ids = [task_list[i].id for i in idx_order]
                 cand_route = build_route_from_order(order_ids)
                 sc = plan_score(cand_route)
@@ -1131,6 +1169,7 @@ class StaticExactSolverScheduler(Scheduler):
                 if sc > best_score + 1e-9:
                     best_score = sc
                     best_route = cand_route
+                    best_order_ids = list(order_ids)
                     print(f"[STATIC][GPU] best={best_score:.2f} eval={eval_count} elapsed={time.monotonic()-t0:.1f}s")
 
             now_m = time.monotonic()
