@@ -1099,7 +1099,7 @@ class StaticExactSolverScheduler(Scheduler):
         init_commands: Dict[int, List[Dict[str, Any]]] = {v.id: [] for v in vehicles}
 
         best_score = float("-inf")
-        best_cmds = {v.id: [] for v in vids}
+        best_cmds = {vid: [] for vid in vids}
         nodes = 0
         leaves = 0
         t0 = time.monotonic()

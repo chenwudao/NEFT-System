@@ -89,7 +89,7 @@ optimization:
   mode: static
   static:
     strategy: static_exact_solver
-    solver: exact
+    solver: gpu_exhaustive
     max_exact_tasks: 10
     strict_global_optimum: false
     mip_gap_threshold: 0.02
@@ -121,8 +121,23 @@ optimization:
     full_exact_max_tasks: 16
     exact_live_log: true
     exact_log_interval_s: 5.0
+    exact_breadth_levels: 3
+    exact_beam_width: 128
+    exact_refine_seeds: 8
+    gpu_time_limit_s: null
+    gpu_batch_size: 2048
+    gpu_generations_per_iter: 4
+    gpu_topk_eval: 256
+    gpu_log_interval_s: 2.0
+    gpu_explore_scale: 3.0
+    gpu_search_order: depth_first
+    gpu_require_cuda: true
+    gpu_auto_batch_from_vram: true
+    gpu_vram_util_ratio: 0.9
+    gpu_batch_cap: 262144
+    gpu_vram_reserve_mb: 4096
 performance_metrics:
   completion_weight: 0.5
   time_weight: 0.3
   distance_weight: 0.2
-config_file: F:\Data Structure\NEFT-System-main\NEFT-System\configs\static\small.yaml
+config_file: F:\Data Structure\NEFT-System-main\NEFT-System\configs/static/small.yaml
