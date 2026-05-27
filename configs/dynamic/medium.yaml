@@ -1,6 +1,6 @@
 # 中规模配置：6 辆车 / 2 充电站 / 中等任务流量
 experiment:
-  name: "medium-scale-composite_score"
+  name: "medium-scale-relay_handoff"
   log_dir: "log"
 
 optimization:
@@ -33,7 +33,7 @@ vehicle:
 
 
 task:
-  generation_seed_file: "F:/Data Structure/NEFT-System-main/NEFT-Systemlog/medium-scale-composite_score/task_generation_seed.yaml"
+  generation_seed_file: "F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/medium/seed_1/composite_score/task_generation_seed.yaml"
   initial_tasks:               5
   generation_interval_sec_min: 5
   generation_interval_sec_max: 15
@@ -49,7 +49,7 @@ task:
   total_task_budget:    80
 
 scheduling:
-  strategy:              "composite_score"
+  strategy:              "relay_handoff"
   low_battery_pct:       20.0
   charge_until_pct:      90.0
   battery_safety_margin: 1.15

@@ -1,0 +1,73 @@
+charging_station:
+  default_capacity: 3
+  max_queue_time: 600
+experiment:
+  log_dir: F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/medium/seed_2
+  name: multi_agent_auction
+fleet:
+  large_count: 1
+  medium_count: 3
+  small_count: 2
+  station_count: 2
+optimization:
+  mode: dynamic
+  static:
+    max_exact_tasks: 10
+    solver: gurobi
+    strategy: static_exact_solver
+scheduling:
+  battery_safety_margin: 1.15
+  charge_load_weight_m: 8000.0
+  charge_queue_weight_m: 2000.0
+  charge_until_pct: 90.0
+  composite_weights:
+    distance: 1.0
+    load: 0.3
+    priority: 1.0
+    scale_distance: 10000.0
+    urgency: 1.5
+    urgency_window: 3600.0
+  low_battery_pct: 20.0
+  strategy: multi_agent_auction
+scoring:
+  assumed_speed_mps: 10.0
+  distance_penalty: 0.02
+  early_completion_reward_per_min: 2.0
+  idle_penalty: 5.0
+  max_deadline_window: 7200
+  overdue_penalty_per_min: 50.0
+  priority_reward: 30.0
+  task_assign_reward: 120.0
+  urgent_deadline_window: 1800
+simulation:
+  marker_tween_adaptive: true
+  marker_tween_ms: 900
+  max_sim_seconds: 7200
+  speed_factor: 120
+  stop_when_all_tasks_done: true
+  tick_interval: 1.0
+task:
+  generation_batch_max: 4
+  generation_batch_min: 2
+  generation_interval_sec_max: 15
+  generation_interval_sec_min: 5
+  generation_seed_file: F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/medium/seed_2/nearest_task/task_generation_seed.yaml
+  initial_tasks: 5
+  max_deadline_offset: 7200
+  max_pending_tasks: 20
+  max_priority: 5
+  max_weight: 500.0
+  min_deadline_offset: 1800
+  min_priority: 1
+  min_weight: 10.0
+  total_task_budget: 80
+vehicle:
+  large:
+    max_battery: 150.0
+    unit_energy_consumption: 0.002
+  medium:
+    max_battery: 100.0
+    unit_energy_consumption: 0.0015
+  small:
+    max_battery: 60.0
+    unit_energy_consumption: 0.001

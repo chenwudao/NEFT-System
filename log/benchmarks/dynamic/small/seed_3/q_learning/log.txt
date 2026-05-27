@@ -1,0 +1,185 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): q_learning
+启动时间:                 2026-05-27 14:43:04
+日志目录:                 F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_3\q_learning
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\benchmark_results\dynamic\generated_configs\small\seed_3\q_learning.yaml
+
+---- 事件日志 ----
+[2026-05-27 14:43:04] [START] Experiment 'q_learning' started.
+[2026-05-27 14:43:04] [INFO] [HEADLESS] mode=dynamic, strategy=q_learning, fleet_size=3, stations=1, initial_tasks=3, task_budget=30, max_sim_seconds=3600, task_seed=replay=F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_3/nearest_task/task_generation_seed.yaml, seed_file=F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_3\q_learning\task_generation_seed.yaml
+[2026-05-27 14:43:04] [PROGRESS] sim_elapsed=360s strategy=q_learning tasks total=3 completed=0 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:04] [PROGRESS] sim_elapsed=720s strategy=q_learning tasks total=6 completed=0 pending=3 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:04] [PROGRESS] sim_elapsed=1080s strategy=q_learning tasks total=6 completed=0 pending=3 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:04] [PROGRESS] sim_elapsed=1440s strategy=q_learning tasks total=6 completed=1 pending=3 in_progress=2 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:43:04] [PROGRESS] sim_elapsed=1800s strategy=q_learning tasks total=6 completed=1 pending=3 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:04] [PROGRESS] sim_elapsed=2160s strategy=q_learning tasks total=9 completed=2 pending=6 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:04] [PROGRESS] sim_elapsed=2520s strategy=q_learning tasks total=9 completed=2 pending=6 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:04] [PROGRESS] sim_elapsed=2880s strategy=q_learning tasks total=9 completed=2 pending=6 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-27 14:43:04] [PROGRESS] sim_elapsed=3240s strategy=q_learning tasks total=12 completed=2 pending=8 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:04] [PROGRESS] sim_elapsed=3600s strategy=q_learning tasks total=12 completed=3 pending=8 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=3960s strategy=q_learning tasks total=12 completed=4 pending=7 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=4320s strategy=q_learning tasks total=12 completed=5 pending=6 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=4680s strategy=q_learning tasks total=12 completed=5 pending=6 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=5040s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=5400s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=5760s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=6120s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=6480s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=6840s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=7200s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=7560s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=7920s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=8280s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=8640s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=9000s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=9360s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=9720s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=10080s strategy=q_learning tasks total=12 completed=6 pending=6 in_progress=0 timeout=0 vehicles idle=1 moving=0 charging=2
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=10440s strategy=q_learning tasks total=12 completed=6 pending=5 in_progress=1 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=10800s strategy=q_learning tasks total=12 completed=6 pending=5 in_progress=1 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=11160s strategy=q_learning tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:05] [PROGRESS] sim_elapsed=11520s strategy=q_learning tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=11880s strategy=q_learning tasks total=12 completed=7 pending=3 in_progress=2 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=12240s strategy=q_learning tasks total=12 completed=8 pending=3 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=12600s strategy=q_learning tasks total=12 completed=8 pending=3 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=12960s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=13320s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=13680s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=14040s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=14400s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=14760s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=15120s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=15480s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=15840s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=16200s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=16560s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=16920s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=17280s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=17640s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=18000s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=18360s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=18720s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=19080s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=19440s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:06] [PROGRESS] sim_elapsed=19800s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=20160s strategy=q_learning tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=20520s strategy=q_learning tasks total=12 completed=9 pending=1 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=20880s strategy=q_learning tasks total=12 completed=9 pending=1 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=21240s strategy=q_learning tasks total=12 completed=9 pending=1 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=21600s strategy=q_learning tasks total=12 completed=10 pending=1 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=21960s strategy=q_learning tasks total=12 completed=10 pending=1 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=22320s strategy=q_learning tasks total=12 completed=10 pending=1 in_progress=1 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=22680s strategy=q_learning tasks total=12 completed=10 pending=1 in_progress=1 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=23040s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=1 moving=0 charging=2
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=23400s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=23760s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=24120s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=24480s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=24840s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=25200s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=25560s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=25920s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=26280s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=26640s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=27000s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=27360s strategy=q_learning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=27720s strategy=q_learning tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=28080s strategy=q_learning tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=28440s strategy=q_learning tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=28800s strategy=q_learning tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-27 14:43:07] [PROGRESS] sim_elapsed=29160s strategy=q_learning tasks total=12 completed=12 pending=0 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+
+[2026-05-27 14:43:07] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: q_learning
+停止原因: all_tasks_done
+仿真时长: 29160 仿真秒 / 3.6 现实秒
+
+[ 任务 ]
+  总数=12 完成=12 按时=12 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=100.00% 超时率=0.00%
+
+[ 得分 ]
+  总分=1083.8 每任务平均=90.32 按时平均=90.32
+
+[ 时效 ]
+  平均完成时长=1.4s 平均超时=0.00min 吞吐=1.48 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=506444m 任务腿均长=14019m 里程方差(车均衡)=9170
+  总能耗=594.41kWh 单任务能耗=49.534kWh
+
+[ 车队 ]
+  总车数=3 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: q_learning
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 29160.0
+wall_seconds_elapsed: 3.649713
+tasks:
+  total: 12
+  completed: 12
+  on_time: 12
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 1.0
+  timeout_rate: 0.0
+scores:
+  total: 1083.785540000001
+  per_task_average: 90.31546166666675
+  per_task_on_time_average: 90.31546166666675
+  average: 90.31546166666675
+timing:
+  avg_completion_duration_sec: 1.4166666666666667
+  avg_overdue_minutes: 0.0
+  throughput_tasks_per_hour: 1.4814814814814816
+distance_meters:
+  total_fleet_traveled: 506444.1140000041
+  average_completed_task_leg: 14019.385083333305
+  fleet_distance_stdev: 9170.009635060447
+energy:
+  total_energy: 594.4070620000052
+  energy_per_completed: 49.53392183333377
+vehicles_summary:
+  total: 3
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 44.546607000000705
+  battery_percentage: 74.24434500000118
+  total_distance_traveled: 172053.39299999923
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 45.535174999997494
+  battery_percentage: 75.89195833332916
+  total_distance_traveled: 158464.82500000246
+  energy_consumption_trip: 20.65402599999963
+  final_status: moving_to_warehouse
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 49.951155999996324
+  battery_percentage: 49.951155999996324
+  total_distance_traveled: 175925.8960000024
+  energy_consumption_trip: 23.793609000002625
+  final_status: idle
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 2
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0

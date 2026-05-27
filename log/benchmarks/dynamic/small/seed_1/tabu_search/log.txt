@@ -1,0 +1,138 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): tabu_search
+启动时间:                 2026-05-27 14:32:43
+日志目录:                 F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_1\tabu_search
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\benchmark_results\dynamic\generated_configs\small\seed_1\tabu_search.yaml
+
+---- 事件日志 ----
+[2026-05-27 14:32:43] [START] Experiment 'tabu_search' started.
+[2026-05-27 14:32:43] [INFO] [HEADLESS] mode=dynamic, strategy=tabu_search, fleet_size=3, stations=1, initial_tasks=3, task_budget=30, max_sim_seconds=3600, task_seed=replay=F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_1/nearest_task/task_generation_seed.yaml, seed_file=F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_1\tabu_search\task_generation_seed.yaml
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=360s strategy=tabu_search tasks total=3 completed=0 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=720s strategy=tabu_search tasks total=3 completed=0 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=1080s strategy=tabu_search tasks total=3 completed=2 pending=0 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=1440s strategy=tabu_search tasks total=3 completed=2 pending=0 in_progress=1 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=1800s strategy=tabu_search tasks total=6 completed=2 pending=3 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=2160s strategy=tabu_search tasks total=6 completed=2 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=2520s strategy=tabu_search tasks total=6 completed=2 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=2880s strategy=tabu_search tasks total=10 completed=4 pending=6 in_progress=0 timeout=0 vehicles idle=3 moving=0 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=3240s strategy=tabu_search tasks total=10 completed=4 pending=5 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=3600s strategy=tabu_search tasks total=10 completed=4 pending=5 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=3960s strategy=tabu_search tasks total=10 completed=4 pending=5 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=4320s strategy=tabu_search tasks total=10 completed=5 pending=2 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=4680s strategy=tabu_search tasks total=10 completed=5 pending=2 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=5040s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:32:44] [PROGRESS] sim_elapsed=5400s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=5760s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=6120s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=6480s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=6840s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=7200s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=7560s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=0 charging=3
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=7920s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=8280s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=8640s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=9000s strategy=tabu_search tasks total=10 completed=6 pending=2 in_progress=2 timeout=0 vehicles idle=1 moving=0 charging=2
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=9360s strategy=tabu_search tasks total=10 completed=6 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=9720s strategy=tabu_search tasks total=10 completed=7 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=10080s strategy=tabu_search tasks total=10 completed=7 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=10440s strategy=tabu_search tasks total=10 completed=7 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=10800s strategy=tabu_search tasks total=10 completed=7 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=11160s strategy=tabu_search tasks total=10 completed=8 pending=0 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=11520s strategy=tabu_search tasks total=10 completed=8 pending=0 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=11880s strategy=tabu_search tasks total=10 completed=9 pending=0 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-27 14:32:45] [PROGRESS] sim_elapsed=12240s strategy=tabu_search tasks total=10 completed=10 pending=0 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+
+[2026-05-27 14:32:45] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: tabu_search
+停止原因: all_tasks_done
+仿真时长: 12240 仿真秒 / 1.6 现实秒
+
+[ 任务 ]
+  总数=10 完成=10 按时=10 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=100.00% 超时率=0.00%
+
+[ 得分 ]
+  总分=635.0 每任务平均=63.50 按时平均=63.50
+
+[ 时效 ]
+  平均完成时长=0.7s 平均超时=0.00min 吞吐=2.94 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=237479m 任务腿均长=17405m 里程方差(车均衡)=10043
+  总能耗=277.26kWh 单任务能耗=27.726kWh
+
+[ 车队 ]
+  总车数=3 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: tabu_search
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 12240.0
+wall_seconds_elapsed: 1.583593
+tasks:
+  total: 10
+  completed: 10
+  on_time: 10
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 1.0
+  timeout_rate: 0.0
+scores:
+  total: 635.0072200000612
+  per_task_average: 63.50072200000612
+  per_task_on_time_average: 63.50072200000612
+  average: 63.50072200000612
+timing:
+  avg_completion_duration_sec: 0.7
+  avg_overdue_minutes: 0.0
+  throughput_tasks_per_hour: 2.9411764705882355
+distance_meters:
+  total_fleet_traveled: 237478.7069999944
+  average_completed_task_leg: 17405.468399999336
+  fleet_distance_stdev: 10042.507126950899
+energy:
+  total_energy: 277.2606004999924
+  energy_per_completed: 27.72606004999924
+vehicles_summary:
+  total: 3
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 12.406136000000632
+  battery_percentage: 20.676893333334387
+  total_distance_traveled: 88993.86399999933
+  energy_consumption_trip: 31.44660299999925
+  final_status: moving_to_charge
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 43.27894400000087
+  battery_percentage: 72.13157333333479
+  total_distance_traveled: 68921.05599999914
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 65.13431950000601
+  battery_percentage: 65.13431950000601
+  total_distance_traveled: 79563.78699999595
+  energy_consumption_trip: 60.75901649999842
+  final_status: idle
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 2
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0

@@ -22,6 +22,7 @@ from backend.algorithm.scheduler import (
     Command,
 )
 from backend.algorithm.snapshot import Snapshot
+from backend.config import config
 from backend.data.data_manager import DataManager
 from backend.data.task import Task, TaskStatus, apply_deadline_timeouts
 from backend.data.vehicle import VehicleStatus
@@ -146,15 +147,95 @@ class DynamicSchedulingModule:
         ):
             return cmd
 
-        station = utils.best_charging_station(vehicle, snapshot)
-        if station is not None:
-            return utils.make_charge_command(vehicle, station)
+        # 目标不可直达时，检查是否存在“当前可达且充到阈值后可继续送达目标”的中转充电站。
+        transit = self._best_transit_station_for_target(vehicle, cmd.target_xy, snapshot)
+        if transit is not None:
+            return utils.make_charge_command(vehicle, transit)
 
         print(
             f"[WARN] Vehicle {vehicle.id} cannot reach target or any charging station; "
-            "keep idle to avoid running out of battery."
+            "target will be timed out if it is an active task."
         )
+        if cmd.action == ACTION_DELIVER and cmd.task_id is not None:
+            self._timeout_unreachable_task(vehicle, cmd.task_id)
         return utils.make_idle_command(vehicle)
+
+    def _best_transit_station_for_target(self, vehicle, target_xy, snapshot: Snapshot):
+        """选择中转充电站：车辆先去站补能，再能送达目标。"""
+        stations = list(getattr(snapshot, "charging_stations", []) or [])
+        if not stations:
+            return None
+        sched_cfg = config.get_scheduling_config()
+        charge_until_pct = float(sched_cfg.get("charge_until_pct", 90.0))
+        charge_until_pct = max(1.0, min(100.0, charge_until_pct))
+        charge_level = float(vehicle.max_battery) * charge_until_pct / 100.0
+        margin = float(sched_cfg.get("battery_safety_margin", 1.15))
+        margin = max(1.0, margin)
+        load_weight = float(sched_cfg.get("charge_load_weight_m", 8000.0))
+        queue_weight = float(sched_cfg.get("charge_queue_weight_m", 2000.0))
+
+        best_station = None
+        best_cost = float("inf")
+        for st in stations:
+            st_xy = (float(st.position.x), float(st.position.y))
+            # 先要求“当前可达该站”
+            if not utils.can_reach_target(
+                vehicle, st_xy, snapshot, require_station_buffer=False
+            ):
+                continue
+            d_st_to_target = snapshot.distance(st_xy, target_xy)
+            if d_st_to_target == float("inf"):
+                continue
+            d_target_to_station = utils.min_distance_to_any_station(
+                target_xy, stations, snapshot
+            )
+            if d_target_to_station == float("inf"):
+                continue
+            need = (
+                utils.energy_required_for_distance(
+                    vehicle, float(d_st_to_target) + float(d_target_to_station)
+                )
+                * margin
+            )
+            # 从该站充到阈值电量仍不可达目标+缓冲，则该站不可用
+            if charge_level + 1e-9 < need:
+                continue
+
+            d_to_st = snapshot.distance(vehicle.position, st.position)
+            waiting = max(
+                0,
+                int(getattr(st, "queue_count", 0))
+                - int(getattr(st, "capacity", 0)),
+            )
+            cost = (
+                float(d_to_st)
+                + float(getattr(st, "load_pressure", 0.0)) * load_weight
+                + waiting * queue_weight
+            )
+            if cost < best_cost:
+                best_cost = cost
+                best_station = st
+        return best_station
+
+    def _timeout_unreachable_task(self, vehicle, task_id: int) -> None:
+        """对无法在任何中转充电站后送达的任务，直接标记 TIMEOUT。"""
+        task = self.data_manager.get_task(task_id)
+        if task is None:
+            return
+        if task.status in (TaskStatus.COMPLETED, TaskStatus.TIMEOUT):
+            return
+
+        if task.assigned_vehicle_id == vehicle.id:
+            task.assigned_vehicle_id = None
+            vehicle.remove_task(task.id)
+            vehicle.update_load(max(0.0, vehicle.current_load - float(task.weight)))
+            self.data_manager._notify_vehicle_update(vehicle)
+
+        task.score = 0.0
+        self.data_manager.update_task_status(task.id, TaskStatus.TIMEOUT)
+        print(
+            f"[Timeout] Task {task.id} marked TIMEOUT: unreachable even after charging transition."
+        )
 
     def _handle_handoff(self, vehicle, cmd: Command) -> None:
         """把 cmd.vehicle_id 车上的 task_ids_to_transfer 交给 cmd.target_vehicle_id。"""

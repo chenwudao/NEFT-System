@@ -1,0 +1,187 @@
+version: 1
+mode: record
+source_path: null
+base_seed: 1217562027
+event_count: 20
+note: recorded during this run
+events:
+- task_id: 1
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.3320412
+    y: 22.906178
+  weight: 396.32627081147257
+  priority: 2
+  deadline_offset: 2122
+- task_id: 2
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.3091734
+    y: 22.9780302
+  weight: 359.87837885858966
+  priority: 3
+  deadline_offset: 2634
+- task_id: 3
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.3415769
+    y: 22.9217843
+  weight: 18.435095459419763
+  priority: 5
+  deadline_offset: 2300
+- task_id: 4
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.4252115
+    y: 23.0362372
+  weight: 461.5605767675226
+  priority: 4
+  deadline_offset: 6558
+- task_id: 5
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.5096683
+    y: 22.9605208
+  weight: 59.963719117055184
+  priority: 5
+  deadline_offset: 3203
+- task_id: 1001
+  phase: runtime
+  sim_seconds: 960.0
+  position:
+    x: 113.346108
+    y: 22.9105236
+  weight: 99.64383743672128
+  priority: 1
+  deadline_offset: 4255
+- task_id: 1002
+  phase: runtime
+  sim_seconds: 960.0
+  position:
+    x: 113.3363101
+    y: 22.9090221
+  weight: 446.3145572844163
+  priority: 2
+  deadline_offset: 3876
+- task_id: 1003
+  phase: runtime
+  sim_seconds: 960.0
+  position:
+    x: 113.268194
+    y: 22.987841
+  weight: 285.3944465671392
+  priority: 2
+  deadline_offset: 5912
+- task_id: 1004
+  phase: runtime
+  sim_seconds: 960.0
+  position:
+    x: 113.4427548
+    y: 23.0541757
+  weight: 340.2936373374954
+  priority: 1
+  deadline_offset: 1981
+- task_id: 1005
+  phase: runtime
+  sim_seconds: 2760.0
+  position:
+    x: 113.3460019
+    y: 22.9453929
+  weight: 246.13784649947416
+  priority: 4
+  deadline_offset: 4057
+- task_id: 1006
+  phase: runtime
+  sim_seconds: 2760.0
+  position:
+    x: 113.3451609
+    y: 23.036231
+  weight: 310.8160822641966
+  priority: 3
+  deadline_offset: 2686
+- task_id: 1007
+  phase: runtime
+  sim_seconds: 2760.0
+  position:
+    x: 113.5193919
+    y: 22.9556833
+  weight: 465.4841001065449
+  priority: 4
+  deadline_offset: 5105
+- task_id: 1008
+  phase: runtime
+  sim_seconds: 2760.0
+  position:
+    x: 113.3718436
+    y: 22.9512735
+  weight: 300.69837670335403
+  priority: 4
+  deadline_offset: 5245
+- task_id: 1009
+  phase: runtime
+  sim_seconds: 3720.0
+  position:
+    x: 113.3571911
+    y: 22.961036
+  weight: 120.80637223734756
+  priority: 1
+  deadline_offset: 5602
+- task_id: 1010
+  phase: runtime
+  sim_seconds: 3720.0
+  position:
+    x: 113.2947984
+    y: 23.0325789
+  weight: 61.34138101535334
+  priority: 1
+  deadline_offset: 6752
+- task_id: 1011
+  phase: runtime
+  sim_seconds: 5040.0
+  position:
+    x: 113.3814153
+    y: 23.0633563
+  weight: 34.8335523900759
+  priority: 3
+  deadline_offset: 3696
+- task_id: 1012
+  phase: runtime
+  sim_seconds: 5040.0
+  position:
+    x: 113.2925475
+    y: 22.9256718
+  weight: 25.57998018912527
+  priority: 1
+  deadline_offset: 3475
+- task_id: 1013
+  phase: runtime
+  sim_seconds: 6720.0
+  position:
+    x: 113.4651274
+    y: 22.9948262
+  weight: 39.089958923810435
+  priority: 3
+  deadline_offset: 5461
+- task_id: 1014
+  phase: runtime
+  sim_seconds: 6720.0
+  position:
+    x: 113.3476102
+    y: 22.9382239
+  weight: 124.91415537812313
+  priority: 2
+  deadline_offset: 6751
+- task_id: 1015
+  phase: runtime
+  sim_seconds: 6720.0
+  position:
+    x: 113.4483581
+    y: 23.0502631
+  weight: 236.11167091301303
+  priority: 3
+  deadline_offset: 4373

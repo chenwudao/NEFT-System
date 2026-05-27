@@ -30,13 +30,24 @@ charging_station:
   default_capacity: 2
   max_queue_time:   600
 
+vehicle:
+  small:
+    unit_energy_consumption: 0.001
+    max_battery: 60.0
+  medium:
+    unit_energy_consumption: 0.0015
+    max_battery: 100.0
+  large:
+    unit_energy_consumption: 0.002
+    max_battery: 150.0
+
 task:
   generation_seed_file: null
   initial_tasks:               3
-  generation_interval_sec_min: 15
-  generation_interval_sec_max: 40
-  generation_batch_min:        1
-  generation_batch_max:        2
+  generation_interval_sec_min: 5
+  generation_interval_sec_max: 15
+  generation_batch_min:        2
+  generation_batch_max:        4
   max_pending_tasks:           8
   # 单任务（小规模 → 货物轻、deadline 偏短）
   min_weight:           10.0
