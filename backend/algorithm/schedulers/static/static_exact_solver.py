@@ -959,7 +959,9 @@ class StaticExactSolverScheduler(Scheduler):
         )
 
         # 每个任务点到最近充电站的缓冲距离（用于线性能量安全近似）。
+        # 同时记录该点是否“可充电可达”（决定该点是否允许触发充电事件变量）。
         station_buffer_dist = {n: 0.0 for n in task_nodes}
+        station_reachable = {n: False for n in task_nodes}
         for n in task_nodes:
             if stations:
                 t = task_by_node[n]
@@ -968,15 +970,31 @@ class StaticExactSolverScheduler(Scheduler):
                     stations,
                     snapshot,
                 )
-                station_buffer_dist[n] = 0.0 if d_buf == float("inf") else float(d_buf)
+                if d_buf == float("inf"):
+                    station_buffer_dist[n] = 0.0
+                    station_reachable[n] = False
+                else:
+                    station_buffer_dist[n] = float(d_buf)
+                    station_reachable[n] = True
             else:
                 station_buffer_dist[n] = 0.0
+                station_reachable[n] = False
+
+        warehouse_reachable_station = False
+        if stations:
+            d_wh = utils.min_distance_to_any_station(
+                (float(wh[0]), float(wh[1])),
+                stations,
+                snapshot,
+            )
+            warehouse_reachable_station = (d_wh != float("inf"))
 
         # 充电相关参数（线性代理）
         charge_time_penalty_per_s = float(static_cfg.get("charge_time_penalty_per_s", 0.02))
         charge_event_penalty = float(static_cfg.get("charge_event_penalty", 20.0))
         charge_queue_penalty = float(static_cfg.get("charge_queue_penalty", 40.0))
         avg_charge_detour_m = float(static_cfg.get("avg_charge_detour_m", 1200.0))
+        soc_min_ratio = float(static_cfg.get("soc_min_ratio", 0.0))
 
         # x[k,i,j] 是否走弧 i->j
         x = {}
@@ -1008,13 +1026,32 @@ class StaticExactSolverScheduler(Scheduler):
         # charge_energy[k] = 车辆k在本规划中补充的总电量；
         # charge_events[k] = 车辆k充电次数（整数，近似）
         charge_energy = {
-            k: m.addVar(lb=0.0, ub=max(0.0, float(v_by_id[k].max_battery) * len(task_nodes)),
+            k: m.addVar(lb=0.0, ub=max(0.0, float(v_by_id[k].max_battery) * (len(task_nodes) + 1)),
                         vtype=GRB.CONTINUOUS, name=f"charge_energy_{k}")
             for k in K
         }
         charge_events = {
-            k: m.addVar(lb=0.0, ub=float(len(task_nodes)), vtype=GRB.INTEGER, name=f"charge_events_{k}")
+            k: m.addVar(lb=0.0, ub=float(len(task_nodes) + 1), vtype=GRB.INTEGER, name=f"charge_events_{k}")
             for k in K
+        }
+        # 节点到达电量（SOC）与弧上充电量/充电事件。
+        batt_arr = {}
+        for k in K:
+            max_batt_k = max(1e-9, float(getattr(v_by_id[k], "max_battery", 1.0)))
+            for n in task_nodes:
+                batt_arr[(k, n)] = m.addVar(
+                    lb=0.0,
+                    ub=max_batt_k,
+                    vtype=GRB.CONTINUOUS,
+                    name=f"batt_{k}_{n}",
+                )
+        charge_on_arc = {
+            (k, i, j): m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name=f"q_{k}_{i}_{j}")
+            for (k, i, j) in x
+        }
+        charge_evt_arc = {
+            (k, i, j): m.addVar(vtype=GRB.BINARY, name=f"zchg_{k}_{i}_{j}")
+            for (k, i, j) in x
         }
 
         # ---- 约束 ----
@@ -1053,7 +1090,7 @@ class StaticExactSolverScheduler(Scheduler):
             )
 
             # ---------- 电量与充电线性近似 ----------
-            # 服务总距离（含每个任务点的“到最近充电站”安全缓冲）
+            # 服务总距离（含每个任务点“到最近充电站”的安全缓冲）
             service_dist_expr = gp.quicksum(
                 (
                     dist[(i, j)]
@@ -1069,6 +1106,94 @@ class StaticExactSolverScheduler(Scheduler):
             init_batt = max(0.0, float(getattr(v_by_id[k], "battery", 0.0)))
             max_batt = max(1e-9, float(getattr(v_by_id[k], "max_battery", 1.0)))
             power = max(1e-9, float(getattr(v_by_id[k], "charging_power", 0.022)))
+            soc_floor = min(max_batt, max(0.0, float(soc_min_ratio) * max_batt))
+            arcs_k = [(i, j) for i in nodes for j in nodes if (k, i, j) in x]
+            chargeable_origin = {start: bool(warehouse_reachable_station)}
+            for n in task_nodes:
+                chargeable_origin[n] = bool(station_reachable.get(n, False))
+
+            # 弧级充电变量联动：q<=max_batt*z, z<=x, q<=max_batt*x
+            for i, j in arcs_k:
+                m.addConstr(
+                    charge_on_arc[(k, i, j)] <= max_batt * charge_evt_arc[(k, i, j)],
+                    name=f"q_evt_link_{k}_{i}_{j}",
+                )
+                m.addConstr(
+                    charge_evt_arc[(k, i, j)] <= x[(k, i, j)],
+                    name=f"evt_arc_link_{k}_{i}_{j}",
+                )
+                m.addConstr(
+                    charge_on_arc[(k, i, j)] <= max_batt * x[(k, i, j)],
+                    name=f"q_arc_link_{k}_{i}_{j}",
+                )
+                if not chargeable_origin.get(i, False):
+                    m.addConstr(charge_on_arc[(k, i, j)] == 0.0, name=f"q_disabled_{k}_{i}_{j}")
+                    m.addConstr(charge_evt_arc[(k, i, j)] == 0.0, name=f"z_disabled_{k}_{i}_{j}")
+
+            # 车辆级总充电量/次数与弧级变量一致
+            m.addConstr(
+                charge_energy[k] == gp.quicksum(charge_on_arc[(k, i, j)] for i, j in arcs_k),
+                name=f"charge_energy_sum_{k}",
+            )
+            m.addConstr(
+                charge_events[k] == gp.quicksum(charge_evt_arc[(k, i, j)] for i, j in arcs_k),
+                name=f"charge_events_sum_{k}",
+            )
+
+            # 节点SOC上下界（仅对已服务节点生效）
+            for n in task_nodes:
+                m.addConstr(
+                    batt_arr[(k, n)] <= max_batt * y[(k, n)],
+                    name=f"soc_ub_{k}_{n}",
+                )
+                m.addConstr(
+                    batt_arr[(k, n)] >= soc_floor * y[(k, n)],
+                    name=f"soc_lb_{k}_{n}",
+                )
+
+            max_need = unit_cons * (
+                max(dist.values()) + max(station_buffer_dist.values()) + float(avg_charge_detour_m)
+            )
+            m_soc = max(1.0, 2.0 * max_batt + max_need)
+
+            # start -> j 的SOC传播
+            for j in task_nodes:
+                need_start_j = unit_cons * (dist[(start, j)] + station_buffer_dist[j])
+                m.addConstr(
+                    batt_arr[(k, j)]
+                    >= init_batt - need_start_j + charge_on_arc[(k, start, j)] - m_soc * (1 - x[(k, start, j)]),
+                    name=f"soc_start_lb_{k}_{j}",
+                )
+                m.addConstr(
+                    batt_arr[(k, j)]
+                    <= init_batt - need_start_j + charge_on_arc[(k, start, j)] + m_soc * (1 - x[(k, start, j)]),
+                    name=f"soc_start_ub_{k}_{j}",
+                )
+
+            # i -> j 的SOC传播（任务到任务）
+            for i in task_nodes:
+                for j in task_nodes:
+                    if i == j:
+                        continue
+                    need_ij = unit_cons * (dist[(i, j)] + station_buffer_dist[j])
+                    m.addConstr(
+                        batt_arr[(k, j)]
+                        >= batt_arr[(k, i)] - need_ij + charge_on_arc[(k, i, j)] - m_soc * (1 - x[(k, i, j)]),
+                        name=f"soc_lb_{k}_{i}_{j}",
+                    )
+                    m.addConstr(
+                        batt_arr[(k, j)]
+                        <= batt_arr[(k, i)] - need_ij + charge_on_arc[(k, i, j)] + m_soc * (1 - x[(k, i, j)]),
+                        name=f"soc_ub_{k}_{i}_{j}",
+                    )
+
+            # i -> end 返回仓库的可达性（无需显式 end SOC）
+            for i in task_nodes:
+                need_i_end = unit_cons * dist[(i, end)]
+                m.addConstr(
+                    batt_arr[(k, i)] - need_i_end + charge_on_arc[(k, i, end)] >= -m_soc * (1 - x[(k, i, end)]),
+                    name=f"soc_end_reach_{k}_{i}",
+                )
 
             # 能量守恒：消耗 <= 初始电量 + 充电补入
             m.addConstr(

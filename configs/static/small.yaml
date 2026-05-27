@@ -15,6 +15,8 @@ optimization:
     charge_event_penalty: 20.0
     charge_queue_penalty: 40.0
     avg_charge_detour_m: 1200.0
+    unserved_penalty: 180.0
+    soc_min_ratio: 0.0
     max_exact_tasks: 10
     strict_global_optimum: false
     mip_gap_threshold: 0.02
