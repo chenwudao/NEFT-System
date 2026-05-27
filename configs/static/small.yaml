@@ -7,16 +7,32 @@ optimization:
   mode: "static"   # dynamic | static
   static:
     strategy: "static_exact_solver"
-    solver: "gurobi"
-    force_gurobi_only: true
-    accept_feasible_when_force_gurobi_only: true
-    objective_mode: "proxy"   # proxy | simulation_score
+    solver: "gpu_search"   # gpu_search | exact | heuristic | gurobi
+    force_gurobi_only: false
+    accept_feasible_when_force_gurobi_only: false
+    objective_mode: "simulation_score"   # proxy | simulation_score
     charge_time_penalty_per_s: 0.02
     charge_event_penalty: 20.0
     charge_queue_penalty: 40.0
     avg_charge_detour_m: 1200.0
-    unserved_penalty: 180.0
+    unserved_penalty: 420.0
     soc_min_ratio: 0.0
+    heuristic_time_limit_s: 8.0
+    heuristic_ls_rounds: 320
+    heuristic_seed: 20260527
+    exact_assignment_time_limit_s: 2.0
+    simulation_exact_max_tasks: 14
+    full_exact_global: true
+    full_exact_max_tasks: 16
+    exact_live_log: true
+    exact_log_interval_s: 5.0
+    exact_breadth_levels: 2
+    exact_beam_width: 64
+    exact_refine_seeds: 4
+    gpu_time_limit_s: 90.0
+    gpu_batch_size: 64
+    gpu_log_interval_s: 2.0
+    gpu_explore_scale: 3.0
     max_exact_tasks: 10
     strict_global_optimum: false
     mip_gap_threshold: 0.02

@@ -1,0 +1,97 @@
+version: 1
+mode: replay
+source_path: F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_1/nearest_task/task_generation_seed.yaml
+base_seed: 1674228261
+event_count: 10
+note: replay from seed file
+events:
+- task_id: 1
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.3121808
+    y: 22.978614
+  weight: 665.11582620972
+  priority: 2
+  deadline_offset: 2882
+- task_id: 2
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.4594798
+    y: 23.0120206
+  weight: 644.6428094966897
+  priority: 5
+  deadline_offset: 1140
+- task_id: 3
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.3701123
+    y: 22.9197335
+  weight: 372.25830413844227
+  priority: 5
+  deadline_offset: 1361
+- task_id: 1001
+  phase: runtime
+  sim_seconds: 1560.0
+  position:
+    x: 113.4546679
+    y: 22.9799906
+  weight: 365.3373882584571
+  priority: 3
+  deadline_offset: 2796
+- task_id: 1002
+  phase: runtime
+  sim_seconds: 1560.0
+  position:
+    x: 113.3368268
+    y: 22.9604754
+  weight: 203.90411110377167
+  priority: 1
+  deadline_offset: 1828
+- task_id: 1003
+  phase: runtime
+  sim_seconds: 1560.0
+  position:
+    x: 113.3470872
+    y: 23.0285793
+  weight: 469.5229204761672
+  priority: 3
+  deadline_offset: 3263
+- task_id: 1004
+  phase: runtime
+  sim_seconds: 2760.0
+  position:
+    x: 113.3488667
+    y: 22.9376947
+  weight: 306.20958914338274
+  priority: 2
+  deadline_offset: 2291
+- task_id: 1005
+  phase: runtime
+  sim_seconds: 2760.0
+  position:
+    x: 113.3774216
+    y: 23.0654693
+  weight: 399.3763114010637
+  priority: 4
+  deadline_offset: 2273
+- task_id: 1006
+  phase: runtime
+  sim_seconds: 2760.0
+  position:
+    x: 113.4318013
+    y: 23.0428982
+  weight: 661.8170750770267
+  priority: 4
+  deadline_offset: 991
+- task_id: 1007
+  phase: runtime
+  sim_seconds: 2760.0
+  position:
+    x: 113.5047671
+    y: 22.9755967
+  weight: 269.803725725848
+  priority: 2
+  deadline_offset: 2487

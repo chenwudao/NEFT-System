@@ -1,9 +1,22 @@
 # NEFT 仿真实验日志
 实验名 (experiment.name): medium-scale-static_exact_solver
-启动时间:                 2026-05-27 13:25:21
+启动时间:                 2026-05-27 20:56:13
 日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-static_exact_solver
 配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\configs\static\medium.yaml
 
 ---- 事件日志 ----
-[2026-05-27 13:25:21] [START] Experiment 'medium-scale-static_exact_solver' started.
-[2026-05-27 13:25:21] [INFO] [HEADLESS] mode=static, strategy=static_exact_solver, fleet_size=6, stations=2, initial_tasks=80, task_budget=80, max_sim_seconds=7200, task_seed=record(base_seed=558309248), seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-static_exact_solver\task_generation_seed.yaml
+[2026-05-27 20:56:13] [START] Experiment 'medium-scale-static_exact_solver' started.
+[2026-05-27 20:56:13] [INFO] [HEADLESS] mode=static, strategy=static_exact_solver, fleet_size=6, stations=2, initial_tasks=80, task_budget=80, max_sim_seconds=7200, task_seed=record(base_seed=1414660890), seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-static_exact_solver\task_generation_seed.yaml
+[2026-05-27 20:56:24] [PROGRESS] sim_elapsed=360s strategy=static_exact_solver tasks total=80 completed=1 pending=78 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-27 20:56:31] [PROGRESS] sim_elapsed=720s strategy=static_exact_solver tasks total=80 completed=3 pending=77 in_progress=0 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-27 20:56:35] [PROGRESS] sim_elapsed=1080s strategy=static_exact_solver tasks total=80 completed=3 pending=76 in_progress=1 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-27 20:56:39] [PROGRESS] sim_elapsed=1440s strategy=static_exact_solver tasks total=80 completed=4 pending=76 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-27 20:56:42] [PROGRESS] sim_elapsed=1800s strategy=static_exact_solver tasks total=80 completed=4 pending=76 in_progress=0 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-27 20:56:49] [PROGRESS] sim_elapsed=2160s strategy=static_exact_solver tasks total=80 completed=4 pending=74 in_progress=2 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-27 20:56:52] [PROGRESS] sim_elapsed=2520s strategy=static_exact_solver tasks total=80 completed=5 pending=74 in_progress=1 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-27 20:56:55] [PROGRESS] sim_elapsed=2880s strategy=static_exact_solver tasks total=80 completed=6 pending=74 in_progress=0 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-27 20:57:00] [PROGRESS] sim_elapsed=3240s strategy=static_exact_solver tasks total=80 completed=6 pending=73 in_progress=1 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-27 20:57:05] [PROGRESS] sim_elapsed=3600s strategy=static_exact_solver tasks total=80 completed=7 pending=72 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-27 20:57:09] [PROGRESS] sim_elapsed=3960s strategy=static_exact_solver tasks total=80 completed=7 pending=72 in_progress=1 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-27 20:57:12] [PROGRESS] sim_elapsed=4320s strategy=static_exact_solver tasks total=80 completed=8 pending=72 in_progress=0 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-27 20:57:17] [PROGRESS] sim_elapsed=4680s strategy=static_exact_solver tasks total=80 completed=8 pending=71 in_progress=1 timeout=0 vehicles idle=1 moving=5 charging=0

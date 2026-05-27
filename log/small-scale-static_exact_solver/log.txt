@@ -1,0 +1,9 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): small-scale-static_exact_solver
+启动时间:                 2026-05-27 20:13:30
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\log\small-scale-static_exact_solver
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\configs\static\small.yaml
+
+---- 事件日志 ----
+[2026-05-27 20:13:30] [START] Experiment 'small-scale-static_exact_solver' started.
+[2026-05-27 20:13:30] [INFO] [HEADLESS] mode=static, strategy=static_exact_solver, fleet_size=3, stations=1, initial_tasks=10, task_budget=30, max_sim_seconds=3600, task_seed=replay=F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_1/nearest_task/task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\small-scale-static_exact_solver\task_generation_seed.yaml

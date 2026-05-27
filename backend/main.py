@@ -934,6 +934,20 @@ def _all_tasks_settled(app: FastAPI, data_manager: DataManager) -> bool:
     return True
 
 
+def _has_released_unsettled_tasks(data_manager: DataManager, now_ts: Optional[int] = None) -> bool:
+    """是否存在“已到释放时间但尚未结算”的任务。"""
+    from backend.data.task import TaskStatus
+
+    if now_ts is None:
+        now_ts = int(time.time())
+    for t in data_manager.get_tasks():
+        if int(getattr(t, "create_time", 0)) > int(now_ts):
+            continue
+        if t.status not in (TaskStatus.COMPLETED, TaskStatus.TIMEOUT):
+            return True
+    return False
+
+
 def _all_vehicles_at_warehouse_and_idle(data_manager: DataManager, eps: float = 1e-4) -> bool:
     """所有车辆都在仓库且 IDLE。"""
     vehicles = data_manager.get_vehicles()
@@ -1147,12 +1161,9 @@ async def background_tasks(
                     # 兜底终止：任务不再生成 + 全车回仓空闲 + 连续多轮无派送命令
                     # 视为“剩余任务当前不可完成”，自动结束，并把未完成任务记 0 分。
                     if STOP_WHEN_ALL_TASKS_DONE and _task_generation_stopped(app, data_manager):
-                        from backend.data.task import TaskStatus
-
-                        tasks_now = data_manager.get_tasks()
-                        has_unsettled = any(
-                            t.status not in (TaskStatus.COMPLETED, TaskStatus.TIMEOUT)
-                            for t in tasks_now
+                        has_unsettled = _has_released_unsettled_tasks(
+                            data_manager,
+                            now_ts=int(time.time()),
                         )
                         deliver_count = sum(
                             1 for c in (commands or []) if c.get("action") == "deliver"
@@ -1375,12 +1386,9 @@ if __name__ == "__main__":
                 commands = decision_manager.dynamic_scheduling()
                 fake_app.state.last_dynamic_scheduling_ts = now_wall
             if STOP_WHEN_ALL_TASKS_DONE and _task_generation_stopped(fake_app, data_manager):
-                from backend.data.task import TaskStatus
-
-                tasks_now = data_manager.get_tasks()
-                has_unsettled = any(
-                    t.status not in (TaskStatus.COMPLETED, TaskStatus.TIMEOUT)
-                    for t in tasks_now
+                has_unsettled = _has_released_unsettled_tasks(
+                    data_manager,
+                    now_ts=int(time.time()),
                 )
                 deliver_count = sum(
                     1 for c in (commands or []) if c.get("action") == "deliver"

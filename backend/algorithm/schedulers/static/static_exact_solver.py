@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import itertools
+import random
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -32,6 +33,8 @@ class StaticExactSolverScheduler(Scheduler):
     def __init__(self) -> None:
         self._plan_signature: Tuple[int, ...] = tuple()
         self._vehicle_routes: Dict[int, List[int]] = {}
+        self._warehouse_command_plan: Dict[int, List[Dict[str, Any]]] = {}
+        self._warehouse_plan_cursor: Dict[int, int] = {}
         self._vrptw_disabled_reason: Optional[str] = None
         # 静态模式只做一次全局优化：首次建好计划后，不再重复求解。
         self._plan_built_once: bool = False
@@ -75,6 +78,8 @@ class StaticExactSolverScheduler(Scheduler):
                 tuple(sorted(t.id for t in all_pending)),
                 tuple(sorted(v.id for v in planning_vehicles)),
             )
+            self._warehouse_command_plan = {}
+            self._warehouse_plan_cursor = {}
             self._vehicle_routes = self._build_global_plan(planning_vehicles, all_pending, snapshot)
             self._plan_signature = signature
             self._plan_built_once = True
@@ -85,6 +90,53 @@ class StaticExactSolverScheduler(Scheduler):
             for tid in tids
         }
         for v in wh_vehicles:
+            # exact 仓库命令计划：只在仓库时按计划时刻发批量指令，允许主动等待。
+            plan_cmds = self._warehouse_command_plan.get(v.id, [])
+            if plan_cmds:
+                cursor = int(self._warehouse_plan_cursor.get(v.id, 0))
+                now_ts = int(snapshot.timestamp)
+                dispatched = False
+                while cursor < len(plan_cmds):
+                    item = plan_cmds[cursor]
+                    tids = list(item.get("task_ids", []) or [])
+                    if not tids:
+                        cursor += 1
+                        continue
+                    all_known = all(tid in task_by_id_all for tid in tids)
+                    if not all_known:
+                        cursor += 1
+                        continue
+                    all_pending_now = all(
+                        str(getattr(task_by_id_all[tid], "status", None).value) == "pending"
+                        and int(getattr(task_by_id_all[tid], "create_time", 0)) <= now_ts
+                        for tid in tids
+                    )
+                    if not all_pending_now:
+                        # 还没到释放时刻：按“等待也是动作”的计划继续等待。
+                        if any(
+                            int(getattr(task_by_id_all[tid], "create_time", 0)) > now_ts
+                            for tid in tids
+                        ):
+                            break
+                        # 若任务已不再可派（被其他流程结算），跳过该计划项。
+                        cursor += 1
+                        continue
+                    dispatch_ts = int(item.get("dispatch_ts", now_ts))
+                    if dispatch_ts > now_ts:
+                        break
+                    first_tid = int(item.get("first_task_id", tids[0]))
+                    if first_tid not in task_by_id_all:
+                        first_tid = tids[0]
+                    t = task_by_id_all[first_tid]
+                    commands.append(utils.make_deliver_command(v, t, assigned_tasks=tids))
+                    cursor += 1
+                    dispatched = True
+                    break
+                self._warehouse_plan_cursor[v.id] = cursor
+                if not dispatched:
+                    commands.append(utils.make_idle_command(v))
+                continue
+
             route_ids = [tid for tid in self._vehicle_routes.get(v.id, []) if tid in task_by_id_all]
             if not route_ids:
                 # 兜底：若全局路由缺失，至少从当前可释放任务中拿一单，避免“回仓-充电-不分配”循环。
@@ -140,6 +192,41 @@ class StaticExactSolverScheduler(Scheduler):
             raise RuntimeError(
                 f"[STATIC] force_gurobi_only=true requires solver='gurobi', got '{solver}'."
             )
+
+        # 完全精确优先：不设时间上限，枚举“任意任务子集 + 任意车辆 + 任意顺序”。
+        if solver in ("exact", "exhaustive", "bruteforce", "brute_force"):
+            route_plan, wh_plan = self._exact_warehouse_command_plan(vehicles, tasks, snapshot)
+            self._warehouse_command_plan = wh_plan
+            self._warehouse_plan_cursor = {v.id: 0 for v in vehicles}
+            return route_plan
+
+        # PyTorch/GPU anytime 搜索：持续输出当前最优，避免“长时间无响应”。
+        if solver in ("gpu_search", "torch_search", "gpu"):
+            route_plan = self._gpu_anytime_search_plan(vehicles, tasks, snapshot)
+            self._warehouse_command_plan = {}
+            self._warehouse_plan_cursor = {}
+            return route_plan
+
+        # 非 MIP 模式：先尽量精确（小规模全局搜索），再走限时启发式。
+        if solver in ("heuristic", "global_heuristic", "meta_heuristic", "nogurobi"):
+            if objective_mode in ("simulation_score", "sim_score"):
+                if len(tasks) <= max(1, sim_exact_max_tasks):
+                    sim_plan = self._full_exact_simulation_score(vehicles, tasks, snapshot)
+                    if sim_plan is not None:
+                        print(
+                            f"[STATIC][HEURISTIC] simulation-score exact accepted "
+                            f"(tasks={len(tasks)}, vehicles={len(vehicles)})."
+                        )
+                        return sim_plan
+            if full_exact_enabled and len(tasks) <= max(1, full_exact_max_tasks):
+                exact_plan = self._full_exact_global_with_charging(vehicles, tasks, snapshot)
+                if exact_plan is not None:
+                    print(
+                        f"[STATIC][HEURISTIC] full exact global accepted "
+                        f"(tasks={len(tasks)}, vehicles={len(vehicles)})."
+                    )
+                    return exact_plan
+            return self._heuristic_global_plan(vehicles, tasks, snapshot)
 
         # 0) 真正按“仿真总分”做目标（全局穷举，适合小规模）。
         # force_gurobi_only 开启时跳过，确保全链路只由 Gurobi 决策。
@@ -210,6 +297,856 @@ class StaticExactSolverScheduler(Scheduler):
             ordered = self._best_order_for_vehicle(v, local, snapshot)
             route_map[v.id] = [t.id for t in ordered]
         return self._repair_plan_with_energy(vehicles, tasks, route_map, snapshot)
+
+    def _exhaustive_global_score_plan(self, vehicles, tasks, snapshot: Snapshot) -> Optional[Dict[int, List[int]]]:
+        """无时间上限的全局精确搜索。
+
+        搜索空间：
+        - 每个任务可以不服务（得 0 分）；
+        - 可以追加到任意一辆仍有载重的车辆；
+        - 车辆内部顺序由搜索自然枚举；
+        - 叶子/中间节点都用 `_simulate_routes_total_score` 按当前仿真评分评估。
+        """
+        if not vehicles:
+            return {}
+        if not tasks:
+            return {v.id: [] for v in vehicles}
+
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        live_log = bool(static_cfg.get("exact_live_log", True))
+        log_interval_s = max(1.0, float(static_cfg.get("exact_log_interval_s", 5.0)))
+
+        vehicles = list(vehicles)
+        ordered_tasks = sorted(
+            list(tasks),
+            key=lambda t: (
+                float(getattr(t, "deadline", 0.0)),
+                -float(getattr(t, "priority", 0.0)),
+                float(getattr(t, "create_time", 0.0)),
+            ),
+        )
+        t_by_id = {t.id: t for t in ordered_tasks}
+        task_ids = tuple(t.id for t in ordered_tasks)
+        vids = [v.id for v in vehicles]
+        cap_left: Dict[int, float] = {v.id: float(v.get_remaining_load()) for v in vehicles}
+        routes: Dict[int, List[int]] = {v.id: [] for v in vehicles}
+
+        optimistic_value = {
+            t.id: max(
+                0.0,
+                float(TASK_ASSIGN_REWARD)
+                + float(t.priority) * float(PRIORITY_REWARD)
+                + max(0.0, float(t.deadline) - max(float(snapshot.timestamp), float(t.create_time))) / 60.0
+                * float(EARLY_COMPLETION_REWARD_PER_MIN),
+            )
+            for t in ordered_tasks
+        }
+
+        best_score = self._simulate_routes_total_score(routes, vehicles, t_by_id, snapshot)
+        best_routes: Dict[int, List[int]] = {vid: [] for vid in vids}
+        nodes = 0
+        pruned = 0
+        evaluated = 1
+        t0 = time.monotonic()
+        last_log = t0
+
+        def _remaining_bound(remaining: Tuple[int, ...]) -> float:
+            return sum(float(optimistic_value.get(tid, 0.0)) for tid in remaining)
+
+        def _route_signature() -> Tuple[Tuple[int, Tuple[int, ...]], ...]:
+            return tuple((vid, tuple(routes[vid])) for vid in vids)
+
+        seen_best: Dict[Tuple[Tuple[int, ...], Tuple[Tuple[int, Tuple[int, ...]], ...]], float] = {}
+
+        def _evaluate_current() -> None:
+            nonlocal best_score, best_routes, evaluated
+            evaluated += 1
+            score = self._simulate_routes_total_score(routes, vehicles, t_by_id, snapshot)
+            if score > best_score + 1e-9:
+                best_score = score
+                best_routes = {vid: list(routes[vid]) for vid in vids}
+                print(f"[STATIC][EXACT] new best score={best_score:.2f} routes={best_routes}")
+
+        def dfs(remaining: Tuple[int, ...]) -> None:
+            nonlocal nodes, pruned, last_log
+            nodes += 1
+
+            cur_score = self._simulate_routes_total_score(routes, vehicles, t_by_id, snapshot)
+            if cur_score == float("-inf"):
+                pruned += 1
+                return
+            if cur_score + _remaining_bound(remaining) <= best_score + 1e-9:
+                pruned += 1
+                return
+
+            sig = (remaining, _route_signature())
+            prev = seen_best.get(sig)
+            if prev is not None and prev >= cur_score - 1e-9:
+                pruned += 1
+                return
+            seen_best[sig] = cur_score
+
+            if live_log:
+                now_m = time.monotonic()
+                if now_m - last_log >= log_interval_s:
+                    elapsed = max(1e-6, now_m - t0)
+                    print(
+                        "[STATIC][EXACT] "
+                        f"elapsed={elapsed:.1f}s nodes={nodes} evaluated={evaluated} "
+                        f"pruned={pruned} remaining={len(remaining)} best={best_score:.2f} "
+                        f"rate={nodes / elapsed:.1f}n/s"
+                    )
+                    last_log = now_m
+
+            _evaluate_current()
+            if not remaining:
+                return
+
+            # 分支顺序：优先尝试潜在收益最高、截止更紧的任务，利于尽早找到高分上界。
+            candidates = sorted(
+                remaining,
+                key=lambda tid: (
+                    -float(optimistic_value.get(tid, 0.0)),
+                    float(getattr(t_by_id[tid], "deadline", 0.0)),
+                ),
+            )
+            for tid in candidates:
+                task = t_by_id[tid]
+                rest = tuple(x for x in remaining if x != tid)
+
+                # 显式跳过该任务：允许低分/不可行任务不派单，分数为 0。
+                dfs(rest)
+
+                vehicle_order = sorted(
+                    vehicles,
+                    key=lambda v: (
+                        len(routes[v.id]),
+                        snapshot.distance(
+                            (t_by_id[routes[v.id][-1]].position.x, t_by_id[routes[v.id][-1]].position.y)
+                            if routes[v.id]
+                            else v.position,
+                            task.position,
+                        ),
+                    ),
+                )
+                for v in vehicle_order:
+                    vid = v.id
+                    if float(task.weight) > cap_left[vid] + 1e-9:
+                        continue
+                    routes[vid].append(tid)
+                    cap_left[vid] -= float(task.weight)
+                    dfs(rest)
+                    cap_left[vid] += float(task.weight)
+                    routes[vid].pop()
+
+        dfs(task_ids)
+        elapsed = max(1e-6, time.monotonic() - t0)
+        print(
+            "[STATIC][EXACT] done "
+            f"elapsed={elapsed:.1f}s nodes={nodes} evaluated={evaluated} "
+            f"pruned={pruned} best={best_score:.2f}"
+        )
+        return self._repair_plan_with_energy(vehicles, tasks, best_routes, snapshot)
+
+    def _heuristic_global_plan(self, vehicles, tasks, snapshot: Snapshot) -> Dict[int, List[int]]:
+        """全局已知下的限时启发式：贪心插入 + 局部搜索（不依赖 Gurobi）。"""
+        if not vehicles or not tasks:
+            return {v.id: [] for v in vehicles}
+
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        time_budget = max(0.2, float(static_cfg.get("heuristic_time_limit_s", 3.0)))
+        ls_rounds = max(10, int(static_cfg.get("heuristic_ls_rounds", 120)))
+        rng = random.Random(int(static_cfg.get("heuristic_seed", int(snapshot.timestamp) % 10_000_000)))
+        unserved_penalty = float(
+            static_cfg.get("unserved_penalty", float(TASK_ASSIGN_REWARD) + 2.0 * float(PRIORITY_REWARD))
+        )
+
+        t_by_id = {t.id: t for t in tasks}
+        vids = [v.id for v in vehicles]
+        v_by_id = {v.id: v for v in vehicles}
+        routes: Dict[int, List[int]] = {vid: [] for vid in vids}
+        start_ts = time.time()
+
+        def _seq_obj(vid: int, tid_seq: List[int]) -> float:
+            seq = [t_by_id[tid] for tid in tid_seq if tid in t_by_id]
+            if tid_seq and not seq:
+                return float("-inf")
+            if seq and not self._is_chain_feasible(v_by_id[vid], seq, snapshot):
+                return float("-inf")
+            return self._sequence_objective(v_by_id[vid], seq, snapshot)
+
+        def _served_ids(plan: Dict[int, List[int]]) -> set:
+            out = set()
+            for tid_seq in plan.values():
+                out.update(tid_seq)
+            return out
+
+        def _plan_score(plan: Dict[int, List[int]]) -> float:
+            served = _served_ids(plan)
+            score = 0.0
+            for vid in vids:
+                s = _seq_obj(vid, plan.get(vid, []))
+                if s == float("-inf"):
+                    return float("-inf")
+                score += s
+            score -= unserved_penalty * max(0, len(tasks) - len(served))
+            return score
+
+        def _remaining_cap(vid: int, plan: Dict[int, List[int]]) -> float:
+            used = sum(float(t_by_id[tid].weight) for tid in plan.get(vid, []) if tid in t_by_id)
+            return float(v_by_id[vid].get_remaining_load()) - used
+
+        # 1) 贪心插入构建初解（每次选“全局增益最大”的插入动作）
+        remaining = sorted(
+            [t.id for t in tasks],
+            key=lambda tid: (float(getattr(t_by_id[tid], "deadline", 0.0)), -float(getattr(t_by_id[tid], "priority", 0.0))),
+        )
+        while remaining and (time.time() - start_ts) < time_budget * 0.55:
+            best_move = None
+            best_gain = 1e-9
+            for tid in list(remaining):
+                t = t_by_id[tid]
+                for vid in vids:
+                    if float(t.weight) > _remaining_cap(vid, routes) + 1e-9:
+                        continue
+                    base_seq = list(routes[vid])
+                    base_obj = _seq_obj(vid, base_seq)
+                    if base_obj == float("-inf"):
+                        continue
+                    for pos in range(len(base_seq) + 1):
+                        cand_seq = base_seq[:pos] + [tid] + base_seq[pos:]
+                        cand_obj = _seq_obj(vid, cand_seq)
+                        if cand_obj == float("-inf"):
+                            continue
+                        gain = (cand_obj - base_obj) + unserved_penalty
+                        if gain > best_gain:
+                            best_gain = gain
+                            best_move = (tid, vid, pos)
+            if best_move is None:
+                break
+            tid, vid, pos = best_move
+            cur = list(routes[vid])
+            routes[vid] = cur[:pos] + [tid] + cur[pos:]
+            remaining.remove(tid)
+
+        # 2) 局部搜索（relocate + swap）提升全局分数
+        current = {vid: list(seq) for vid, seq in routes.items()}
+        current_score = _plan_score(current)
+        best = {vid: list(seq) for vid, seq in current.items()}
+        best_score = current_score
+
+        rounds = 0
+        while rounds < ls_rounds and (time.time() - start_ts) < time_budget:
+            rounds += 1
+            improved = False
+
+            # relocate
+            non_empty = [vid for vid in vids if current.get(vid)]
+            rng.shuffle(non_empty)
+            for from_vid in non_empty:
+                from_seq = list(current[from_vid])
+                if not from_seq:
+                    continue
+                tid = rng.choice(from_seq)
+                t = t_by_id.get(tid)
+                if t is None:
+                    continue
+                idx = from_seq.index(tid)
+                for to_vid in vids:
+                    if to_vid != from_vid and float(t.weight) > _remaining_cap(to_vid, current) + 1e-9:
+                        continue
+                    target_seq = list(current[to_vid])
+                    for pos in range(len(target_seq) + 1):
+                        trial = {vid: list(seq) for vid, seq in current.items()}
+                        trial[from_vid].pop(idx)
+                        insert_pos = min(pos, len(trial[to_vid]))
+                        trial[to_vid].insert(insert_pos, tid)
+                        sc = _plan_score(trial)
+                        if sc > current_score + 1e-6:
+                            current = trial
+                            current_score = sc
+                            improved = True
+                            break
+                    if improved:
+                        break
+                if improved:
+                    break
+            if improved:
+                if current_score > best_score + 1e-6:
+                    best = {vid: list(seq) for vid, seq in current.items()}
+                    best_score = current_score
+                continue
+
+            # swap
+            pair_vids = list(vids)
+            rng.shuffle(pair_vids)
+            for i, v1 in enumerate(pair_vids):
+                seq1 = current.get(v1, [])
+                if not seq1:
+                    continue
+                for v2 in pair_vids[i + 1:]:
+                    seq2 = current.get(v2, [])
+                    if not seq2:
+                        continue
+                    t1 = t_by_id[rng.choice(seq1)]
+                    t2 = t_by_id[rng.choice(seq2)]
+                    cap1 = _remaining_cap(v1, current) + float(t1.weight)
+                    cap2 = _remaining_cap(v2, current) + float(t2.weight)
+                    if float(t2.weight) > cap1 + 1e-9 or float(t1.weight) > cap2 + 1e-9:
+                        continue
+                    trial = {vid: list(seq) for vid, seq in current.items()}
+                    i1 = trial[v1].index(t1.id)
+                    i2 = trial[v2].index(t2.id)
+                    trial[v1][i1], trial[v2][i2] = trial[v2][i2], trial[v1][i1]
+                    sc = _plan_score(trial)
+                    if sc > current_score + 1e-6:
+                        current = trial
+                        current_score = sc
+                        improved = True
+                        break
+                if improved:
+                    break
+
+            if improved and current_score > best_score + 1e-6:
+                best = {vid: list(seq) for vid, seq in current.items()}
+                best_score = current_score
+
+        # 3) 按车辆内部最佳顺序再精炼一次
+        route_map: Dict[int, List[int]] = {vid: [] for vid in vids}
+        for v in vehicles:
+            seq_tasks = [t_by_id[tid] for tid in best.get(v.id, []) if tid in t_by_id]
+            ordered = self._best_order_for_vehicle(v, seq_tasks, snapshot)
+            route_map[v.id] = [t.id for t in ordered]
+        return self._repair_plan_with_energy(vehicles, tasks, route_map, snapshot)
+
+    def _exact_warehouse_command_plan(
+        self, vehicles, tasks, snapshot: Snapshot
+    ) -> Tuple[Dict[int, List[int]], Dict[int, List[Dict[str, Any]]]]:
+        """精确枚举“仓库时刻命令”：
+
+        - 仅当车辆在仓库时可下达命令；
+        - 命令可为：等待 / 给该车分配一批任务；
+        - 车辆出仓后按“正常执行”自动送货与充电；
+        - 允许在可执行时选择等待未来任务（静态全局已知）。
+        """
+        if not vehicles or not tasks:
+            return ({v.id: [] for v in vehicles}, {v.id: [] for v in vehicles})
+
+        now_ts = float(int(snapshot.timestamp))
+        wh_xy = (float(snapshot.warehouse_xy[0]), float(snapshot.warehouse_xy[1]))
+        stations = list(getattr(snapshot, "charging_stations", []) or [])
+        sched_cfg = config.get_scheduling_config() or {}
+        charge_until_pct = max(1.0, min(100.0, float(sched_cfg.get("charge_until_pct", 90.0))))
+        margin = max(1.0, float(sched_cfg.get("battery_safety_margin", 1.15)))
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        live_log = bool(static_cfg.get("exact_live_log", True))
+        log_interval_s = max(1.0, float(static_cfg.get("exact_log_interval_s", 5.0)))
+        breadth_levels = max(0, int(static_cfg.get("exact_breadth_levels", 2)))
+        beam_width = max(1, int(static_cfg.get("exact_beam_width", 64)))
+        refine_seeds = max(1, int(static_cfg.get("exact_refine_seeds", 4)))
+
+        tasks = list(tasks)
+        vehicles = list(vehicles)
+        t_by_id = {t.id: t for t in tasks}
+        v_by_id = {v.id: v for v in vehicles}
+        vids = [v.id for v in vehicles]
+
+        optimistic = {
+            t.id: max(
+                0.0,
+                float(TASK_ASSIGN_REWARD)
+                + float(t.priority) * float(PRIORITY_REWARD)
+                + max(0.0, float(t.deadline) - max(float(t.create_time), now_ts)) / 60.0
+                * float(EARLY_COMPLETION_REWARD_PER_MIN),
+            )
+            for t in tasks
+        }
+
+        init_vehicle_state: Dict[int, Dict[str, Any]] = {
+            v.id: {
+                "available_ts": now_ts,
+                "battery": float(v.battery),
+                "parked": False,
+            }
+            for v in vehicles
+        }
+        init_task_status: Dict[int, str] = {t.id: "pending" for t in tasks}
+        init_commands: Dict[int, List[Dict[str, Any]]] = {v.id: [] for v in vehicles}
+
+        best_score = 0.0
+        best_cmds = {v.id: [] for v in vehicles}
+        nodes = 0
+        pruned = 0
+        t0 = time.monotonic()
+        t_last = t0
+
+        def _clone_vehicle_state(vs: Dict[int, Dict[str, Any]]) -> Dict[int, Dict[str, Any]]:
+            return {vid: dict(st) for vid, st in vs.items()}
+
+        def _clone_task_status(ts: Dict[int, str]) -> Dict[int, str]:
+            return dict(ts)
+
+        def _clone_commands(cmds: Dict[int, List[Dict[str, Any]]]) -> Dict[int, List[Dict[str, Any]]]:
+            out: Dict[int, List[Dict[str, Any]]] = {}
+            for vid, items in cmds.items():
+                out[vid] = [
+                    {
+                        "dispatch_ts": int(it.get("dispatch_ts", 0)),
+                        "task_ids": list(it.get("task_ids", []) or []),
+                        "first_task_id": int(it.get("first_task_id", -1)),
+                    }
+                    for it in items
+                ]
+            return out
+
+        def _pending_ids(ts: Dict[int, str]) -> List[int]:
+            return [tid for tid, st in ts.items() if st == "pending"]
+
+        def _bound(cur_score: float, ts: Dict[int, str]) -> float:
+            return cur_score + sum(optimistic.get(tid, 0.0) for tid in _pending_ids(ts))
+
+        memo: Dict[Tuple, float] = {}
+
+        def _choose_station_for_target(
+            vid: int,
+            cur_xy: Tuple[float, float],
+            cur_t: float,
+            cur_b: float,
+            target_xy: Tuple[float, float],
+        ) -> Optional[Tuple[Any, float, float, float]]:
+            v = v_by_id[vid]
+            speed = max(1e-6, float(getattr(v, "speed", 10.0)))
+            power = max(1e-6, float(getattr(v, "charging_power", 0.022)))
+            best = None
+            best_finish = float("inf")
+            for st in stations:
+                st_xy = (float(st.position.x), float(st.position.y))
+                d_to = snapshot.distance(cur_xy, st_xy)
+                if d_to == float("inf"):
+                    continue
+                e_to = utils.energy_required_for_distance(v, d_to)
+                if e_to == float("inf") or cur_b + 1e-9 < e_to:
+                    continue
+                after_arrival = cur_b - e_to
+                d_after = snapshot.distance(st_xy, target_xy)
+                if d_after == float("inf"):
+                    continue
+                extra = utils.min_distance_to_any_station(target_xy, stations, snapshot) if stations else 0.0
+                if extra == float("inf"):
+                    continue
+                need = utils.energy_required_for_distance(v, float(d_after) + float(extra)) * margin
+                if need > float(v.max_battery) + 1e-9:
+                    continue
+                charge_to = min(
+                    float(v.max_battery),
+                    max(float(v.max_battery) * charge_until_pct / 100.0, need),
+                )
+                arr = cur_t + float(d_to) / speed
+                finish = arr + max(0.0, charge_to - after_arrival) / power
+                finish_target = finish + float(d_after) / speed
+                if finish_target < best_finish:
+                    best_finish = finish_target
+                    best = (st, float(d_to), float(finish), float(charge_to))
+            return best
+
+        def _simulate_batch(
+            vid: int,
+            start_t: float,
+            start_batt: float,
+            batch_tids: List[int],
+        ) -> Optional[Tuple[float, float, Dict[int, float], int]]:
+            v = v_by_id[vid]
+            cur_xy = wh_xy
+            cur_t = float(start_t)
+            cur_b = float(start_batt)
+            onboard = list(batch_tids)
+            task_dist = {tid: 0.0 for tid in onboard}
+            first_tid = onboard[0] if onboard else -1
+
+            def _move_to(dst_xy: Tuple[float, float]) -> Optional[Tuple[float, float, float]]:
+                nonlocal cur_xy, cur_t, cur_b
+                d = snapshot.distance(cur_xy, dst_xy)
+                if d == float("inf"):
+                    return None
+                e = utils.energy_required_for_distance(v, d)
+                if e == float("inf") or cur_b + 1e-9 < e:
+                    return None
+                cur_b -= float(e)
+                cur_t += float(d) / max(1e-6, float(getattr(v, "speed", 10.0)))
+                cur_xy = dst_xy
+                return float(d), cur_t, cur_b
+
+            task_scores: Dict[int, float] = {}
+            while onboard:
+                target_tid = min(
+                    onboard,
+                    key=lambda tid: snapshot.distance(cur_xy, (t_by_id[tid].position.x, t_by_id[tid].position.y)),
+                )
+                if first_tid == -1:
+                    first_tid = target_tid
+                target_xy = (float(t_by_id[target_tid].position.x), float(t_by_id[target_tid].position.y))
+
+                safe = 0
+                while True:
+                    safe += 1
+                    if safe > max(6, len(stations) * 4 + 2):
+                        return None
+                    d_leg = snapshot.distance(cur_xy, target_xy)
+                    if d_leg == float("inf"):
+                        return None
+                    extra = utils.min_distance_to_any_station(target_xy, stations, snapshot) if stations else 0.0
+                    if extra == float("inf"):
+                        return None
+                    need = utils.energy_required_for_distance(v, float(d_leg) + float(extra)) * margin
+                    if cur_b + 1e-9 >= need:
+                        break
+                    choice = _choose_station_for_target(vid, cur_xy, cur_t, cur_b, target_xy)
+                    if choice is None:
+                        return None
+                    st, _, finish_charge, charge_to = choice
+                    st_xy = (float(st.position.x), float(st.position.y))
+                    mv = _move_to(st_xy)
+                    if mv is None:
+                        return None
+                    cur_t = max(cur_t, float(finish_charge))
+                    cur_b = float(charge_to)
+
+                mv = _move_to(target_xy)
+                if mv is None:
+                    return None
+                d_move = mv[0]
+                for tid in onboard:
+                    task_dist[tid] += float(d_move)
+
+                completion_ts = max(cur_t, float(getattr(t_by_id[target_tid], "create_time", cur_t)))
+                deadline = float(getattr(t_by_id[target_tid], "deadline", completion_ts))
+                early_minutes = max(0.0, deadline - completion_ts) / 60.0
+                overdue_minutes = max(0.0, completion_ts - deadline) / 60.0
+                score = (
+                    float(TASK_ASSIGN_REWARD)
+                    + float(getattr(t_by_id[target_tid], "priority", 1.0)) * float(PRIORITY_REWARD)
+                    - float(task_dist[target_tid]) * float(DISTANCE_PENALTY)
+                    + early_minutes * float(EARLY_COMPLETION_REWARD_PER_MIN)
+                    - overdue_minutes * float(OVERDUE_PENALTY_PER_MIN)
+                )
+                task_scores[target_tid] = max(0.0, float(score))
+                onboard.remove(target_tid)
+
+            while abs(cur_xy[0] - wh_xy[0]) > 1e-4 or abs(cur_xy[1] - wh_xy[1]) > 1e-4:
+                d_back = snapshot.distance(cur_xy, wh_xy)
+                if d_back == float("inf"):
+                    return None
+                need_back = utils.energy_required_for_distance(v, d_back) * margin
+                if cur_b + 1e-9 >= need_back:
+                    mv = _move_to(wh_xy)
+                    if mv is None:
+                        return None
+                    break
+                choice = _choose_station_for_target(vid, cur_xy, cur_t, cur_b, wh_xy)
+                if choice is None:
+                    return None
+                st, _, finish_charge, charge_to = choice
+                st_xy = (float(st.position.x), float(st.position.y))
+                mv = _move_to(st_xy)
+                if mv is None:
+                    return None
+                cur_t = max(cur_t, float(finish_charge))
+                cur_b = float(charge_to)
+
+            return float(cur_t), float(cur_b), task_scores, int(first_tid)
+
+        def _state_key(
+            cur_score: float,
+            vs: Dict[int, Dict[str, Any]],
+            ts: Dict[int, str],
+        ) -> Tuple:
+            pending = tuple(sorted(_pending_ids(ts)))
+            veh = tuple(
+                (
+                    vid,
+                    int(round(vs[vid]["available_ts"])),
+                    round(float(vs[vid]["battery"]), 3),
+                    int(bool(vs[vid]["parked"])),
+                )
+                for vid in sorted(vids)
+            )
+            return pending, veh, int(round(cur_score))
+
+        def _generate_children(
+            cur_score: float,
+            vs: Dict[int, Dict[str, Any]],
+            ts: Dict[int, str],
+            cmds: Dict[int, List[Dict[str, Any]]],
+        ) -> List[Tuple[float, Dict[int, Dict[str, Any]], Dict[int, str], Dict[int, List[Dict[str, Any]]]]]:
+            children: List[Tuple[float, Dict[int, Dict[str, Any]], Dict[int, str], Dict[int, List[Dict[str, Any]]]]] = []
+            pending = _pending_ids(ts)
+            active_vids = [vid for vid in vids if not bool(vs[vid]["parked"])]
+            if not pending or not active_vids:
+                return children
+
+            vid = min(active_vids, key=lambda x: float(vs[x]["available_ts"]))
+            t_now = float(vs[vid]["available_ts"])
+            v = v_by_id[vid]
+
+            released = [
+                tid for tid in pending
+                if float(getattr(t_by_id[tid], "create_time", t_now)) <= t_now + 1e-9
+            ]
+            future_rel = [
+                float(getattr(t_by_id[tid], "create_time", t_now))
+                for tid in pending
+                if float(getattr(t_by_id[tid], "create_time", t_now)) > t_now + 1e-9
+            ]
+
+            # 等待
+            nvs = _clone_vehicle_state(vs)
+            nts = _clone_task_status(ts)
+            ncmds = _clone_commands(cmds)
+            if future_rel:
+                nvs[vid]["available_ts"] = min(future_rel)
+            else:
+                nvs[vid]["parked"] = True
+            children.append((cur_score, nvs, nts, ncmds))
+
+            if not released:
+                return children
+
+            # 派发满足载重的任务子集
+            cap = float(getattr(v, "max_load", 0.0))
+            rel_sorted = sorted(
+                released,
+                key=lambda tid: (
+                    float(getattr(t_by_id[tid], "deadline", 0.0)),
+                    -float(getattr(t_by_id[tid], "priority", 0.0)),
+                ),
+            )
+            n = len(rel_sorted)
+            for mask in range(1, 1 << n):
+                subset = [rel_sorted[i] for i in range(n) if (mask >> i) & 1]
+                total_w = sum(float(getattr(t_by_id[tid], "weight", 0.0)) for tid in subset)
+                if total_w > cap + 1e-9:
+                    continue
+                sim = _simulate_batch(vid, t_now, float(vs[vid]["battery"]), subset)
+                if sim is None:
+                    continue
+                ret_ts, ret_b, task_scores, first_tid = sim
+
+                nvs2 = _clone_vehicle_state(vs)
+                nts2 = _clone_task_status(ts)
+                ncmds2 = _clone_commands(cmds)
+                nvs2[vid]["battery"] = float(ret_b)
+                nvs2[vid]["available_ts"] = float(ret_ts)
+                nvs2[vid]["parked"] = False
+                for tid in subset:
+                    nts2[tid] = "completed"
+                ncmds2[vid].append(
+                    {
+                        "dispatch_ts": int(t_now),
+                        "task_ids": list(subset),
+                        "first_task_id": int(first_tid if first_tid > 0 else subset[0]),
+                    }
+                )
+                gain = sum(float(task_scores.get(tid, 0.0)) for tid in subset)
+                children.append((cur_score + gain, nvs2, nts2, ncmds2))
+            return children
+
+        def dfs(
+            cur_score: float,
+            vs: Dict[int, Dict[str, Any]],
+            ts: Dict[int, str],
+            cmds: Dict[int, List[Dict[str, Any]]],
+        ) -> None:
+            nonlocal best_score, best_cmds, nodes, pruned, t_last
+            nodes += 1
+            if _bound(cur_score, ts) <= best_score + 1e-9:
+                pruned += 1
+                return
+
+            key = _state_key(cur_score, vs, ts)
+            prev = memo.get(key)
+            if prev is not None and prev >= cur_score - 1e-9:
+                pruned += 1
+                return
+            memo[key] = cur_score
+
+            pending = _pending_ids(ts)
+            if not pending:
+                if cur_score > best_score + 1e-9:
+                    best_score = cur_score
+                    best_cmds = _clone_commands(cmds)
+                return
+
+            active_vids = [vid for vid in vids if not bool(vs[vid]["parked"])]
+            if not active_vids:
+                if cur_score > best_score + 1e-9:
+                    best_score = cur_score
+                    best_cmds = _clone_commands(cmds)
+                return
+
+            if live_log:
+                now_m = time.monotonic()
+                if now_m - t_last >= log_interval_s:
+                    elapsed = max(1e-6, now_m - t0)
+                    print(
+                        "[STATIC][WAREHOUSE-EXACT] "
+                        f"elapsed={elapsed:.1f}s nodes={nodes} pruned={pruned} "
+                        f"pending={len(pending)} best={best_score:.2f} rate={nodes/elapsed:.1f}n/s"
+                    )
+                    t_last = now_m
+
+            children = _generate_children(cur_score, vs, ts, cmds)
+            children.sort(key=lambda x: _bound(x[0], x[2]), reverse=True)
+            for nscore, nvs, nts, ncmds in children:
+                dfs(nscore, nvs, nts, ncmds)
+
+        # Phase A: 广度预探索（beam）
+        frontier: List[Tuple[float, Dict[int, Dict[str, Any]], Dict[int, str], Dict[int, List[Dict[str, Any]]]]] = [
+            (0.0, _clone_vehicle_state(init_vehicle_state), _clone_task_status(init_task_status), _clone_commands(init_commands))
+        ]
+        for _ in range(breadth_levels):
+            candidates: List[Tuple[float, Dict[int, Dict[str, Any]], Dict[int, str], Dict[int, List[Dict[str, Any]]]]] = []
+            for sc, vs, ts, cmds in frontier:
+                candidates.extend(_generate_children(sc, vs, ts, cmds))
+            if not candidates:
+                break
+            candidates.sort(key=lambda x: _bound(x[0], x[2]), reverse=True)
+            frontier = candidates[:beam_width]
+
+        # Phase B: 从 beam 里最优若干种子继续深搜
+        if not frontier:
+            frontier = [(0.0, _clone_vehicle_state(init_vehicle_state), _clone_task_status(init_task_status), _clone_commands(init_commands))]
+        seeds = sorted(frontier, key=lambda x: _bound(x[0], x[2]), reverse=True)[:refine_seeds]
+        for sc, vs, ts, cmds in seeds:
+            dfs(sc, vs, ts, cmds)
+
+        elapsed = max(1e-6, time.monotonic() - t0)
+        print(
+            "[STATIC][WAREHOUSE-EXACT] done "
+            f"elapsed={elapsed:.1f}s nodes={nodes} pruned={pruned} best={best_score:.2f}"
+        )
+
+        route_map: Dict[int, List[int]] = {vid: [] for vid in vids}
+        for vid in vids:
+            for item in best_cmds.get(vid, []):
+                route_map[vid].extend(list(item.get("task_ids", []) or []))
+        return route_map, best_cmds
+
+    def _gpu_anytime_search_plan(self, vehicles, tasks, snapshot: Snapshot) -> Dict[int, List[int]]:
+        """PyTorch anytime 搜索（有 CUDA 则用 GPU 采样动作）。"""
+        if not vehicles or not tasks:
+            return {v.id: [] for v in vehicles}
+
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        time_limit_s = max(5.0, float(static_cfg.get("gpu_time_limit_s", 90.0)))
+        batch_size = max(4, int(static_cfg.get("gpu_batch_size", 64)))
+        log_interval_s = max(1.0, float(static_cfg.get("gpu_log_interval_s", 2.0)))
+        explore_scale = max(0.01, float(static_cfg.get("gpu_explore_scale", 3.0)))
+
+        try:
+            import torch  # type: ignore
+            has_cuda = bool(torch.cuda.is_available())
+            device = torch.device("cuda" if has_cuda else "cpu")
+        except Exception:
+            torch = None  # type: ignore
+            has_cuda = False
+            device = None
+
+        t0 = time.monotonic()
+        t_last_log = t0
+        task_list = list(tasks)
+        n_tasks = len(task_list)
+        vids = [v.id for v in vehicles]
+        t_by_id = {t.id: t for t in task_list}
+        v_by_id = {v.id: v for v in vehicles}
+
+        # base utility 越高越优先（在 GPU 上做批量扰动）
+        base_vals = []
+        now_ts = float(snapshot.timestamp)
+        for t in task_list:
+            deadline_left = max(1.0, float(getattr(t, "deadline", now_ts)) - now_ts)
+            util = float(t.priority) * float(PRIORITY_REWARD) + 5000.0 / deadline_left
+            base_vals.append(util)
+
+        if torch is not None:
+            base_tensor = torch.tensor(base_vals, dtype=torch.float32, device=device).view(1, n_tasks)
+
+        best_score = float("-inf")
+        best_route = {vid: [] for vid in vids}
+        eval_count = 0
+
+        def plan_score(route_map: Dict[int, List[int]]) -> float:
+            repaired = self._repair_plan_with_energy(vehicles, task_list, route_map, snapshot)
+            total = 0.0
+            for v in vehicles:
+                seq = [t_by_id[tid] for tid in repaired.get(v.id, []) if tid in t_by_id]
+                s = self._sequence_objective(v, seq, snapshot)
+                if s == float("-inf"):
+                    return float("-inf")
+                total += float(s)
+            return float(total)
+
+        def build_route_from_order(order_ids: List[int]) -> Dict[int, List[int]]:
+            route_map: Dict[int, List[int]] = {vid: [] for vid in vids}
+            rem_cap: Dict[int, float] = {vid: float(v_by_id[vid].get_remaining_load()) for vid in vids}
+            for tid in order_ids:
+                t = t_by_id[tid]
+                best_vid = None
+                best_gain = float("-inf")
+                for v in vehicles:
+                    vid = v.id
+                    if float(t.weight) > rem_cap[vid] + 1e-9:
+                        continue
+                    base_seq = [t_by_id[x] for x in route_map[vid] if x in t_by_id]
+                    base_obj = self._sequence_objective(v, base_seq, snapshot)
+                    cand_seq = base_seq + [t]
+                    if not self._is_chain_feasible(v, cand_seq, snapshot):
+                        continue
+                    cand_obj = self._sequence_objective(v, cand_seq, snapshot)
+                    gain = cand_obj - base_obj
+                    if gain > best_gain:
+                        best_gain = gain
+                        best_vid = vid
+                if best_vid is not None:
+                    route_map[best_vid].append(tid)
+                    rem_cap[best_vid] -= float(t.weight)
+            return route_map
+
+        while time.monotonic() - t0 < time_limit_s:
+            if torch is not None:
+                noise = torch.rand((batch_size, n_tasks), device=device) * explore_scale
+                scores = base_tensor + noise
+                ranked = torch.argsort(scores, dim=1, descending=True).detach().cpu().tolist()
+            else:
+                ranked = []
+                for _ in range(batch_size):
+                    idxs = list(range(n_tasks))
+                    random.shuffle(idxs)
+                    ranked.append(idxs)
+
+            for idx_order in ranked:
+                order_ids = [task_list[i].id for i in idx_order]
+                cand_route = build_route_from_order(order_ids)
+                sc = plan_score(cand_route)
+                eval_count += 1
+                if sc > best_score + 1e-9:
+                    best_score = sc
+                    best_route = cand_route
+                    print(f"[STATIC][GPU] best={best_score:.2f} eval={eval_count} elapsed={time.monotonic()-t0:.1f}s")
+
+            now_m = time.monotonic()
+            if now_m - t_last_log >= log_interval_s:
+                mode = "cuda" if has_cuda else "cpu"
+                print(
+                    f"[STATIC][GPU] mode={mode} elapsed={now_m-t0:.1f}s "
+                    f"eval={eval_count} best={best_score:.2f}"
+                )
+                t_last_log = now_m
+
+        print(
+            f"[STATIC][GPU] done elapsed={time.monotonic()-t0:.1f}s "
+            f"eval={eval_count} best={best_score:.2f}"
+        )
+        return self._repair_plan_with_energy(vehicles, task_list, best_route, snapshot)
 
     def _repair_plan_with_energy(self, vehicles, tasks, route_map: Dict[int, List[int]], snapshot: Snapshot) -> Dict[int, List[int]]:
         """对求解器产出的全局计划做电量可行性修复。
@@ -517,54 +1454,103 @@ class StaticExactSolverScheduler(Scheduler):
         task_by_id: Dict[int, Any],
         snapshot: Snapshot,
     ) -> float:
-        """按当前评分口径模拟固定路由，返回总分（含时间/充电/排队影响）。"""
+        """按静态执行语义仿真固定路由，返回总分。
+
+        关键对齐点：
+        - 任务只有在“车辆在仓库发车时且已释放”才会上车（变为 in_progress）；
+        - 任务路径距离从上车开始累计，到该任务送达结束；
+        - 多任务同车时，车上所有未送任务共同累计行驶距离（与 DataManager 一致）。
+        """
         now_ts = float(int(snapshot.timestamp))
+        wh_xy = (float(snapshot.warehouse_xy[0]), float(snapshot.warehouse_xy[1]))
         sched_cfg = config.get_scheduling_config() or {}
-        charge_until_pct = float(sched_cfg.get("charge_until_pct", 90.0))
-        charge_until_pct = max(1.0, min(100.0, charge_until_pct))
+        charge_until_pct = max(1.0, min(100.0, float(sched_cfg.get("charge_until_pct", 90.0))))
         margin = max(1.0, float(sched_cfg.get("battery_safety_margin", 1.15)))
         stations = list(getattr(snapshot, "charging_stations", []) or [])
 
-        # 每个充电站每个桩位的可用时间（秒）；用于排队仿真。
         station_slots: Dict[str, List[float]] = {}
         for st in stations:
             cap = max(1, int(getattr(st, "capacity", 1)))
             station_slots[st.id] = [now_ts for _ in range(cap)]
 
+        v_by_id = {v.id: v for v in vehicles}
         vstate: Dict[int, Dict[str, Any]] = {}
-        for v in vehicles:
-            vstate[v.id] = {
-                "idx": 0,
-                "time": now_ts,
-                "xy": (float(v.position.x), float(v.position.y)),
-                "battery": float(v.battery),
-                "cum_dist": 0.0,
-                "done": False,
+        task_state: Dict[int, Dict[str, Any]] = {}
+        for tid, t in task_by_id.items():
+            task_state[tid] = {
+                "release": float(getattr(t, "create_time", now_ts)),
+                "deadline": float(getattr(t, "deadline", now_ts)),
+                "priority": float(getattr(t, "priority", 1.0)),
+                "xy": (float(t.position.x), float(t.position.y)),
+                "status": "pending",     # pending | in_progress | completed
+                "carrier": None,
+                "dist": 0.0,
                 "score": 0.0,
             }
 
-        def choose_station(vid: int, target_xy: Tuple[float, float]) -> Optional[Tuple[Any, float, float, float]]:
-            """选择一次补能站：返回(station, d_to, arrival, finish_charge)。"""
-            v = next(vx for vx in vehicles if vx.id == vid)
+        for v in vehicles:
+            vstate[v.id] = {
+                "time": now_ts,
+                "xy": (float(v.position.x), float(v.position.y)),
+                "battery": float(v.battery),
+                "route_idx": 0,
+                "onboard": [],           # 当前车上任务（按 route 顺序）
+                "done": False,
+            }
+
+        def _route_remaining(vid: int) -> List[int]:
+            route = routes.get(vid, [])
             stv = vstate[vid]
-            best = None
-            best_finish = float("inf")
-            cur_xy = stv["xy"]
-            cur_t = float(stv["time"])
-            cur_b = float(stv["battery"])
+            return list(route[stv["route_idx"]:])
+
+        def _next_release_time(vid: int) -> Optional[float]:
+            rem = _route_remaining(vid)
+            if not rem:
+                return None
+            ts = [
+                float(task_state[tid]["release"])
+                for tid in rem
+                if task_state.get(tid, {}).get("status") == "pending"
+            ]
+            return min(ts) if ts else None
+
+        def _distance_move_and_apply(vid: int, target_xy: Tuple[float, float]) -> bool:
+            """车辆移动到目标点，并给车上任务累计路径。"""
+            v = v_by_id[vid]
+            stv = vstate[vid]
+            d = snapshot.distance(stv["xy"], target_xy)
+            if d == float("inf"):
+                return False
+            e = utils.energy_required_for_distance(v, d)
+            if e == float("inf") or stv["battery"] + 1e-9 < e:
+                return False
+            stv["battery"] -= float(e)
+            speed = max(1e-6, float(getattr(v, "speed", 10.0)))
+            stv["time"] += float(d) / speed
+            stv["xy"] = (float(target_xy[0]), float(target_xy[1]))
+            for tid in list(stv["onboard"]):
+                ts = task_state.get(tid)
+                if ts is not None and ts["status"] == "in_progress":
+                    ts["dist"] += float(d)
+            return True
+
+        def _choose_station_for_target(vid: int, target_xy: Tuple[float, float]) -> Optional[Any]:
+            """当前状态下，选一个可行且到目标完成时间最早的补能站。"""
+            v = v_by_id[vid]
+            stv = vstate[vid]
             speed = max(1e-6, float(getattr(v, "speed", 10.0)))
             power = max(1e-6, float(getattr(v, "charging_power", 0.022)))
-            charge_target = min(float(v.max_battery), float(v.max_battery) * charge_until_pct / 100.0)
-
+            best = None
+            best_finish = float("inf")
             for st in stations:
                 st_xy = (float(st.position.x), float(st.position.y))
-                d_to = snapshot.distance(cur_xy, st_xy)
+                d_to = snapshot.distance(stv["xy"], st_xy)
                 if d_to == float("inf"):
                     continue
                 e_to = utils.energy_required_for_distance(v, d_to)
-                if e_to == float("inf") or cur_b + 1e-9 < e_to:
+                if e_to == float("inf") or stv["battery"] + 1e-9 < e_to:
                     continue
-                after_arrival_b = cur_b - e_to
+                after_arrival_b = stv["battery"] - e_to
                 d_after = snapshot.distance(st_xy, target_xy)
                 if d_after == float("inf"):
                     continue
@@ -574,23 +1560,24 @@ class StaticExactSolverScheduler(Scheduler):
                 need_after = utils.energy_required_for_distance(v, float(d_after) + float(extra)) * margin
                 if need_after > float(v.max_battery) + 1e-9:
                     continue
-                final_charge = min(float(v.max_battery), max(charge_target, need_after))
-                if final_charge + 1e-9 < need_after:
+                charge_to = min(
+                    float(v.max_battery),
+                    max(float(v.max_battery) * charge_until_pct / 100.0, need_after),
+                )
+                if charge_to + 1e-9 < need_after:
                     continue
-                arr = cur_t + float(d_to) / speed
+                arr = stv["time"] + float(d_to) / speed
                 slots = station_slots.get(st.id, [now_ts])
                 slot_idx = min(range(len(slots)), key=lambda i: slots[i])
                 start_charge = max(arr, float(slots[slot_idx]))
-                charge_dur = max(0.0, final_charge - after_arrival_b) / power
+                charge_dur = max(0.0, charge_to - after_arrival_b) / power
                 finish_charge = start_charge + charge_dur
-                # 估计到达 target 的完成时间
-                est_finish = finish_charge + float(d_after) / speed
-                if est_finish < best_finish:
-                    best_finish = est_finish
-                    best = (st, float(d_to), arr, finish_charge)
+                finish_target = finish_charge + float(d_after) / speed
+                if finish_target < best_finish:
+                    best_finish = finish_target
+                    best = (st, d_to, slot_idx, finish_charge, charge_to)
             return best
 
-        # 按“车辆当前可动作时间”推进，近似真实并发执行。
         while True:
             active = [
                 (vid, st["time"])
@@ -601,25 +1588,55 @@ class StaticExactSolverScheduler(Scheduler):
                 break
             vid = min(active, key=lambda x: x[1])[0]
             stv = vstate[vid]
-            route = routes.get(vid, [])
-            v = next(vx for vx in vehicles if vx.id == vid)
-            if stv["idx"] >= len(route):
-                stv["done"] = True
+            v = v_by_id[vid]
+
+            # 若当前车无在途任务，只有在仓库才允许从计划里“上车已释放任务”。
+            if not stv["onboard"]:
+                if not utils.same_position(stv["xy"], wh_xy):
+                    if not _distance_move_and_apply(vid, wh_xy):
+                        return float("-inf")
+                    continue
+
+                rem = _route_remaining(vid)
+                released = [
+                    tid for tid in rem
+                    if task_state.get(tid, {}).get("status") == "pending"
+                    and float(task_state[tid]["release"]) <= float(stv["time"]) + 1e-9
+                ]
+                if released:
+                    for tid in released:
+                        task_state[tid]["status"] = "in_progress"
+                        task_state[tid]["carrier"] = vid
+                        stv["onboard"].append(tid)
+                    continue
+
+                nxt_rel = _next_release_time(vid)
+                if nxt_rel is None:
+                    stv["done"] = True
+                else:
+                    # 在仓库等待下一批任务释放
+                    stv["time"] = max(float(stv["time"]), float(nxt_rel))
                 continue
 
-            task = task_by_id.get(route[stv["idx"]])
-            if task is None:
-                stv["idx"] += 1
+            # 选当前车上按计划顺序的下一任务点
+            rem = _route_remaining(vid)
+            target_tid = next((tid for tid in rem if tid in stv["onboard"]), None)
+            if target_tid is None:
+                # 计划中没有可送任务，回仓触发下一批。
+                if not utils.same_position(stv["xy"], wh_xy):
+                    if not _distance_move_and_apply(vid, wh_xy):
+                        return float("-inf")
+                else:
+                    stv["onboard"] = []
                 continue
-            target_xy = (float(task.position.x), float(task.position.y))
+            target_xy = task_state[target_tid]["xy"]
 
-            # 必要时补能（可多次）。
+            # 电量不够时，先去充电站（可多次）
             safe_guard = 0
             while True:
                 safe_guard += 1
-                if safe_guard > max(4, len(stations) * 3 + 2):
+                if safe_guard > max(6, len(stations) * 4 + 2):
                     return float("-inf")
-
                 d_leg = snapshot.distance(stv["xy"], target_xy)
                 if d_leg == float("inf"):
                     return float("-inf")
@@ -629,70 +1646,47 @@ class StaticExactSolverScheduler(Scheduler):
                 need = utils.energy_required_for_distance(v, float(d_leg) + float(extra)) * margin
                 if stv["battery"] + 1e-9 >= need:
                     break
-
-                choice = choose_station(vid, target_xy)
+                choice = _choose_station_for_target(vid, target_xy)
                 if choice is None:
                     return float("-inf")
-                st_obj, d_to, arr, finish_charge = choice
+                st_obj, d_to, slot_idx, finish_charge, charge_to = choice
                 st_xy = (float(st_obj.position.x), float(st_obj.position.y))
-                # 行驶到站
-                e_to = utils.energy_required_for_distance(v, d_to)
-                if e_to == float("inf") or stv["battery"] + 1e-9 < e_to:
+                if not _distance_move_and_apply(vid, st_xy):
                     return float("-inf")
-                stv["battery"] -= e_to
-                stv["cum_dist"] += float(d_to)
-                speed = max(1e-6, float(getattr(v, "speed", 10.0)))
-                stv["time"] += float(d_to) / speed
-                stv["xy"] = st_xy
-
-                # 占用充电桩（队列）
                 slots = station_slots.get(st_obj.id, [now_ts])
-                slot_idx = min(range(len(slots)), key=lambda i: slots[i])
-                start_charge = max(float(arr), float(slots[slot_idx]), float(stv["time"]))
-                power = max(1e-6, float(getattr(v, "charging_power", 0.022)))
-                charge_to = min(
-                    float(v.max_battery),
-                    float(v.max_battery) * charge_until_pct / 100.0,
-                )
-                # 至少要补到这次能走得动
-                d_after = snapshot.distance(st_xy, target_xy)
-                need_after = utils.energy_required_for_distance(
-                    v,
-                    float(d_after) + float(extra),
-                ) * margin
-                charge_to = min(float(v.max_battery), max(charge_to, need_after))
-                charge_dur = max(0.0, charge_to - float(stv["battery"])) / power
-                finish_charge_real = start_charge + charge_dur
-                slots[slot_idx] = finish_charge_real
+                start_charge = max(float(stv["time"]), float(slots[slot_idx]))
+                slots[slot_idx] = max(float(finish_charge), start_charge)
                 station_slots[st_obj.id] = slots
-                stv["time"] = finish_charge_real
-                stv["battery"] = charge_to
+                stv["time"] = slots[slot_idx]
+                stv["battery"] = float(charge_to)
 
-            # 前往任务点并完成
-            d_leg = snapshot.distance(stv["xy"], target_xy)
-            e_leg = utils.energy_required_for_distance(v, d_leg)
-            if e_leg == float("inf") or stv["battery"] + 1e-9 < e_leg:
+            if not _distance_move_and_apply(vid, target_xy):
                 return float("-inf")
-            stv["battery"] -= e_leg
-            stv["cum_dist"] += float(d_leg)
-            speed = max(1e-6, float(getattr(v, "speed", 10.0)))
-            arrival = float(stv["time"]) + float(d_leg) / speed
-            completion = max(arrival, float(getattr(task, "create_time", arrival)))
-            early_minutes = max(0.0, float(task.deadline) - completion) / 60.0
-            overdue_minutes = max(0.0, completion - float(task.deadline)) / 60.0
+
+            # 送达目标任务并计分（按任务“上车后累计路径”口径）
+            completion = max(float(stv["time"]), float(task_state[target_tid]["release"]))
+            early_minutes = max(0.0, float(task_state[target_tid]["deadline"]) - completion) / 60.0
+            overdue_minutes = max(0.0, completion - float(task_state[target_tid]["deadline"])) / 60.0
             score = (
                 float(TASK_ASSIGN_REWARD)
-                + float(task.priority) * float(PRIORITY_REWARD)
-                - float(stv["cum_dist"]) * float(DISTANCE_PENALTY)
+                + float(task_state[target_tid]["priority"]) * float(PRIORITY_REWARD)
+                - float(task_state[target_tid]["dist"]) * float(DISTANCE_PENALTY)
                 + early_minutes * float(EARLY_COMPLETION_REWARD_PER_MIN)
                 - overdue_minutes * float(OVERDUE_PENALTY_PER_MIN)
             )
-            stv["score"] += max(0.0, float(score))
-            stv["xy"] = target_xy
-            stv["time"] = completion
-            stv["idx"] += 1
+            task_state[target_tid]["score"] = max(0.0, float(score))
+            task_state[target_tid]["status"] = "completed"
+            task_state[target_tid]["carrier"] = None
+            stv["onboard"] = [tid for tid in stv["onboard"] if tid != target_tid]
+            stv["route_idx"] += 1
 
-        return sum(float(st["score"]) for st in vstate.values())
+            # 一批送完就回仓，贴近静态执行层行为
+            if not stv["onboard"] and not utils.same_position(stv["xy"], wh_xy):
+                if not _distance_move_and_apply(vid, wh_xy):
+                    return float("-inf")
+
+        total_score = sum(float(ts["score"]) for ts in task_state.values() if ts["status"] == "completed")
+        return float(total_score)
 
     def _simulate_append_task_with_charging(
         self,
@@ -1450,6 +2444,9 @@ class StaticExactSolverScheduler(Scheduler):
         best_assign = {v.id: [] for v in vehicles}
         cap = {v.id: float(v.get_remaining_load()) for v in vehicles}
         current = {v.id: [] for v in vehicles}
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        time_limit_s = max(0.2, float(static_cfg.get("exact_assignment_time_limit_s", 2.0)))
+        start_ts = time.time()
 
         def upper_bound(idx: int) -> float:
             # 粗上界：剩余任务按“任务奖励+优先级奖励”全加
@@ -1458,6 +2455,8 @@ class StaticExactSolverScheduler(Scheduler):
 
         def dfs(i: int, cur_obj_hint: float):
             nonlocal best_obj, best_assign
+            if (time.time() - start_ts) >= time_limit_s:
+                return
             if i >= len(tasks):
                 total = 0.0
                 for v in vehicles:

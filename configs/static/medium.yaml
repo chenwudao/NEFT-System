@@ -7,16 +7,20 @@ optimization:
   mode: "static"   # dynamic | static
   static:
     strategy: "static_exact_solver"
-    solver: "gurobi"      # gurobi | cplex（未安装会自动回退）
-    force_gurobi_only: true
-    accept_feasible_when_force_gurobi_only: true
+    solver: "heuristic"      # gurobi | heuristic
+    force_gurobi_only: false
+    accept_feasible_when_force_gurobi_only: false
     objective_mode: "proxy"   # proxy | simulation_score
     charge_time_penalty_per_s: 0.02
     charge_event_penalty: 20.0
     charge_queue_penalty: 40.0
     avg_charge_detour_m: 1200.0
-    unserved_penalty: 180.0
+    unserved_penalty: 420.0
     soc_min_ratio: 0.0
+    heuristic_time_limit_s: 5.0
+    heuristic_ls_rounds: 220
+    heuristic_seed: 20260527
+    exact_assignment_time_limit_s: 2.0
     max_exact_tasks: 10
     strict_global_optimum: false
     mip_gap_threshold: 0.02
