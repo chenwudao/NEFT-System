@@ -947,6 +947,31 @@ class StaticExactSolverScheduler(Scheduler):
         v_by_id = {v.id: v for v in vehicles}
         max_cap = max(float(v.get_remaining_load()) for v in vehicles) if vehicles else 0.0
         max_route_time = max(36000.0, max(latest.values()) + 600.0) if latest else 36000.0
+        stations = list(getattr(snapshot, "charging_stations", []) or [])
+        avg_station_load = (
+            sum(float(getattr(s, "load_pressure", 0.0)) for s in stations) / len(stations)
+            if stations else 0.0
+        )
+
+        # 每个任务点到最近充电站的缓冲距离（用于线性能量安全近似）。
+        station_buffer_dist = {n: 0.0 for n in task_nodes}
+        for n in task_nodes:
+            if stations:
+                t = task_by_node[n]
+                d_buf = utils.min_distance_to_any_station(
+                    (float(t.position.x), float(t.position.y)),
+                    stations,
+                    snapshot,
+                )
+                station_buffer_dist[n] = 0.0 if d_buf == float("inf") else float(d_buf)
+            else:
+                station_buffer_dist[n] = 0.0
+
+        # 充电相关参数（线性代理）
+        charge_time_penalty_per_s = float(static_cfg.get("charge_time_penalty_per_s", 0.02))
+        charge_event_penalty = float(static_cfg.get("charge_event_penalty", 20.0))
+        charge_queue_penalty = float(static_cfg.get("charge_queue_penalty", 40.0))
+        avg_charge_detour_m = float(static_cfg.get("avg_charge_detour_m", 1200.0))
 
         # x[k,i,j] 是否走弧 i->j
         x = {}
@@ -970,6 +995,19 @@ class StaticExactSolverScheduler(Scheduler):
 
         # start / end 是否启用
         use_k = {k: m.addVar(vtype=GRB.BINARY, name=f"use_{k}") for k in K}
+
+        # 线性化充电变量：
+        # charge_energy[k] = 车辆k在本规划中补充的总电量；
+        # charge_events[k] = 车辆k充电次数（整数，近似）
+        charge_energy = {
+            k: m.addVar(lb=0.0, ub=max(0.0, float(v_by_id[k].max_battery) * len(task_nodes)),
+                        vtype=GRB.CONTINUOUS, name=f"charge_energy_{k}")
+            for k in K
+        }
+        charge_events = {
+            k: m.addVar(lb=0.0, ub=float(len(task_nodes)), vtype=GRB.INTEGER, name=f"charge_events_{k}")
+            for k in K
+        }
 
         # ---- 约束 ----
         # 每任务恰好由一辆车服务一次
@@ -1001,6 +1039,42 @@ class StaticExactSolverScheduler(Scheduler):
             m.addConstr(
                 gp.quicksum(weight[n] * y[(k, n)] for n in task_nodes) <= float(v_by_id[k].get_remaining_load()),
                 name=f"cap_{k}",
+            )
+
+            # ---------- 电量与充电线性近似 ----------
+            # 服务总距离（含每个任务点的“到最近充电站”安全缓冲）
+            service_dist_expr = gp.quicksum(
+                (
+                    dist[(i, j)]
+                    + (station_buffer_dist[j] if j in task_nodes else 0.0)
+                ) * x[(k, i, j)]
+                for i in nodes
+                for j in nodes
+                if (k, i, j) in x
+            )
+            # 充电绕行距离（每次充电增加平均绕行）
+            detour_dist_expr = float(avg_charge_detour_m) * charge_events[k]
+            unit_cons = max(1e-9, float(getattr(v_by_id[k], "unit_energy_consumption", 0.0)))
+            init_batt = max(0.0, float(getattr(v_by_id[k], "battery", 0.0)))
+            max_batt = max(1e-9, float(getattr(v_by_id[k], "max_battery", 1.0)))
+            power = max(1e-9, float(getattr(v_by_id[k], "charging_power", 0.022)))
+
+            # 能量守恒：消耗 <= 初始电量 + 充电补入
+            m.addConstr(
+                unit_cons * (service_dist_expr + detour_dist_expr) <= init_batt + charge_energy[k],
+                name=f"energy_budget_{k}",
+            )
+            # 充电能量由充电次数上限控制（每次最多补一块 max_battery）
+            m.addConstr(
+                charge_energy[k] <= max_batt * charge_events[k],
+                name=f"charge_event_link_{k}",
+            )
+            # 粗时间可行：行驶时间 + 充电时间 不超过规划时域上界
+            m.addConstr(
+                (service_dist_expr + detour_dist_expr) / max(1e-9, float(getattr(v_by_id[k], "speed", 10.0)))
+                + charge_energy[k] / power
+                <= max_route_time + max_route_time * (1 - use_k[k]),
+                name=f"time_energy_budget_{k}",
             )
 
         # 时间窗与弧时序（使用更紧的弧级大M）
@@ -1047,6 +1121,12 @@ class StaticExactSolverScheduler(Scheduler):
             if (k, i, j) in x
         )
         total_tard = gp.quicksum(tard[n] for n in task_nodes)
+        total_charge_energy = gp.quicksum(charge_energy[k] for k in K)
+        total_charge_events = gp.quicksum(charge_events[k] for k in K)
+        total_charge_time = gp.quicksum(
+            charge_energy[k] / max(1e-9, float(getattr(v_by_id[k], "charging_power", 0.022)))
+            for k in K
+        )
         priority_term = gp.quicksum(
             float(task_by_node[n].priority) * float(PRIORITY_REWARD)
             for n in task_nodes
@@ -1058,6 +1138,9 @@ class StaticExactSolverScheduler(Scheduler):
             + priority_term
             - float(DISTANCE_PENALTY) * total_distance
             - float(OVERDUE_PENALTY_PER_MIN) / 60.0 * total_tard
+            - float(charge_time_penalty_per_s) * total_charge_time
+            - float(charge_event_penalty) * total_charge_events
+            - float(charge_queue_penalty) * float(avg_station_load) * total_charge_events
         )
         m.setObjective(obj, GRB.MAXIMIZE)
 

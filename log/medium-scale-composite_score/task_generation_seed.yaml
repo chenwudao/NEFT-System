@@ -1,169 +1,196 @@
 version: 1
 mode: record
 source_path: F:/Data Structure/NEFT-System-main/NEFT-Systemlog/medium-scale-composite_score/task_generation_seed.yaml
-base_seed: 54917330
-event_count: 18
+base_seed: 811192235
+event_count: 21
 note: recorded during this run
 events:
 - task_id: 1
   phase: initial
   sim_seconds: 0.0
   position:
-    x: 113.4606101
-    y: 23.0266507
-  weight: 35.16112487912221
-  priority: 2
-  deadline_offset: 6980
+    x: 113.2774239
+    y: 22.9871415
+  weight: 201.19420644426185
+  priority: 3
+  deadline_offset: 2849
 - task_id: 2
   phase: initial
   sim_seconds: 0.0
   position:
-    x: 113.4101454
-    y: 23.0267847
-  weight: 265.2270058663495
-  priority: 5
-  deadline_offset: 2424
+    x: 113.3438067
+    y: 22.9653299
+  weight: 464.78867350911594
+  priority: 3
+  deadline_offset: 5305
 - task_id: 3
   phase: initial
   sim_seconds: 0.0
   position:
-    x: 113.381795
-    y: 23.0046241
-  weight: 66.20425963308892
-  priority: 2
-  deadline_offset: 2122
+    x: 113.441043
+    y: 23.0532634
+  weight: 207.04615530431954
+  priority: 3
+  deadline_offset: 6954
 - task_id: 4
   phase: initial
   sim_seconds: 0.0
   position:
-    x: 113.3690262
-    y: 23.0140953
-  weight: 218.86004000605493
-  priority: 3
-  deadline_offset: 2073
+    x: 113.3406643
+    y: 22.9126653
+  weight: 430.21428047042696
+  priority: 5
+  deadline_offset: 4740
 - task_id: 5
   phase: initial
   sim_seconds: 0.0
   position:
-    x: 113.2746562
-    y: 22.9898305
-  weight: 389.2616969157266
+    x: 113.3993393
+    y: 22.9462158
+  weight: 152.08550622800726
   priority: 5
-  deadline_offset: 5575
+  deadline_offset: 5614
 - task_id: 1001
   phase: runtime
-  sim_seconds: 1440.0
+  sim_seconds: 840.0
   position:
-    x: 113.278958
-    y: 23.0427555
-  weight: 498.28073442549993
-  priority: 5
-  deadline_offset: 2607
+    x: 113.3424517
+    y: 22.9619168
+  weight: 166.93595229621968
+  priority: 4
+  deadline_offset: 3013
 - task_id: 1002
   phase: runtime
-  sim_seconds: 1440.0
+  sim_seconds: 840.0
   position:
-    x: 113.4658235
-    y: 22.9888296
-  weight: 207.50744246075385
+    x: 113.4439921
+    y: 22.9719076
+  weight: 309.74495695383246
   priority: 4
-  deadline_offset: 7167
+  deadline_offset: 1885
 - task_id: 1003
   phase: runtime
-  sim_seconds: 1440.0
+  sim_seconds: 840.0
   position:
-    x: 113.2731453
-    y: 22.9908997
-  weight: 470.33232331636265
+    x: 113.4904961
+    y: 22.9532913
+  weight: 425.62149008168217
   priority: 1
-  deadline_offset: 7007
+  deadline_offset: 2702
 - task_id: 1004
   phase: runtime
-  sim_seconds: 2400.0
+  sim_seconds: 2160.0
   position:
-    x: 113.2675761
-    y: 22.9750038
-  weight: 410.59805432074916
-  priority: 2
-  deadline_offset: 4061
+    x: 113.4686077
+    y: 22.9259922
+  weight: 121.77995815653779
+  priority: 4
+  deadline_offset: 2676
 - task_id: 1005
   phase: runtime
-  sim_seconds: 2400.0
+  sim_seconds: 2160.0
   position:
-    x: 113.3425379
-    y: 23.0141832
-  weight: 361.67814006742486
-  priority: 3
-  deadline_offset: 5051
+    x: 113.3411558
+    y: 22.9118825
+  weight: 362.27866102410974
+  priority: 2
+  deadline_offset: 7060
 - task_id: 1006
   phase: runtime
-  sim_seconds: 2400.0
+  sim_seconds: 2160.0
   position:
-    x: 113.3056072
-    y: 23.0143718
-  weight: 490.5445973118975
-  priority: 1
-  deadline_offset: 2787
+    x: 113.4061716
+    y: 23.0326952
+  weight: 125.98382026816078
+  priority: 3
+  deadline_offset: 5939
 - task_id: 1007
   phase: runtime
   sim_seconds: 3720.0
   position:
-    x: 113.325877
-    y: 23.0258946
-  weight: 23.413560074554105
-  priority: 2
-  deadline_offset: 2265
+    x: 113.4710181
+    y: 23.0225566
+  weight: 245.33791271995713
+  priority: 5
+  deadline_offset: 5593
 - task_id: 1008
   phase: runtime
   sim_seconds: 3720.0
   position:
-    x: 113.363025
-    y: 22.932323
-  weight: 480.8452840162075
-  priority: 1
-  deadline_offset: 4058
+    x: 113.4931216
+    y: 22.9717859
+  weight: 421.0555584779395
+  priority: 5
+  deadline_offset: 4613
 - task_id: 1009
   phase: runtime
-  sim_seconds: 5400.0
+  sim_seconds: 3720.0
   position:
-    x: 113.2764994
-    y: 23.0258232
-  weight: 428.3278537357025
-  priority: 5
-  deadline_offset: 6139
+    x: 113.4856722
+    y: 22.9248636
+  weight: 213.69749112040301
+  priority: 3
+  deadline_offset: 3999
 - task_id: 1010
   phase: runtime
-  sim_seconds: 5400.0
+  sim_seconds: 5160.0
   position:
-    x: 113.361781
-    y: 22.9058053
-  weight: 46.29303454969971
-  priority: 4
-  deadline_offset: 2361
+    x: 113.3886442
+    y: 22.9231378
+  weight: 142.5253147766901
+  priority: 3
+  deadline_offset: 7160
 - task_id: 1011
   phase: runtime
-  sim_seconds: 5400.0
+  sim_seconds: 5160.0
   position:
-    x: 113.4048408
-    y: 22.9336593
-  weight: 451.3550702319956
+    x: 113.3291167
+    y: 22.9748343
+  weight: 221.22814189147238
   priority: 2
-  deadline_offset: 6764
+  deadline_offset: 4664
 - task_id: 1012
   phase: runtime
-  sim_seconds: 6600.0
+  sim_seconds: 5160.0
   position:
-    x: 113.3647231
-    y: 22.9551725
-  weight: 454.6292968516766
+    x: 113.4153962
+    y: 22.9280187
+  weight: 269.867222878352
   priority: 5
-  deadline_offset: 6685
+  deadline_offset: 4089
 - task_id: 1013
   phase: runtime
-  sim_seconds: 6600.0
+  sim_seconds: 6480.0
   position:
-    x: 113.3484572
-    y: 22.9358221
-  weight: 120.79476815520692
-  priority: 4
-  deadline_offset: 4977
+    x: 113.3995696
+    y: 23.0564962
+  weight: 367.3571125272006
+  priority: 1
+  deadline_offset: 6787
+- task_id: 1014
+  phase: runtime
+  sim_seconds: 6480.0
+  position:
+    x: 113.3821824
+    y: 23.0031749
+  weight: 309.36170243166544
+  priority: 1
+  deadline_offset: 1959
+- task_id: 1015
+  phase: runtime
+  sim_seconds: 6480.0
+  position:
+    x: 113.3216223
+    y: 23.0265327
+  weight: 104.03901734471886
+  priority: 1
+  deadline_offset: 3464
+- task_id: 1016
+  phase: runtime
+  sim_seconds: 6480.0
+  position:
+    x: 113.341063
+    y: 23.0140436
+  weight: 277.7272566716755
+  priority: 2
+  deadline_offset: 4507
