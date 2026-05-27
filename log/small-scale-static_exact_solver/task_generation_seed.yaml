@@ -3,7 +3,7 @@ mode: replay
 source_path: F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_1/nearest_task/task_generation_seed.yaml
 base_seed: 1674228261
 event_count: 10
-note: replay source
+note: replay from seed file
 events:
 - task_id: 1
   phase: initial

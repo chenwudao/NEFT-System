@@ -1551,6 +1551,185 @@ class StaticExactSolverScheduler(Scheduler):
                     rem_cap[best_vid] -= float(t.weight)
             return route_map
 
+        # 批量GPU仿真（近似执行语义）：一批候选顺序 -> 一批分数
+        if torch is not None:
+            V = len(vehicles)
+            task_weight = torch.tensor(
+                [float(getattr(t, "weight", 0.0)) for t in task_list],
+                dtype=torch.float32,
+                device=device,
+            )
+            task_prio = torch.tensor(
+                [float(getattr(t, "priority", 1.0)) for t in task_list],
+                dtype=torch.float32,
+                device=device,
+            )
+            task_release = torch.tensor(
+                [float(getattr(t, "create_time", now_ts)) for t in task_list],
+                dtype=torch.float32,
+                device=device,
+            )
+            task_deadline = torch.tensor(
+                [float(getattr(t, "deadline", now_ts)) for t in task_list],
+                dtype=torch.float32,
+                device=device,
+            )
+            task_station_buf = torch.tensor(
+                [
+                    0.0 if not snapshot.charging_stations else float(
+                        utils.min_distance_to_any_station(
+                            (float(t.position.x), float(t.position.y)),
+                            list(snapshot.charging_stations),
+                            snapshot,
+                        )
+                    )
+                    for t in task_list
+                ],
+                dtype=torch.float32,
+                device=device,
+            )
+            task_station_buf = torch.where(
+                torch.isfinite(task_station_buf),
+                task_station_buf,
+                torch.full_like(task_station_buf, 0.0),
+            )
+
+            veh_cap = torch.tensor(
+                [float(v.get_remaining_load()) for v in vehicles],
+                dtype=torch.float32,
+                device=device,
+            )
+            veh_speed = torch.tensor(
+                [max(1e-6, float(getattr(v, "speed", 10.0))) for v in vehicles],
+                dtype=torch.float32,
+                device=device,
+            )
+            veh_cons = torch.tensor(
+                [max(1e-9, float(getattr(v, "unit_energy_consumption", 0.0))) for v in vehicles],
+                dtype=torch.float32,
+                device=device,
+            )
+            veh_batt0 = torch.tensor(
+                [max(0.0, float(getattr(v, "battery", 0.0))) for v in vehicles],
+                dtype=torch.float32,
+                device=device,
+            )
+            veh_max_batt = torch.tensor(
+                [max(1e-9, float(getattr(v, "max_battery", 1.0))) for v in vehicles],
+                dtype=torch.float32,
+                device=device,
+            )
+            veh_power = torch.tensor(
+                [max(1e-6, float(getattr(v, "charging_power", 0.022))) for v in vehicles],
+                dtype=torch.float32,
+                device=device,
+            )
+            charge_target = veh_max_batt * float(config.get_scheduling_config().get("charge_until_pct", 90.0)) / 100.0
+
+            start_dist = torch.tensor(
+                [
+                    [
+                        0.0 if snapshot.distance(v.position, t.position) == float("inf")
+                        else float(snapshot.distance(v.position, t.position))
+                        for t in task_list
+                    ]
+                    for v in vehicles
+                ],
+                dtype=torch.float32,
+                device=device,
+            )  # [V,T]
+            pair_dist_t = torch.tensor(
+                [
+                    [
+                        0.0 if snapshot.distance(ti.position, tj.position) == float("inf")
+                        else float(snapshot.distance(ti.position, tj.position))
+                        for tj in task_list
+                    ]
+                    for ti in task_list
+                ],
+                dtype=torch.float32,
+                device=device,
+            )  # [T,T]
+            margin_val = float(config.get_scheduling_config().get("battery_safety_margin", 1.15))
+
+            def _gpu_batch_simulate_scores(order_tensor: "torch.Tensor") -> "torch.Tensor":
+                # order_tensor: [B,T] int64
+                B = int(order_tensor.shape[0])
+                cap_left = veh_cap.view(1, V).repeat(B, 1)
+                veh_time = torch.full((B, V), float(now_ts), dtype=torch.float32, device=device)
+                veh_batt = veh_batt0.view(1, V).repeat(B, 1)
+                veh_dist = torch.zeros((B, V), dtype=torch.float32, device=device)
+                veh_last = torch.full((B, V), -1, dtype=torch.long, device=device)
+                total_score = torch.zeros((B,), dtype=torch.float32, device=device)
+
+                for step in range(n_tasks):
+                    tid = order_tensor[:, step]  # [B]
+                    w = task_weight[tid]
+                    pr = task_prio[tid]
+                    rel = task_release[tid]
+                    ddl = task_deadline[tid]
+                    buf = task_station_buf[tid]
+
+                    gains = torch.full((B, V), -1e18, dtype=torch.float32, device=device)
+                    cand_completion = []
+                    cand_new_batt = []
+                    cand_d = []
+                    for vi in range(V):
+                        last = veh_last[:, vi]
+                        d0 = start_dist[vi, tid]
+                        lidx = torch.clamp(last, min=0)
+                        d1 = pair_dist_t[lidx, tid]
+                        d = torch.where(last >= 0, d1, d0)
+                        need_e = (d + buf) * veh_cons[vi] * margin_val
+                        direct_ok = veh_batt[:, vi] + 1e-9 >= need_e
+                        can_charge = veh_max_batt[vi] + 1e-9 >= need_e
+                        charge_to = torch.minimum(
+                            veh_max_batt[vi].expand_as(need_e),
+                            torch.maximum(charge_target[vi].expand_as(need_e), need_e),
+                        )
+                        charge_time = torch.where(
+                            direct_ok,
+                            torch.zeros_like(need_e),
+                            torch.where(
+                                can_charge,
+                                (charge_to - veh_batt[:, vi]).clamp_min(0.0) / veh_power[vi],
+                                torch.full_like(need_e, 1e9),
+                            ),
+                        )
+                        arrival = veh_time[:, vi] + d / veh_speed[vi] + charge_time
+                        completion = torch.maximum(arrival, rel)
+                        early = (ddl - completion).clamp_min(0.0) / 60.0
+                        overdue = (completion - ddl).clamp_min(0.0) / 60.0
+                        score = (
+                            float(TASK_ASSIGN_REWARD)
+                            + pr * float(PRIORITY_REWARD)
+                            - (veh_dist[:, vi] + d) * float(DISTANCE_PENALTY)
+                            + early * float(EARLY_COMPLETION_REWARD_PER_MIN)
+                            - overdue * float(OVERDUE_PENALTY_PER_MIN)
+                        ).clamp_min(0.0)
+                        feasible = (cap_left[:, vi] + 1e-9 >= w) & can_charge
+                        gain = torch.where(feasible, score, torch.full_like(score, -1e18))
+                        gains[:, vi] = gain
+                        nb = torch.where(direct_ok, veh_batt[:, vi], charge_to) - d * veh_cons[vi]
+                        cand_completion.append(completion)
+                        cand_new_batt.append(nb)
+                        cand_d.append(d)
+
+                    best_gain, best_vi = torch.max(gains, dim=1)  # [B]
+                    chosen = best_gain > -1e17
+                    total_score = total_score + torch.where(chosen, best_gain, torch.zeros_like(best_gain))
+                    if torch.any(chosen):
+                        for vi in range(V):
+                            m = chosen & (best_vi == vi)
+                            if not torch.any(m):
+                                continue
+                            cap_left[m, vi] = cap_left[m, vi] - w[m]
+                            veh_time[m, vi] = cand_completion[vi][m]
+                            veh_batt[m, vi] = cand_new_batt[vi][m]
+                            veh_dist[m, vi] = veh_dist[m, vi] + cand_d[vi][m]
+                            veh_last[m, vi] = tid[m]
+                return total_score
+
         while True:
             if time_limit_s is not None and (time.monotonic() - t0) >= time_limit_s:
                 break
@@ -1601,7 +1780,16 @@ class StaticExactSolverScheduler(Scheduler):
                 # 广度优先：尽可能覆盖不同候选。
                 candidate_idx_orders = ranked
 
-            for idx_order in candidate_idx_orders:
+            if torch is not None and candidate_idx_orders:
+                cand_tensor = torch.tensor(candidate_idx_orders, dtype=torch.long, device=device)
+                sim_scores = _gpu_batch_simulate_scores(cand_tensor)
+                k2 = min(int(static_cfg.get("gpu_exact_eval_topk", 32)), int(sim_scores.shape[0]))
+                top_local = torch.topk(sim_scores, k=max(1, k2), largest=True).indices.detach().cpu().tolist()
+                selected_orders = [candidate_idx_orders[i] for i in top_local]
+            else:
+                selected_orders = candidate_idx_orders[: max(1, int(static_cfg.get("gpu_exact_eval_topk", 32)))]
+
+            for idx_order in selected_orders:
                 order_ids = [task_list[i].id for i in idx_order]
                 cand_route = build_route_from_order(order_ids)
                 sc = plan_score(cand_route)

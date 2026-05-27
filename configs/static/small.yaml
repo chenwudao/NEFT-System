@@ -33,6 +33,7 @@ optimization:
     gpu_batch_size: 10000
     gpu_generations_per_iter: 1
     gpu_topk_eval: 256
+    gpu_exact_eval_topk: 64
     gpu_log_interval_s: 2.0
     gpu_explore_scale: 3.0
     gpu_search_order: "depth_first"   # depth_first | breadth_first
