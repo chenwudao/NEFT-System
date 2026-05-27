@@ -251,15 +251,80 @@ app.add_middleware(
 # REST API
 # ============================================================
 class SimulationStartRequest(BaseModel):
-    """保留空 body 做兼容：前端不需要再传 mode/scale。"""
-    pass
+    """前端可选传入 strategy（调度算法名）和 scale（small/medium/large）。"""
+    strategy: Optional[str] = None
+    scale: Optional[str] = None
+
+
+@app.get("/api/config/options")
+async def get_config_options():
+    """返回前端选择器所需的可用策略列表和规模列表。"""
+    dynamic_strategies = [
+        {"value": "nearest_task",            "label": "最近任务优先"},
+        {"value": "priority_task",            "label": "最高优先级优先"},
+        {"value": "heaviest_task",            "label": "最重任务优先"},
+        {"value": "deadline_earliest",        "label": "最早截止优先"},
+        {"value": "composite_score",          "label": "综合评分策略"},
+        {"value": "dfs_score_search",         "label": "DFS评分搜索"},
+        {"value": "insertion_heuristic",      "label": "插入启发式"},
+        {"value": "simulated_annealing",      "label": "模拟退火"},
+        {"value": "tabu_search",              "label": "禁忌搜索"},
+        {"value": "q_learning",               "label": "Q-Learning强化学习"},
+        {"value": "hyper_heuristic_eps",      "label": "超启发式(ε-贪心)"},
+        {"value": "relay_handoff",            "label": "接力换手协同"},
+        {"value": "region_partition",         "label": "区域划分协同"},
+        {"value": "multi_agent_auction",      "label": "多智能体拍卖"},
+        {"value": "multi_agent_contract_net", "label": "合同网协议"},
+    ]
+    scales = [
+        {"value": "small",  "label": "小规模（3辆车·1站·30任务）"},
+        {"value": "medium", "label": "中规模（5辆车·2站·50任务）"},
+        {"value": "large",  "label": "大规模（8辆车·3站·100任务）"},
+    ]
+    return {
+        "strategies":       dynamic_strategies,
+        "scales":           scales,
+        "current_strategy": _configured_strategy_name(),
+        "current_scale":    os.getenv("NEFT_CURRENT_SCALE", "small"),
+    }
 
 
 @app.post("/api/simulation/start")
-async def start_simulation(_: SimulationStartRequest | None = None):
+async def start_simulation(req: SimulationStartRequest | None = None):
     """初始化车队 / 充电站 / 仓库 / 任务，开始仿真并创建实验日志目录。"""
     global _task_id_counter, _runtime_tasks_generated
+    global SIM_SPEED_FACTOR, TICK_INTERVAL_SEC, MAX_SIM_SECONDS, STOP_WHEN_ALL_TASKS_DONE
+    global DEFAULT_STRATEGY, CHARGE_UNTIL_PCT, OPT_MODE, TOTAL_TASK_BUDGET
     data_manager: DataManager = app.state.data_manager
+
+    # ---- 运行期切换 scale（重新加载整个 yaml）----
+    if req and req.scale and req.scale in ("small", "medium", "large"):
+        yaml_path = f"configs/dynamic/{req.scale}.yaml"
+        try:
+            config.reload_from_yaml(yaml_path)
+            os.environ["NEFT_CURRENT_SCALE"] = req.scale
+            # 刷新从 config 读出的全局变量
+            _sim_cfg2 = config.get_simulation_config()
+            SIM_SPEED_FACTOR     = float(_sim_cfg2.get("speed_factor", 120))
+            TICK_INTERVAL_SEC    = float(_sim_cfg2.get("tick_interval", 1.0))
+            MAX_SIM_SECONDS      = _sim_cfg2.get("max_sim_seconds")
+            STOP_WHEN_ALL_TASKS_DONE = bool(_sim_cfg2.get("stop_when_all_tasks_done", True))
+            _sched_cfg2 = config.get_scheduling_config()
+            CHARGE_UNTIL_PCT     = float(_sched_cfg2.get("charge_until_pct", 90.0))
+            DEFAULT_STRATEGY     = str(_sched_cfg2.get("strategy", "nearest_task"))
+            _task_cfg2 = config.get_task_config()
+            TOTAL_TASK_BUDGET    = _task_cfg2.get("total_task_budget")
+            _opt_cfg2 = config.get_optimization_config()
+            OPT_MODE             = str(_opt_cfg2.get("mode", "dynamic")).strip().lower()
+            print(f"[Start] Scale switched to '{req.scale}', strategy={DEFAULT_STRATEGY}")
+        except Exception as exc:
+            print(f"[WARN] Failed to reload config for scale '{req.scale}': {exc}")
+
+    # ---- 运行期覆盖 strategy（在 scale 加载之后，以 strategy 参数为准）----
+    if req and req.strategy:
+        config.override_strategy(req.strategy)
+        DEFAULT_STRATEGY = req.strategy
+        print(f"[Start] Strategy overridden to '{req.strategy}'")
 
     # 清空旧状态
     data_manager.tasks.clear()
