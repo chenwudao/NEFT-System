@@ -1028,7 +1028,7 @@ function initializeApp() {
     });
 
     // 从后端获取可用配置选项并动态填充下拉框
-    fetch('/api/config/options')
+    fetch(API_BASE + '/config/options')
         .then(r => r.json())
         .then(data => {
             if (strategySelect && data.strategies) {
