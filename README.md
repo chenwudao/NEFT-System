@@ -117,11 +117,10 @@ python main.py
 ### 1. 启动模拟
 
 1. 打开 Web 界面
-2. 选择调度模式：
-   - **实时调度模式**：动态响应任务，支持多种调度策略
-   - **静态规划模式**：定期执行全局优化，使用 OR-Tools/MIP 求解器
-3. 选择问题规模：小规模（10任务/3车）、中规模（50任务/5车）、大规模（100任务/10车）
-4. 点击"启动模拟"
+2. 在控制面板的下拉选择器中配置：
+   - **规模**：小规模、中规模、大规模（选项及车辆/任务配置将由后端 `configs/dynamic/{scale}.yaml` 动态加载）
+   - **策略**：从下拉菜单中选择您想测试的调度策略（如“最近任务优先”、“最高优先级优先”、“合同网协议”、“Q-Learning强化学习”等，共支持15种动态或协同调度算法）
+3. 点击 **"启动模拟"** 按钮，系统会动态将配置传入后端并即时生效运行。
 
 ### 2. 调度策略
 
@@ -159,7 +158,11 @@ python main.py
 系统提供完整的 RESTful API：
 
 ```bash
-# 启动模拟
+# 获取可用配置选项及当前状态（策略列表、规模列表、当前生效策略及规模）
+GET /api/config/options
+
+# 启动模拟（支持在 Body 中传入 scale 和 strategy 进行运行期动态切换配置）
+# 示例 Body: { "scale": "medium", "strategy": "relay_handoff" }
 POST /api/simulation/start
 
 # 停止模拟
@@ -269,17 +272,23 @@ NEFT-System/
 
 ## 🔧 配置说明
 
-### 通过 YAML 切换规模（推荐做对比实验时用）
+### 通过 YAML 切换规模与运行期动态切换
 
-`configs/` 下提供三档基线：
+系统目前支持**三档标准规模**，并可以通过以下三种方式进行切换：
 
-| 文件 | 车队 | 充电站 | 任务总数预算 | 默认策略 |
-|------|------|--------|--------------|----------|
-| `configs/small.yaml`  | 3   | 1 | 30  | `nearest_task` |
-| `configs/medium.yaml` | 6   | 2 | 80  | `composite_score` |
-| `configs/large.yaml`  | 12  | 4 | 200 | `simulated_annealing` |
+#### 1. 前端 UI / API 运行期动态切换（推荐）
+系统支持在仿真启动时动态重载整个 YAML 配置。当您在前端下拉框选择规模和策略并点击“启动模拟”时，前端会发送包含选择参数的请求：
+```json
+// POST /api/simulation/start 的请求体示例
+{
+  "scale": "medium",
+  "strategy": "relay_handoff"
+}
+```
+后端在收到请求后，会自动从 `configs/dynamic/{scale}.yaml` 重新加载所有配置字段（如车队、任务、仿真参数），并覆盖生效指定的调度策略。
 
-启动时通过命令行参数选择（推荐）：
+#### 2. 命令行参数选择（启动时指定）
+您仍可以在启动后端服务时，通过 `--cfg` 指定要加载的默认配置文件：
 
 ```powershell
 python backend\main.py --cfg "configs\medium.yaml"
