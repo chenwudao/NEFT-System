@@ -1039,10 +1039,13 @@ class StaticExactSolverScheduler(Scheduler):
         static_cfg = (config.get_optimization_config().get("static") or {})
         time_limit_s = max(5.0, float(static_cfg.get("gpu_time_limit_s", 90.0)))
         batch_size = max(4, int(static_cfg.get("gpu_batch_size", 64)))
+        generations_per_iter = max(1, int(static_cfg.get("gpu_generations_per_iter", 4)))
+        topk_eval = max(1, int(static_cfg.get("gpu_topk_eval", max(4, batch_size // 8))))
         log_interval_s = max(1.0, float(static_cfg.get("gpu_log_interval_s", 2.0)))
         explore_scale = max(0.01, float(static_cfg.get("gpu_explore_scale", 3.0)))
         search_order = str(static_cfg.get("gpu_search_order", "breadth_first")).strip().lower()
         require_cuda = bool(static_cfg.get("gpu_require_cuda", False))
+        reserve_mb = max(0, int(static_cfg.get("gpu_vram_reserve_mb", 0)))
 
         try:
             import torch  # type: ignore
@@ -1068,6 +1071,20 @@ class StaticExactSolverScheduler(Scheduler):
             if require_cuda and not has_cuda:
                 raise RuntimeError("[STATIC][GPU] gpu_require_cuda=true but CUDA is unavailable.")
 
+        # 可选：预留一块显存，避免“小任务下显存几乎不动”的观感。
+        # 注意这不会改变最优性，只影响显存占用/一定程度的 GPU 常驻。
+        gpu_reserve = None
+        if torch is not None and has_cuda and reserve_mb > 0:
+            try:
+                n_float = (reserve_mb * 1024 * 1024) // 4  # float32 = 4 bytes
+                gpu_reserve = torch.empty((n_float,), dtype=torch.float32, device=device)
+                # 做一次轻运算，确保显存真正分配并活跃。
+                gpu_reserve.uniform_(0.0, 1.0)
+                print(f"[STATIC][GPU] reserved_vram={reserve_mb}MB on CUDA.")
+            except Exception as exc:
+                print(f"[STATIC][GPU] WARN reserve_vram failed: {exc}")
+                gpu_reserve = None
+
         t0 = time.monotonic()
         t_last_log = t0
         task_list = list(tasks)
@@ -1086,6 +1103,7 @@ class StaticExactSolverScheduler(Scheduler):
 
         if torch is not None:
             base_tensor = torch.tensor(base_vals, dtype=torch.float32, device=device).view(1, n_tasks)
+            pos_decay = torch.linspace(1.0, 0.5, steps=n_tasks, device=device).view(1, n_tasks)
 
         best_score = float("-inf")
         best_route = {vid: [] for vid in vids}
@@ -1131,9 +1149,16 @@ class StaticExactSolverScheduler(Scheduler):
 
         while time.monotonic() - t0 < time_limit_s:
             if torch is not None:
-                noise = torch.rand((batch_size, n_tasks), device=device) * explore_scale
+                eff_batch = batch_size * generations_per_iter
+                noise = torch.rand((eff_batch, n_tasks), device=device) * explore_scale
                 scores = base_tensor + noise
-                ranked = torch.argsort(scores, dim=1, descending=True).detach().cpu().tolist()
+                ranked_tensor = torch.argsort(scores, dim=1, descending=True)
+                # GPU并行粗评分：越靠前的任务权重越高，快速筛掉大量差解
+                ranked_base = torch.gather(base_tensor.expand(eff_batch, -1), 1, ranked_tensor)
+                surrogate = torch.sum(ranked_base * pos_decay, dim=1)
+                k = min(topk_eval, eff_batch)
+                top_idx = torch.topk(surrogate, k=k, largest=True).indices
+                ranked = ranked_tensor[top_idx].detach().cpu().tolist()
             else:
                 ranked = []
                 for _ in range(batch_size):
@@ -1177,7 +1202,8 @@ class StaticExactSolverScheduler(Scheduler):
                 mode = "cuda" if has_cuda else "cpu"
                 print(
                     f"[STATIC][GPU] mode={mode} elapsed={now_m-t0:.1f}s "
-                    f"eval={eval_count} best={best_score:.2f}"
+                    f"eval={eval_count} best={best_score:.2f} "
+                    f"batch={batch_size} gens={generations_per_iter} topk={topk_eval}"
                 )
                 t_last_log = now_m
 
@@ -1185,6 +1211,8 @@ class StaticExactSolverScheduler(Scheduler):
             f"[STATIC][GPU] done elapsed={time.monotonic()-t0:.1f}s "
             f"eval={eval_count} best={best_score:.2f}"
         )
+        # 保持引用直到搜索结束，防止被提前释放。
+        _ = gpu_reserve
         return self._repair_plan_with_energy(vehicles, task_list, best_route, snapshot)
 
     def _repair_plan_with_energy(self, vehicles, tasks, route_map: Dict[int, List[int]], snapshot: Snapshot) -> Dict[int, List[int]]:

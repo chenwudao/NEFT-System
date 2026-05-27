@@ -7,7 +7,7 @@ optimization:
   mode: "static"   # dynamic | static
   static:
     strategy: "static_exact_solver"
-    solver: "exact"   # gpu_search | exact | heuristic | gurobi
+    solver: "gpu_search"   # gpu_search | exact | heuristic | gurobi
     force_gurobi_only: false
     accept_feasible_when_force_gurobi_only: false
     objective_mode: "simulation_score"   # proxy | simulation_score
@@ -30,11 +30,13 @@ optimization:
     exact_beam_width: 128
     exact_refine_seeds: 8
     gpu_time_limit_s: 90.0
-    gpu_batch_size: 256
+    gpu_batch_size: 2048
+    gpu_generations_per_iter: 4
+    gpu_topk_eval: 256
     gpu_log_interval_s: 2.0
     gpu_explore_scale: 3.0
     gpu_search_order: "depth_first"   # depth_first | breadth_first
-    gpu_require_cuda: false
+    gpu_require_cuda: true
     max_exact_tasks: 10
     strict_global_optimum: false
     mip_gap_threshold: 0.02
