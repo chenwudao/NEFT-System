@@ -126,17 +126,39 @@ class StaticExactSolverScheduler(Scheduler):
         opt_cfg = config.get_optimization_config()
         static_cfg = opt_cfg.get("static") or {}
         solver = str(static_cfg.get("solver", "gurobi")).lower()
+        objective_mode = str(static_cfg.get("objective_mode", "proxy")).lower()
         force_gurobi_only = bool(static_cfg.get("force_gurobi_only", False))
         max_exact_tasks = int(static_cfg.get("max_exact_tasks", 10))
         strict = bool(static_cfg.get("strict_global_optimum", True))
         gap_th = float(static_cfg.get("mip_gap_threshold", 0.02))
         full_exact_enabled = bool(static_cfg.get("full_exact_global", True))
         full_exact_max_tasks = int(static_cfg.get("full_exact_max_tasks", max_exact_tasks))
+        sim_exact_max_tasks = int(static_cfg.get("simulation_exact_max_tasks", 12))
 
         if force_gurobi_only and solver != "gurobi":
             raise RuntimeError(
                 f"[STATIC] force_gurobi_only=true requires solver='gurobi', got '{solver}'."
             )
+
+        # 0) 真正按“仿真总分”做目标（全局穷举，适合小规模）。
+        if objective_mode in ("simulation_score", "sim_score"):
+            if len(tasks) <= max(1, sim_exact_max_tasks):
+                sim_plan = self._full_exact_simulation_score(vehicles, tasks, snapshot)
+                if sim_plan is not None:
+                    print(
+                        f"[STATIC] Simulation-score exact search accepted "
+                        f"(tasks={len(tasks)}, vehicles={len(vehicles)})."
+                    )
+                    return sim_plan
+                if strict:
+                    raise RuntimeError(
+                        "[STRICT_STATIC] simulation-score exact search failed to build feasible plan."
+                    )
+            elif strict:
+                raise RuntimeError(
+                    f"[STRICT_STATIC] objective_mode=simulation_score requires "
+                    f"tasks <= simulation_exact_max_tasks ({sim_exact_max_tasks}), got {len(tasks)}."
+                )
 
         # 0) 小规模时优先做“全局穷举精确搜索”（包含充电/时间窗/电量可行）。
         # force_gurobi_only 打开时跳过该分支，确保必须走 Gurobi。
@@ -352,6 +374,254 @@ class StaticExactSolverScheduler(Scheduler):
         if best_routes is None:
             return None
         return best_routes
+
+    def _full_exact_simulation_score(self, vehicles, tasks, snapshot: Snapshot) -> Optional[Dict[int, List[int]]]:
+        """全局穷举，叶子结点用“仿真总分”评估。"""
+        if not vehicles:
+            return {}
+        if not tasks:
+            return {v.id: [] for v in vehicles}
+
+        vehicles = list(vehicles)
+        tasks = list(tasks)
+        routes: Dict[int, List[int]] = {v.id: [] for v in vehicles}
+        rem_cap: Dict[int, float] = {v.id: float(v.get_remaining_load()) for v in vehicles}
+        t_by_id = {t.id: t for t in tasks}
+
+        optimistic_task_values = {
+            t.id: max(
+                0.0,
+                float(TASK_ASSIGN_REWARD) + float(t.priority) * float(PRIORITY_REWARD),
+            )
+            for t in tasks
+        }
+
+        best_score = float("-inf")
+        best_routes: Optional[Dict[int, List[int]]] = None
+
+        remaining_ids = [t.id for t in tasks]
+
+        def dfs(remaining: List[int], optimistic_base: float) -> None:
+            nonlocal best_score, best_routes
+            if optimistic_base <= best_score + 1e-9:
+                return
+            if not remaining:
+                score = self._simulate_routes_total_score(routes, vehicles, t_by_id, snapshot)
+                if score > best_score:
+                    best_score = score
+                    best_routes = {vid: list(seq) for vid, seq in routes.items()}
+                return
+
+            # 先扩展更“紧”的任务。
+            ordered = sorted(
+                remaining,
+                key=lambda tid: (
+                    float(getattr(t_by_id[tid], "deadline", 0.0)),
+                    -float(getattr(t_by_id[tid], "priority", 0.0)),
+                ),
+            )
+            tid = ordered[0]
+            task = t_by_id[tid]
+
+            # 尝试把该任务分配给每辆能装得下的车。
+            for v in vehicles:
+                vid = v.id
+                if float(task.weight) > rem_cap[vid] + 1e-9:
+                    continue
+                routes[vid].append(tid)
+                rem_cap[vid] -= float(task.weight)
+                nxt_remaining = [x for x in remaining if x != tid]
+                dfs(nxt_remaining, optimistic_base - optimistic_task_values[tid])
+                rem_cap[vid] += float(task.weight)
+                routes[vid].pop()
+
+        initial_optimistic = sum(optimistic_task_values.values())
+        dfs(remaining_ids, initial_optimistic)
+        return best_routes
+
+    def _simulate_routes_total_score(
+        self,
+        routes: Dict[int, List[int]],
+        vehicles,
+        task_by_id: Dict[int, Any],
+        snapshot: Snapshot,
+    ) -> float:
+        """按当前评分口径模拟固定路由，返回总分（含时间/充电/排队影响）。"""
+        now_ts = float(int(snapshot.timestamp))
+        sched_cfg = config.get_scheduling_config() or {}
+        charge_until_pct = float(sched_cfg.get("charge_until_pct", 90.0))
+        charge_until_pct = max(1.0, min(100.0, charge_until_pct))
+        margin = max(1.0, float(sched_cfg.get("battery_safety_margin", 1.15)))
+        stations = list(getattr(snapshot, "charging_stations", []) or [])
+
+        # 每个充电站每个桩位的可用时间（秒）；用于排队仿真。
+        station_slots: Dict[str, List[float]] = {}
+        for st in stations:
+            cap = max(1, int(getattr(st, "capacity", 1)))
+            station_slots[st.id] = [now_ts for _ in range(cap)]
+
+        vstate: Dict[int, Dict[str, Any]] = {}
+        for v in vehicles:
+            vstate[v.id] = {
+                "idx": 0,
+                "time": now_ts,
+                "xy": (float(v.position.x), float(v.position.y)),
+                "battery": float(v.battery),
+                "cum_dist": 0.0,
+                "done": False,
+                "score": 0.0,
+            }
+
+        def choose_station(vid: int, target_xy: Tuple[float, float]) -> Optional[Tuple[Any, float, float, float]]:
+            """选择一次补能站：返回(station, d_to, arrival, finish_charge)。"""
+            v = next(vx for vx in vehicles if vx.id == vid)
+            stv = vstate[vid]
+            best = None
+            best_finish = float("inf")
+            cur_xy = stv["xy"]
+            cur_t = float(stv["time"])
+            cur_b = float(stv["battery"])
+            speed = max(1e-6, float(getattr(v, "speed", 10.0)))
+            power = max(1e-6, float(getattr(v, "charging_power", 0.022)))
+            charge_target = min(float(v.max_battery), float(v.max_battery) * charge_until_pct / 100.0)
+
+            for st in stations:
+                st_xy = (float(st.position.x), float(st.position.y))
+                d_to = snapshot.distance(cur_xy, st_xy)
+                if d_to == float("inf"):
+                    continue
+                e_to = utils.energy_required_for_distance(v, d_to)
+                if e_to == float("inf") or cur_b + 1e-9 < e_to:
+                    continue
+                after_arrival_b = cur_b - e_to
+                d_after = snapshot.distance(st_xy, target_xy)
+                if d_after == float("inf"):
+                    continue
+                extra = utils.min_distance_to_any_station(target_xy, stations, snapshot) if stations else 0.0
+                if extra == float("inf"):
+                    continue
+                need_after = utils.energy_required_for_distance(v, float(d_after) + float(extra)) * margin
+                if need_after > float(v.max_battery) + 1e-9:
+                    continue
+                final_charge = min(float(v.max_battery), max(charge_target, need_after))
+                if final_charge + 1e-9 < need_after:
+                    continue
+                arr = cur_t + float(d_to) / speed
+                slots = station_slots.get(st.id, [now_ts])
+                slot_idx = min(range(len(slots)), key=lambda i: slots[i])
+                start_charge = max(arr, float(slots[slot_idx]))
+                charge_dur = max(0.0, final_charge - after_arrival_b) / power
+                finish_charge = start_charge + charge_dur
+                # 估计到达 target 的完成时间
+                est_finish = finish_charge + float(d_after) / speed
+                if est_finish < best_finish:
+                    best_finish = est_finish
+                    best = (st, float(d_to), arr, finish_charge)
+            return best
+
+        # 按“车辆当前可动作时间”推进，近似真实并发执行。
+        while True:
+            active = [
+                (vid, st["time"])
+                for vid, st in vstate.items()
+                if not st["done"]
+            ]
+            if not active:
+                break
+            vid = min(active, key=lambda x: x[1])[0]
+            stv = vstate[vid]
+            route = routes.get(vid, [])
+            v = next(vx for vx in vehicles if vx.id == vid)
+            if stv["idx"] >= len(route):
+                stv["done"] = True
+                continue
+
+            task = task_by_id.get(route[stv["idx"]])
+            if task is None:
+                stv["idx"] += 1
+                continue
+            target_xy = (float(task.position.x), float(task.position.y))
+
+            # 必要时补能（可多次）。
+            safe_guard = 0
+            while True:
+                safe_guard += 1
+                if safe_guard > max(4, len(stations) * 3 + 2):
+                    return float("-inf")
+
+                d_leg = snapshot.distance(stv["xy"], target_xy)
+                if d_leg == float("inf"):
+                    return float("-inf")
+                extra = utils.min_distance_to_any_station(target_xy, stations, snapshot) if stations else 0.0
+                if extra == float("inf"):
+                    return float("-inf")
+                need = utils.energy_required_for_distance(v, float(d_leg) + float(extra)) * margin
+                if stv["battery"] + 1e-9 >= need:
+                    break
+
+                choice = choose_station(vid, target_xy)
+                if choice is None:
+                    return float("-inf")
+                st_obj, d_to, arr, finish_charge = choice
+                st_xy = (float(st_obj.position.x), float(st_obj.position.y))
+                # 行驶到站
+                e_to = utils.energy_required_for_distance(v, d_to)
+                if e_to == float("inf") or stv["battery"] + 1e-9 < e_to:
+                    return float("-inf")
+                stv["battery"] -= e_to
+                stv["cum_dist"] += float(d_to)
+                speed = max(1e-6, float(getattr(v, "speed", 10.0)))
+                stv["time"] += float(d_to) / speed
+                stv["xy"] = st_xy
+
+                # 占用充电桩（队列）
+                slots = station_slots.get(st_obj.id, [now_ts])
+                slot_idx = min(range(len(slots)), key=lambda i: slots[i])
+                start_charge = max(float(arr), float(slots[slot_idx]), float(stv["time"]))
+                power = max(1e-6, float(getattr(v, "charging_power", 0.022)))
+                charge_to = min(
+                    float(v.max_battery),
+                    float(v.max_battery) * charge_until_pct / 100.0,
+                )
+                # 至少要补到这次能走得动
+                d_after = snapshot.distance(st_xy, target_xy)
+                need_after = utils.energy_required_for_distance(
+                    v,
+                    float(d_after) + float(extra),
+                ) * margin
+                charge_to = min(float(v.max_battery), max(charge_to, need_after))
+                charge_dur = max(0.0, charge_to - float(stv["battery"])) / power
+                finish_charge_real = start_charge + charge_dur
+                slots[slot_idx] = finish_charge_real
+                station_slots[st_obj.id] = slots
+                stv["time"] = finish_charge_real
+                stv["battery"] = charge_to
+
+            # 前往任务点并完成
+            d_leg = snapshot.distance(stv["xy"], target_xy)
+            e_leg = utils.energy_required_for_distance(v, d_leg)
+            if e_leg == float("inf") or stv["battery"] + 1e-9 < e_leg:
+                return float("-inf")
+            stv["battery"] -= e_leg
+            stv["cum_dist"] += float(d_leg)
+            speed = max(1e-6, float(getattr(v, "speed", 10.0)))
+            arrival = float(stv["time"]) + float(d_leg) / speed
+            completion = max(arrival, float(getattr(task, "create_time", arrival)))
+            early_minutes = max(0.0, float(task.deadline) - completion) / 60.0
+            overdue_minutes = max(0.0, completion - float(task.deadline)) / 60.0
+            score = (
+                float(TASK_ASSIGN_REWARD)
+                + float(task.priority) * float(PRIORITY_REWARD)
+                - float(stv["cum_dist"]) * float(DISTANCE_PENALTY)
+                + early_minutes * float(EARLY_COMPLETION_REWARD_PER_MIN)
+                - overdue_minutes * float(OVERDUE_PENALTY_PER_MIN)
+            )
+            stv["score"] += max(0.0, float(score))
+            stv["xy"] = target_xy
+            stv["time"] = completion
+            stv["idx"] += 1
+
+        return sum(float(st["score"]) for st in vstate.values())
 
     def _simulate_append_task_with_charging(
         self,
