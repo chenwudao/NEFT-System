@@ -1282,6 +1282,9 @@ if __name__ == "__main__":
 
         stop_reason = "manual_stop"
         while fake_app.state.simulation_running:
+            # 与在线模式保持一致：每 tick 先等待一个真实时间片，
+            # 避免“仿真秒暴走但墙钟几乎不走”导致 release/deadline 偏差。
+            time.sleep(max(0.0, float(TICK_INTERVAL_SEC)))
             sim_dt = SIM_SPEED_FACTOR * TICK_INTERVAL_SEC
 
             for vehicle in data_manager.get_vehicles():
@@ -1365,7 +1368,12 @@ if __name__ == "__main__":
                 fake_app.state.simulation_running = False
                 break
 
-            commands = decision_manager.dynamic_scheduling()
+            now_wall = time.time()
+            last_dyn = float(getattr(fake_app.state, "last_dynamic_scheduling_ts", 0.0))
+            commands = []
+            if (now_wall - last_dyn) >= DYNAMIC_SCHEDULE_INTERVAL_SEC:
+                commands = decision_manager.dynamic_scheduling()
+                fake_app.state.last_dynamic_scheduling_ts = now_wall
             if STOP_WHEN_ALL_TASKS_DONE and _task_generation_stopped(fake_app, data_manager):
                 from backend.data.task import TaskStatus
 
