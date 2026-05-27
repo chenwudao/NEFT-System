@@ -34,6 +34,8 @@ class DynamicSchedulingModule:
         self.algorithm_manager = algorithm_manager
         # 最近一次调度生成的 Command 列表（dict 形式），纯做展示用
         self.last_commands: List[Dict] = []
+        # 当前轮策略名（用于策略特定兜底）
+        self._current_strategy: str = ""
 
     # ------------------------------------------------------------------
     # 外部入口
@@ -43,6 +45,7 @@ class DynamicSchedulingModule:
 
     def run_once(self, strategy: str) -> List[Dict]:
         """拍快照 → 跑算法 → 落地命令。返回这一轮产生的命令（dict）。"""
+        self._current_strategy = str(strategy or "")
         # 先把超时任务统一打 TIMEOUT，避免算法看到它们。
         apply_deadline_timeouts(
             self.data_manager.get_tasks(), int(datetime.now().timestamp())
@@ -123,6 +126,23 @@ class DynamicSchedulingModule:
         if cmd.action in (ACTION_IDLE, ACTION_HANDOFF) or cmd.target_xy is None:
             return cmd
 
+        single_task_strategies = {
+            "nearest_task",
+            "priority_task",
+            "heaviest_task",
+            "deadline_earliest",
+        }
+        at_warehouse = (
+            abs(float(vehicle.position.x) - float(snapshot.warehouse_xy[0])) < 1e-4
+            and abs(float(vehicle.position.y) - float(snapshot.warehouse_xy[1])) < 1e-4
+        )
+        single_task_policy = (
+            str(self._current_strategy) in single_task_strategies
+            and cmd.action == ACTION_DELIVER
+            and at_warehouse
+            and len(getattr(cmd, "assigned_tasks", []) or []) <= 1
+        )
+
         if cmd.action == ACTION_CHARGE:
             if utils.can_reach_target(
                 vehicle, cmd.target_xy, snapshot, require_station_buffer=False
@@ -151,6 +171,15 @@ class DynamicSchedulingModule:
         transit = self._best_transit_station_for_target(vehicle, cmd.target_xy, snapshot)
         if transit is not None:
             return utils.make_charge_command(vehicle, transit)
+
+        # 单任务单车策略 + 仓库派单阶段：
+        # 不能安全派单时，保持仓库待命（不把任务改 TIMEOUT）。
+        if single_task_policy:
+            print(
+                f"[Policy] strategy={self._current_strategy} v{vehicle.id}: "
+                "task not dispatchable (no direct-safe route / no charge transition). keep idle at warehouse."
+            )
+            return utils.make_idle_command(vehicle)
 
         print(
             f"[WARN] Vehicle {vehicle.id} cannot reach target or any charging station; "

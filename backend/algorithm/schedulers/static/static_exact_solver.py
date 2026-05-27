@@ -3,7 +3,7 @@
 核心：
 1) 任务全集已知（含未来 release 时间）；
 2) 一体化 MIP 联合优化：车辆路径 + 时间窗 + 载重；
-3) 优先调用 Gurobi；不可用时回退到内置搜索；
+3) 优先调用 Gurobi；可配置为强制仅 Gurobi；
 4) 计划先算完，再按 release 时间逐步执行。
 """
 
@@ -142,7 +142,8 @@ class StaticExactSolverScheduler(Scheduler):
             )
 
         # 0) 真正按“仿真总分”做目标（全局穷举，适合小规模）。
-        if objective_mode in ("simulation_score", "sim_score"):
+        # force_gurobi_only 开启时跳过，确保全链路只由 Gurobi 决策。
+        if (not force_gurobi_only) and objective_mode in ("simulation_score", "sim_score"):
             if len(tasks) <= max(1, sim_exact_max_tasks):
                 sim_plan = self._full_exact_simulation_score(vehicles, tasks, snapshot)
                 if sim_plan is not None:
@@ -182,7 +183,11 @@ class StaticExactSolverScheduler(Scheduler):
             return self._repair_plan_with_energy(vehicles, tasks, route_plan, snapshot)
         if force_gurobi_only:
             msg = self._vrptw_disabled_reason or "Gurobi did not return an accepted VRPTW result."
-            print(f"[STATIC] force_gurobi_only enabled but no accepted VRPTW plan: {msg}. continue with fallback assignment.")
+            print(
+                "[STATIC] force_gurobi_only enabled and no accepted VRPTW plan: "
+                f"{msg}. return empty plan (no fallback)."
+            )
+            return {v.id: [] for v in vehicles}
         if strict:
             msg = self._vrptw_disabled_reason or "VRPTW solver did not return OPTIMAL."
             raise RuntimeError(f"[STRICT_STATIC] global optimum not proven: {msg}")
@@ -984,14 +989,17 @@ class StaticExactSolverScheduler(Scheduler):
 
         # y[k,n] 车辆k是否服务任务n
         y = {(k, n): m.addVar(vtype=GRB.BINARY, name=f"y_{k}_{n}") for k in K for n in task_nodes}
+        # unserved[n] 任务n是否不服务（在仿真中会走 TIMEOUT 语义）
+        unserved = {n: m.addVar(vtype=GRB.BINARY, name=f"unserved_{n}") for n in task_nodes}
 
         # t[k,n] 车辆k到达节点n的时刻（仿真秒）
         tvar = {(k, n): m.addVar(lb=0.0, ub=latest[n], vtype=GRB.CONTINUOUS, name=f"t_{k}_{n}")
                 for k in K for n in task_nodes}
 
-        # 每个任务的完成时刻 c[n] 与迟到 tard[n]
+        # 每个任务的完成时刻 c[n]、迟到 tard[n]、提前完成 early[n]
         c = {n: m.addVar(lb=0.0, ub=latest[n], vtype=GRB.CONTINUOUS, name=f"c_{n}") for n in task_nodes}
         tard = {n: m.addVar(lb=0.0, ub=max_lateness_s, vtype=GRB.CONTINUOUS, name=f"tard_{n}") for n in task_nodes}
+        early = {n: m.addVar(lb=0.0, ub=max(0.0, deadline[n]), vtype=GRB.CONTINUOUS, name=f"early_{n}") for n in task_nodes}
 
         # start / end 是否启用
         use_k = {k: m.addVar(vtype=GRB.BINARY, name=f"use_{k}") for k in K}
@@ -1010,9 +1018,12 @@ class StaticExactSolverScheduler(Scheduler):
         }
 
         # ---- 约束 ----
-        # 每任务恰好由一辆车服务一次
+        # 每任务要么被一辆车服务，要么标记为 unserved（避免模型整体不可行）
         for n in task_nodes:
-            m.addConstr(gp.quicksum(y[(k, n)] for k in K) == 1, name=f"serve_once_{n}")
+            m.addConstr(
+                gp.quicksum(y[(k, n)] for k in K) + unserved[n] == 1,
+                name=f"serve_or_unserved_{n}",
+            )
 
         # 车辆流平衡
         for k in K:
@@ -1108,10 +1119,19 @@ class StaticExactSolverScheduler(Scheduler):
         for n in task_nodes:
             m.addConstr(tard[n] >= c[n] - deadline[n], name=f"tard_lb_{n}")
             m.addConstr(tard[n] >= 0.0, name=f"tard_nonneg_{n}")
+            # early = max(0, deadline-c)，但仅在任务被服务时生效。
+            # 线性化：
+            # early <= deadline * (1-unserved)
+            # early <= deadline - c + M*unserved
+            # early >= deadline - c - M*unserved
+            early_cap = max(0.0, deadline[n])
+            m.addConstr(early[n] <= early_cap * (1.0 - unserved[n]), name=f"early_cap_served_{n}")
+            m.addConstr(early[n] <= deadline[n] - c[n] + early_cap * unserved[n], name=f"early_ub_{n}")
+            m.addConstr(early[n] >= deadline[n] - c[n] - early_cap * unserved[n], name=f"early_lb_{n}")
 
         # ---- 目标函数 ----
         # 用与系统评分一致的线性代理：
-        # maximize [priority + early(等价为-completion) - overdue - distance]
+        # maximize [任务奖励 + 优先级 + 提前完成 - 逾期 - 距离 - 充电代理项 - 未服务惩罚]
         # 常数项省略，只优化可变部分。
         total_distance = gp.quicksum(
             dist[(i, j)] * x[(k, i, j)]
@@ -1127,20 +1147,34 @@ class StaticExactSolverScheduler(Scheduler):
             charge_energy[k] / max(1e-9, float(getattr(v_by_id[k], "charging_power", 0.022)))
             for k in K
         )
+        total_early = gp.quicksum(early[n] for n in task_nodes)
+        served_count = gp.quicksum(1.0 - unserved[n] for n in task_nodes)
+        total_unserved = gp.quicksum(unserved[n] for n in task_nodes)
         priority_term = gp.quicksum(
-            float(task_by_node[n].priority) * float(PRIORITY_REWARD)
+            float(task_by_node[n].priority) * float(PRIORITY_REWARD) * (1.0 - unserved[n])
             for n in task_nodes
         )
-        assign_term = float(TASK_ASSIGN_REWARD) * len(task_nodes)
+        assign_term = float(TASK_ASSIGN_REWARD) * served_count
+        early_reward_term = float(EARLY_COMPLETION_REWARD_PER_MIN) / 60.0 * total_early
+        # 未服务惩罚：保证“是否派单”由全局最优决定，避免把明显不可行任务强塞给车辆。
+        # 默认强于单任务基础奖励与一般优先级收益，可通过 YAML 调整。
+        unserved_penalty = float(
+            static_cfg.get(
+                "unserved_penalty",
+                float(TASK_ASSIGN_REWARD) + 2.0 * float(PRIORITY_REWARD),
+            )
+        )
 
         obj = (
             assign_term
             + priority_term
+            + early_reward_term
             - float(DISTANCE_PENALTY) * total_distance
             - float(OVERDUE_PENALTY_PER_MIN) / 60.0 * total_tard
             - float(charge_time_penalty_per_s) * total_charge_time
             - float(charge_event_penalty) * total_charge_events
             - float(charge_queue_penalty) * float(avg_station_load) * total_charge_events
+            - float(unserved_penalty) * total_unserved
         )
         m.setObjective(obj, GRB.MAXIMIZE)
 
