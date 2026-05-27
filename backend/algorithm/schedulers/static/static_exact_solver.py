@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import itertools
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from backend.algorithm import utils
@@ -309,6 +310,14 @@ class StaticExactSolverScheduler(Scheduler):
 
         best_score = float("-inf")
         best_routes: Optional[Dict[int, List[int]]] = None
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        live_log = bool(static_cfg.get("dfs_live_log", True))
+        log_interval_s = max(1.0, float(static_cfg.get("dfs_log_interval_s", 5.0)))
+        dfs_nodes = 0
+        dfs_leaves = 0
+        dfs_pruned = 0
+        t0 = time.monotonic()
+        t_last_log = t0
 
         optimistic_per_task = []
         for t in ordered_tasks:
@@ -325,12 +334,28 @@ class StaticExactSolverScheduler(Scheduler):
             optimistic_suffix[i] = optimistic_suffix[i + 1] + optimistic_per_task[i]
 
         def dfs(i: int, cur_states: Dict[int, Dict[str, Any]]) -> None:
-            nonlocal best_score, best_routes
+            nonlocal best_score, best_routes, dfs_nodes, dfs_leaves, dfs_pruned, t_last_log
+            dfs_nodes += 1
             cur_total = sum(float(st["score"]) for st in cur_states.values())
             if cur_total + optimistic_suffix[i] <= best_score + 1e-9:
+                dfs_pruned += 1
                 return
 
+            if live_log:
+                now_m = time.monotonic()
+                if now_m - t_last_log >= log_interval_s:
+                    elapsed = max(1e-6, now_m - t0)
+                    rate = dfs_nodes / elapsed
+                    print(
+                        "[DFS-ENERGY] "
+                        f"elapsed={elapsed:.1f}s nodes={dfs_nodes} leaves={dfs_leaves} "
+                        f"pruned={dfs_pruned} depth={i}/{len(ordered_tasks)} "
+                        f"best={best_score:.2f} rate={rate:.1f}n/s"
+                    )
+                    t_last_log = now_m
+
             if i >= len(ordered_tasks):
+                dfs_leaves += 1
                 if cur_total > best_score:
                     best_score = cur_total
                     best_routes = {
@@ -371,6 +396,14 @@ class StaticExactSolverScheduler(Scheduler):
                 return
 
         dfs(0, states)
+        if live_log:
+            elapsed = max(1e-6, time.monotonic() - t0)
+            rate = dfs_nodes / elapsed
+            print(
+                "[DFS-ENERGY] done "
+                f"elapsed={elapsed:.1f}s nodes={dfs_nodes} leaves={dfs_leaves} "
+                f"pruned={dfs_pruned} best={best_score:.2f} rate={rate:.1f}n/s"
+            )
         if best_routes is None:
             return None
         return best_routes
@@ -398,14 +431,39 @@ class StaticExactSolverScheduler(Scheduler):
 
         best_score = float("-inf")
         best_routes: Optional[Dict[int, List[int]]] = None
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        live_log = bool(static_cfg.get("dfs_live_log", True))
+        log_interval_s = max(1.0, float(static_cfg.get("dfs_log_interval_s", 5.0)))
+        dfs_nodes = 0
+        dfs_leaves = 0
+        dfs_pruned = 0
+        t0 = time.monotonic()
+        t_last_log = t0
 
         remaining_ids = [t.id for t in tasks]
 
         def dfs(remaining: List[int], optimistic_base: float) -> None:
-            nonlocal best_score, best_routes
+            nonlocal best_score, best_routes, dfs_nodes, dfs_leaves, dfs_pruned, t_last_log
+            dfs_nodes += 1
             if optimistic_base <= best_score + 1e-9:
+                dfs_pruned += 1
                 return
+
+            if live_log:
+                now_m = time.monotonic()
+                if now_m - t_last_log >= log_interval_s:
+                    elapsed = max(1e-6, now_m - t0)
+                    rate = dfs_nodes / elapsed
+                    done_depth = len(tasks) - len(remaining)
+                    print(
+                        "[DFS-SIM] "
+                        f"elapsed={elapsed:.1f}s nodes={dfs_nodes} leaves={dfs_leaves} "
+                        f"pruned={dfs_pruned} depth={done_depth}/{len(tasks)} "
+                        f"remain={len(remaining)} best={best_score:.2f} rate={rate:.1f}n/s"
+                    )
+                    t_last_log = now_m
             if not remaining:
+                dfs_leaves += 1
                 score = self._simulate_routes_total_score(routes, vehicles, t_by_id, snapshot)
                 if score > best_score:
                     best_score = score
@@ -437,6 +495,14 @@ class StaticExactSolverScheduler(Scheduler):
 
         initial_optimistic = sum(optimistic_task_values.values())
         dfs(remaining_ids, initial_optimistic)
+        if live_log:
+            elapsed = max(1e-6, time.monotonic() - t0)
+            rate = dfs_nodes / elapsed
+            print(
+                "[DFS-SIM] done "
+                f"elapsed={elapsed:.1f}s nodes={dfs_nodes} leaves={dfs_leaves} "
+                f"pruned={dfs_pruned} best={best_score:.2f} rate={rate:.1f}n/s"
+            )
         return best_routes
 
     def _simulate_routes_total_score(

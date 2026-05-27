@@ -11,6 +11,8 @@ optimization:
     force_gurobi_only: false
     objective_mode: "simulation_score"   # proxy | simulation_score
     simulation_exact_max_tasks: 80
+    dfs_live_log: true
+    dfs_log_interval_s: 5.0
     max_exact_tasks: 10
     strict_global_optimum: false
     mip_gap_threshold: 0.02
