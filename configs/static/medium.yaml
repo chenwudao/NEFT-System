@@ -18,7 +18,7 @@ optimization:
     max_exact_tasks: 10
     strict_global_optimum: false
     mip_gap_threshold: 0.02
-    time_limit_s: 300
+    time_limit_s: null
     live_gap_log: true
     live_gap_log_interval_s: 2.0
     max_lateness_s: 7200

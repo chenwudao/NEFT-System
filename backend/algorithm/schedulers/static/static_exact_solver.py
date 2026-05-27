@@ -182,7 +182,7 @@ class StaticExactSolverScheduler(Scheduler):
             return self._repair_plan_with_energy(vehicles, tasks, route_plan, snapshot)
         if force_gurobi_only:
             msg = self._vrptw_disabled_reason or "Gurobi did not return an accepted VRPTW result."
-            raise RuntimeError(f"[STATIC] force_gurobi_only enabled: {msg}")
+            print(f"[STATIC] force_gurobi_only enabled but no accepted VRPTW plan: {msg}. continue with fallback assignment.")
         if strict:
             msg = self._vrptw_disabled_reason or "VRPTW solver did not return OPTIMAL."
             raise RuntimeError(f"[STRICT_STATIC] global optimum not proven: {msg}")
