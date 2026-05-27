@@ -126,14 +126,21 @@ class StaticExactSolverScheduler(Scheduler):
         opt_cfg = config.get_optimization_config()
         static_cfg = opt_cfg.get("static") or {}
         solver = str(static_cfg.get("solver", "gurobi")).lower()
+        force_gurobi_only = bool(static_cfg.get("force_gurobi_only", False))
         max_exact_tasks = int(static_cfg.get("max_exact_tasks", 10))
         strict = bool(static_cfg.get("strict_global_optimum", True))
         gap_th = float(static_cfg.get("mip_gap_threshold", 0.02))
         full_exact_enabled = bool(static_cfg.get("full_exact_global", True))
         full_exact_max_tasks = int(static_cfg.get("full_exact_max_tasks", max_exact_tasks))
 
+        if force_gurobi_only and solver != "gurobi":
+            raise RuntimeError(
+                f"[STATIC] force_gurobi_only=true requires solver='gurobi', got '{solver}'."
+            )
+
         # 0) 小规模时优先做“全局穷举精确搜索”（包含充电/时间窗/电量可行）。
-        if full_exact_enabled and len(tasks) <= max(1, full_exact_max_tasks):
+        # force_gurobi_only 打开时跳过该分支，确保必须走 Gurobi。
+        if (not force_gurobi_only) and full_exact_enabled and len(tasks) <= max(1, full_exact_max_tasks):
             exact_plan = self._full_exact_global_with_charging(vehicles, tasks, snapshot)
             if exact_plan is not None:
                 print(
@@ -150,6 +157,9 @@ class StaticExactSolverScheduler(Scheduler):
         route_plan = self._try_vrptw_solver(solver, vehicles, tasks, snapshot)
         if route_plan is not None:
             return self._repair_plan_with_energy(vehicles, tasks, route_plan, snapshot)
+        if force_gurobi_only:
+            msg = self._vrptw_disabled_reason or "Gurobi did not return an accepted VRPTW result."
+            raise RuntimeError(f"[STATIC] force_gurobi_only enabled: {msg}")
         if strict:
             msg = self._vrptw_disabled_reason or "VRPTW solver did not return OPTIMAL."
             raise RuntimeError(f"[STRICT_STATIC] global optimum not proven: {msg}")
