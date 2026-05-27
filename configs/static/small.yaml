@@ -30,17 +30,17 @@ optimization:
     exact_beam_width: 128
     exact_refine_seeds: 8
     gpu_time_limit_s: null
-    gpu_batch_size: 10000
-    gpu_generations_per_iter: 1
-    gpu_topk_eval: 256
-    gpu_exact_eval_topk: 64
+    gpu_batch_size: 50000
+    gpu_generations_per_iter: 4
+    gpu_topk_eval: 4096
+    gpu_exact_eval_topk: 512
     gpu_log_interval_s: 2.0
     gpu_explore_scale: 3.0
     gpu_search_order: "depth_first"   # depth_first | breadth_first
     gpu_require_cuda: true
     gpu_auto_batch_from_vram: true
-    gpu_vram_util_ratio: 0.9
-    gpu_batch_cap: 262144
+    gpu_vram_util_ratio: 0.95
+    gpu_batch_cap: 1048576
     gpu_vram_reserve_mb: 4096
     max_exact_tasks: 10
     strict_global_optimum: false

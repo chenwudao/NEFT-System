@@ -202,7 +202,7 @@ class StaticExactSolverScheduler(Scheduler):
 
         # GPU 严格全枚举：不做分支定界/剪枝，枚举所有仓库派遣命令。
         if solver in ("gpu_exhaustive", "gpu_full_enum", "gpu_enum"):
-            route_plan, wh_plan = self._gpu_exhaustive_warehouse_plan(vehicles, tasks, snapshot)
+            route_plan, wh_plan = self._gpu_frontier_exhaustive_warehouse_plan(vehicles, tasks, snapshot)
             self._warehouse_command_plan = wh_plan
             self._warehouse_plan_cursor = {v.id: 0 for v in vehicles}
             return route_plan
@@ -1375,6 +1375,348 @@ class StaticExactSolverScheduler(Scheduler):
             f"nodes={nodes} leaves={leaves} best={best_score:.2f}"
         )
 
+        route_map: Dict[int, List[int]] = {vid: [] for vid in vids}
+        for vid in vids:
+            for item in best_cmds.get(vid, []):
+                route_map[vid].extend(list(item.get("task_ids", []) or []))
+        return route_map, best_cmds
+
+    def _gpu_frontier_exhaustive_warehouse_plan(
+        self, vehicles, tasks, snapshot: Snapshot
+    ) -> Tuple[Dict[int, List[int]], Dict[int, List[Dict[str, Any]]]]:
+        """GPU frontier 全枚举：按层批量展开仓库派遣命令。
+
+        这个版本避免 CPU 递归；每一层把大量候选命令拼成张量，在 GPU 上并行计算
+        可行性和近似执行分数，再把完整状态推进到下一层 frontier。
+        """
+        if not vehicles or not tasks:
+            return ({v.id: [] for v in vehicles}, {v.id: [] for v in vehicles})
+
+        static_cfg = (config.get_optimization_config().get("static") or {})
+        require_cuda = bool(static_cfg.get("gpu_require_cuda", True))
+        log_interval_s = max(1.0, float(static_cfg.get("exact_log_interval_s", 5.0)))
+        chunk_size = max(1024, int(static_cfg.get("gpu_frontier_chunk_size", 65536)))
+        max_frontier_states = int(static_cfg.get("gpu_frontier_max_states", 0) or 0)
+
+        try:
+            import torch  # type: ignore
+            has_cuda = bool(torch.cuda.is_available())
+            device = torch.device("cuda" if has_cuda else "cpu")
+        except Exception as exc:
+            raise RuntimeError(f"[STATIC][GPU-FRONTIER] torch unavailable: {exc}") from exc
+        if require_cuda and not has_cuda:
+            raise RuntimeError("[STATIC][GPU-FRONTIER] gpu_require_cuda=true but CUDA unavailable.")
+
+        print(
+            f"[STATIC][GPU-FRONTIER] torch={torch.__version__} "
+            f"cuda_available={has_cuda} device={device} chunk={chunk_size}"
+        )
+
+        now_ts = float(int(snapshot.timestamp))
+        wh_xy = (float(snapshot.warehouse_xy[0]), float(snapshot.warehouse_xy[1]))
+        sched_cfg = config.get_scheduling_config() or {}
+        charge_until_pct = max(1.0, min(100.0, float(sched_cfg.get("charge_until_pct", 90.0))))
+        margin = max(1.0, float(sched_cfg.get("battery_safety_margin", 1.15)))
+
+        tasks = list(tasks)
+        vehicles = list(vehicles)
+        n_tasks = len(tasks)
+        n_vehicles = len(vehicles)
+        t_by_id = {t.id: t for t in tasks}
+        vids = [v.id for v in vehicles]
+        tid_by_idx = [t.id for t in tasks]
+        idx_by_tid = {tid: i for i, tid in enumerate(tid_by_idx)}
+
+        task_weight = torch.tensor([float(t.weight) for t in tasks], dtype=torch.float32, device=device)
+        task_prio = torch.tensor([float(t.priority) for t in tasks], dtype=torch.float32, device=device)
+        task_release = torch.tensor([float(t.create_time) for t in tasks], dtype=torch.float32, device=device)
+        task_deadline = torch.tensor([float(t.deadline) for t in tasks], dtype=torch.float32, device=device)
+        vehicle_cap = torch.tensor([float(v.get_remaining_load()) for v in vehicles], dtype=torch.float32, device=device)
+        vehicle_batt0 = torch.tensor([float(v.battery) for v in vehicles], dtype=torch.float32, device=device)
+        vehicle_speed = torch.tensor([max(1e-6, float(v.speed)) for v in vehicles], dtype=torch.float32, device=device)
+        vehicle_cons = torch.tensor(
+            [max(1e-9, float(v.unit_energy_consumption)) for v in vehicles],
+            dtype=torch.float32,
+            device=device,
+        )
+        vehicle_max_batt = torch.tensor([max(1e-9, float(v.max_battery)) for v in vehicles], dtype=torch.float32, device=device)
+        vehicle_power = torch.tensor([max(1e-6, float(v.charging_power)) for v in vehicles], dtype=torch.float32, device=device)
+        charge_target = vehicle_max_batt * charge_until_pct / 100.0
+
+        start_dist = torch.tensor(
+            [
+                [
+                    0.0 if snapshot.distance(v.position, t.position) == float("inf")
+                    else float(snapshot.distance(v.position, t.position))
+                    for t in tasks
+                ]
+                for v in vehicles
+            ],
+            dtype=torch.float32,
+            device=device,
+        )
+        pair_dist = torch.tensor(
+            [
+                [
+                    0.0 if snapshot.distance(ti.position, tj.position) == float("inf")
+                    else float(snapshot.distance(ti.position, tj.position))
+                    for tj in tasks
+                ]
+                for ti in tasks
+            ],
+            dtype=torch.float32,
+            device=device,
+        )
+        station_buf = torch.tensor(
+            [
+                0.0 if not snapshot.charging_stations else float(
+                    utils.min_distance_to_any_station(
+                        (float(t.position.x), float(t.position.y)),
+                        list(snapshot.charging_stations),
+                        snapshot,
+                    )
+                )
+                for t in tasks
+            ],
+            dtype=torch.float32,
+            device=device,
+        )
+        station_buf = torch.where(torch.isfinite(station_buf), station_buf, torch.zeros_like(station_buf))
+
+        all_masks = torch.arange(1, 1 << n_tasks, dtype=torch.long, device=device)
+        bit_pos = torch.arange(n_tasks, dtype=torch.long, device=device)
+
+        def clone_cmds(cmds: Dict[int, List[Dict[str, Any]]]) -> Dict[int, List[Dict[str, Any]]]:
+            return {
+                vid: [
+                    {
+                        "dispatch_ts": int(x.get("dispatch_ts", 0)),
+                        "task_ids": list(x.get("task_ids", []) or []),
+                        "first_task_id": int(x.get("first_task_id", -1)),
+                    }
+                    for x in xs
+                ]
+                for vid, xs in cmds.items()
+            }
+
+        # frontier state: pending_mask(int), avail(list), batt(list), parked(list), score(float), commands(dict)
+        full_mask = (1 << n_tasks) - 1
+        frontier: List[Dict[str, Any]] = [
+            {
+                "pending": full_mask,
+                "avail": [now_ts for _ in vehicles],
+                "batt": [float(v.battery) for v in vehicles],
+                "parked": [False for _ in vehicles],
+                "score": 0.0,
+                "cmds": {v.id: [] for v in vehicles},
+            }
+        ]
+        best_score = float("-inf")
+        best_cmds = {v.id: [] for v in vehicles}
+        level = 0
+        expanded = 0
+        leaves = 0
+        t0 = time.monotonic()
+        t_last = t0
+
+        def update_best(state: Dict[str, Any]) -> None:
+            nonlocal best_score, best_cmds, leaves
+            leaves += 1
+            score = float(state["score"])
+            if score > best_score + 1e-9:
+                best_score = score
+                best_cmds = clone_cmds(state["cmds"])
+                print(
+                    f"[STATIC][GPU-FRONTIER] best={best_score:.2f} "
+                    f"level={level} leaves={leaves} expanded={expanded}"
+                )
+
+        while frontier:
+            next_frontier: List[Dict[str, Any]] = []
+            for state in frontier:
+                pending_mask = int(state["pending"])
+                if pending_mask == 0:
+                    update_best(state)
+                    continue
+
+                active = [i for i, parked in enumerate(state["parked"]) if not bool(parked)]
+                if not active:
+                    update_best(state)
+                    continue
+
+                vi = min(active, key=lambda k: float(state["avail"][k]))
+                vid = vids[vi]
+                cur_t = float(state["avail"][vi])
+                pending_indices = [i for i in range(n_tasks) if (pending_mask >> i) & 1]
+                released_indices = [i for i in pending_indices if float(tasks[i].create_time) <= cur_t + 1e-9]
+                future_releases = [float(tasks[i].create_time) for i in pending_indices if float(tasks[i].create_time) > cur_t + 1e-9]
+
+                # 等待分支：完整枚举的一部分。
+                wait_state = {
+                    "pending": pending_mask,
+                    "avail": list(state["avail"]),
+                    "batt": list(state["batt"]),
+                    "parked": list(state["parked"]),
+                    "score": float(state["score"]),
+                    "cmds": clone_cmds(state["cmds"]),
+                }
+                if future_releases:
+                    wait_state["avail"][vi] = min(future_releases)
+                else:
+                    wait_state["parked"][vi] = True
+                next_frontier.append(wait_state)
+
+                if not released_indices:
+                    continue
+
+                released_mask = 0
+                for i in released_indices:
+                    released_mask |= (1 << i)
+                cap = float(vehicle_cap[vi].item())
+
+                feasible_mask_ids: List[int] = []
+                # GPU 分块枚举该状态下所有子集。
+                for start in range(0, int(all_masks.numel()), chunk_size):
+                    masks = all_masks[start:start + chunk_size]
+                    valid = (masks & ~released_mask) == 0
+                    if not torch.any(valid):
+                        continue
+                    bits = ((masks.unsqueeze(1) >> bit_pos) & 1).to(torch.float32)
+                    weights = bits @ task_weight
+                    valid = valid & (weights <= cap + 1e-9)
+                    chosen = masks[valid].detach().cpu().tolist()
+                    feasible_mask_ids.extend(int(x) for x in chosen)
+
+                if not feasible_mask_ids:
+                    continue
+
+                # 对这个状态的所有可行命令做 GPU 批量近似仿真评分。
+                for start in range(0, len(feasible_mask_ids), chunk_size):
+                    mask_chunk = feasible_mask_ids[start:start + chunk_size]
+                    m_tensor = torch.tensor(mask_chunk, dtype=torch.long, device=device)
+                    bits = ((m_tensor.unsqueeze(1) >> bit_pos) & 1).to(torch.float32)
+                    order = torch.argsort(
+                        torch.where(bits > 0, task_deadline.view(1, -1), torch.full_like(bits, 1e18)),
+                        dim=1,
+                    )
+
+                    batch_n = int(m_tensor.shape[0])
+                    veh_time = torch.full((batch_n,), cur_t, dtype=torch.float32, device=device)
+                    veh_batt = torch.full((batch_n,), float(state["batt"][vi]), dtype=torch.float32, device=device)
+                    veh_last = torch.full((batch_n,), -1, dtype=torch.long, device=device)
+                    veh_dist = torch.zeros((batch_n,), dtype=torch.float32, device=device)
+                    score = torch.zeros((batch_n,), dtype=torch.float32, device=device)
+                    valid_state = torch.ones((batch_n,), dtype=torch.bool, device=device)
+                    first_task = torch.full((batch_n,), -1, dtype=torch.long, device=device)
+
+                    for step in range(n_tasks):
+                        tidx = order[:, step]
+                        selected = bits.gather(1, tidx.view(-1, 1)).view(-1) > 0
+                        active_rows = selected & valid_state
+                        if not torch.any(active_rows):
+                            continue
+                        d_start = start_dist[vi, tidx]
+                        last_clamped = torch.clamp(veh_last, min=0)
+                        d_pair = pair_dist[last_clamped, tidx]
+                        d = torch.where(veh_last >= 0, d_pair, d_start)
+                        need = (d + station_buf[tidx]) * vehicle_cons[vi] * margin
+                        can_after_charge = vehicle_max_batt[vi] + 1e-9 >= need
+                        direct = veh_batt + 1e-9 >= need
+                        charge_to = torch.minimum(
+                            vehicle_max_batt[vi].expand_as(need),
+                            torch.maximum(charge_target[vi].expand_as(need), need),
+                        )
+                        charge_time = torch.where(
+                            direct,
+                            torch.zeros_like(need),
+                            (charge_to - veh_batt).clamp_min(0.0) / vehicle_power[vi],
+                        )
+                        active_rows = active_rows & can_after_charge
+                        arrival = veh_time + d / vehicle_speed[vi] + charge_time
+                        completion = torch.maximum(arrival, task_release[tidx])
+                        early = (task_deadline[tidx] - completion).clamp_min(0.0) / 60.0
+                        overdue = (completion - task_deadline[tidx]).clamp_min(0.0) / 60.0
+                        task_score = (
+                            float(TASK_ASSIGN_REWARD)
+                            + task_prio[tidx] * float(PRIORITY_REWARD)
+                            - (veh_dist + d) * float(DISTANCE_PENALTY)
+                            + early * float(EARLY_COMPLETION_REWARD_PER_MIN)
+                            - overdue * float(OVERDUE_PENALTY_PER_MIN)
+                        ).clamp_min(0.0)
+                        score = torch.where(active_rows, score + task_score, score)
+                        veh_time = torch.where(active_rows, completion, veh_time)
+                        veh_batt_next = torch.where(direct, veh_batt, charge_to) - d * vehicle_cons[vi]
+                        veh_batt = torch.where(active_rows, veh_batt_next, veh_batt)
+                        veh_dist = torch.where(active_rows, veh_dist + d, veh_dist)
+                        first_task = torch.where((first_task < 0) & active_rows, tidx, first_task)
+                        veh_last = torch.where(active_rows, tidx, veh_last)
+                        valid_state = valid_state & (~selected | can_after_charge)
+
+                    valid_idx = torch.nonzero(valid_state, as_tuple=False).view(-1).detach().cpu().tolist()
+                    scores_cpu = score.detach().cpu().tolist()
+                    times_cpu = veh_time.detach().cpu().tolist()
+                    batts_cpu = veh_batt.detach().cpu().tolist()
+                    first_cpu = first_task.detach().cpu().tolist()
+
+                    for local_idx in valid_idx:
+                        submask = int(mask_chunk[local_idx])
+                        subset_tids = [tid_by_idx[i] for i in range(n_tasks) if (submask >> i) & 1]
+                        if not subset_tids:
+                            continue
+                        ns = {
+                            "pending": pending_mask & ~submask,
+                            "avail": list(state["avail"]),
+                            "batt": list(state["batt"]),
+                            "parked": list(state["parked"]),
+                            "score": float(state["score"]) + float(scores_cpu[local_idx]),
+                            "cmds": clone_cmds(state["cmds"]),
+                        }
+                        ns["avail"][vi] = float(times_cpu[local_idx])
+                        ns["batt"][vi] = max(0.0, float(batts_cpu[local_idx]))
+                        ns["parked"][vi] = False
+                        first_idx = int(first_cpu[local_idx])
+                        first_tid = tid_by_idx[first_idx] if 0 <= first_idx < n_tasks else subset_tids[0]
+                        ns["cmds"][vid].append(
+                            {
+                                "dispatch_ts": int(cur_t),
+                                "task_ids": subset_tids,
+                                "first_task_id": int(first_tid),
+                            }
+                        )
+                        next_frontier.append(ns)
+                expanded += 1
+
+            frontier = next_frontier
+            level += 1
+
+            if max_frontier_states > 0 and len(frontier) > max_frontier_states:
+                # 只在用户显式配置时启用；默认 0 表示严格不丢分支。
+                frontier.sort(key=lambda s: float(s["score"]), reverse=True)
+                frontier = frontier[:max_frontier_states]
+
+            now_m = time.monotonic()
+            if now_m - t_last >= log_interval_s:
+                mem_msg = ""
+                try:
+                    alloc_mb = torch.cuda.memory_allocated(device) / (1024 * 1024)
+                    reserv_mb = torch.cuda.memory_reserved(device) / (1024 * 1024)
+                    mem_msg = f" alloc_mb={alloc_mb:.1f} reserved_mb={reserv_mb:.1f}"
+                except Exception:
+                    pass
+                elapsed = max(1e-6, now_m - t0)
+                print(
+                    "[STATIC][GPU-FRONTIER] "
+                    f"elapsed={elapsed:.1f}s level={level} frontier={len(frontier)} "
+                    f"expanded={expanded} leaves={leaves} best={best_score:.2f}{mem_msg}"
+                )
+                t_last = now_m
+
+        elapsed = max(1e-6, time.monotonic() - t0)
+        print(
+            "[STATIC][GPU-FRONTIER] done "
+            f"elapsed={elapsed:.1f}s levels={level} expanded={expanded} "
+            f"leaves={leaves} best={best_score:.2f}"
+        )
         route_map: Dict[int, List[int]] = {vid: [] for vid in vids}
         for vid in vids:
             for item in best_cmds.get(vid, []):
