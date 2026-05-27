@@ -1478,6 +1478,36 @@ class StaticExactSolverScheduler(Scheduler):
         if torch is not None:
             base_tensor = torch.tensor(base_vals, dtype=torch.float32, device=device).view(1, n_tasks)
             pos_decay = torch.linspace(1.0, 0.5, steps=n_tasks, device=device).view(1, n_tasks)
+            # GPU 批量评分所需的静态特征（一次性构建）
+            pri_vec = torch.tensor(
+                [float(getattr(t, "priority", 1.0)) for t in task_list],
+                dtype=torch.float32,
+                device=device,
+            )
+            ddl_vec = torch.tensor(
+                [float(getattr(t, "deadline", now_ts)) for t in task_list],
+                dtype=torch.float32,
+                device=device,
+            )
+            start_d = torch.tensor(
+                [
+                    min(
+                        snapshot.distance(v.position, t.position)
+                        for v in vehicles
+                    )
+                    for t in task_list
+                ],
+                dtype=torch.float32,
+                device=device,
+            )
+            pair_d = torch.zeros((n_tasks, n_tasks), dtype=torch.float32, device=device)
+            for i, ti in enumerate(task_list):
+                for j, tj in enumerate(task_list):
+                    if i == j:
+                        continue
+                    dij = snapshot.distance(ti.position, tj.position)
+                    pair_d[i, j] = 0.0 if dij == float("inf") else float(dij)
+            rank_pos = torch.arange(1, n_tasks + 1, dtype=torch.float32, device=device).view(1, n_tasks)
 
         best_score = float("-inf")
         best_route = {vid: [] for vid in vids}
@@ -1529,9 +1559,18 @@ class StaticExactSolverScheduler(Scheduler):
                 noise = torch.rand((eff_batch, n_tasks), device=device) * explore_scale
                 scores = base_tensor + noise
                 ranked_tensor = torch.argsort(scores, dim=1, descending=True)
-                # GPU并行粗评分：越靠前的任务权重越高，快速筛掉大量差解
+                # GPU并行粗评分（批量上万候选并行）：
+                #   1) 优先级收益
+                #   2) 路径距离近似惩罚（首跳 + 相邻任务跳转）
+                #   3) 截止期位置惩罚（deadline 越晚放越后更优）
+                pri_term = torch.sum(pri_vec[ranked_tensor], dim=1) * float(PRIORITY_REWARD)
+                first_leg = start_d[ranked_tensor[:, 0]]
+                trans_leg = pair_d[ranked_tensor[:, :-1], ranked_tensor[:, 1:]].sum(dim=1)
+                dist_term = (first_leg + trans_leg) * float(DISTANCE_PENALTY)
+                ddl_term = torch.sum((rank_pos * ddl_vec[ranked_tensor]) * 1e-4, dim=1)
                 ranked_base = torch.gather(base_tensor.expand(eff_batch, -1), 1, ranked_tensor)
-                surrogate = torch.sum(ranked_base * pos_decay, dim=1)
+                base_term = torch.sum(ranked_base * pos_decay, dim=1)
+                surrogate = base_term + pri_term - dist_term - ddl_term
                 k = min(topk_eval, eff_batch)
                 top_idx = torch.topk(surrogate, k=k, largest=True).indices
                 ranked = ranked_tensor[top_idx].detach().cpu().tolist()
