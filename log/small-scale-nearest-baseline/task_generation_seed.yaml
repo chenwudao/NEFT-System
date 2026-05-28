@@ -1,0 +1,61 @@
+version: 1
+mode: record
+source_path: null
+base_seed: 1940111556
+event_count: 6
+note: recorded during this run
+events:
+- task_id: 1
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.2866687
+    y: 23.0469496
+  weight: 1352.2250287894167
+  priority: 3
+  deadline_offset: 7150
+- task_id: 2
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.5019021
+    y: 23.0318202
+  weight: 1280.695194203411
+  priority: 2
+  deadline_offset: 2390
+- task_id: 3
+  phase: initial
+  sim_seconds: 0.0
+  position:
+    x: 113.2854801
+    y: 22.9877777
+  weight: 936.9106590111477
+  priority: 4
+  deadline_offset: 6621
+- task_id: 1001
+  phase: runtime
+  sim_seconds: 720.0
+  position:
+    x: 113.2990382
+    y: 23.0433548
+  weight: 745.4697154483632
+  priority: 2
+  deadline_offset: 6674
+- task_id: 1002
+  phase: runtime
+  sim_seconds: 720.0
+  position:
+    x: 113.4018245
+    y: 22.933116
+  weight: 1415.4371214799623
+  priority: 2
+  deadline_offset: 2134
+- task_id: 1003
+  phase: runtime
+  sim_seconds: 720.0
+  position:
+    x: 113.300872
+    y: 22.9933201
+  weight: 1209.2680075755497
+  priority: 4
+  deadline_offset: 3049

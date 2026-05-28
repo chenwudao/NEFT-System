@@ -1,0 +1,25 @@
+experiment:
+  name: small-seed2-deadline_earliest
+  log_dir: experiments/dynamic_benchmark/small/seed_2/runs
+optimization:
+  mode: dynamic
+fleet:
+  small_count: 2
+  medium_count: 1
+  large_count: 0
+  station_count: 1
+charging_station:
+  default_capacity: 2
+task:
+  generation_seed_file: F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\small\seed_2\task_generation_seed.yaml
+  initial_tasks: 3
+  generation_interval_sec_min: 5
+  generation_interval_sec_max: 15
+  generation_batch_min: 2
+  generation_batch_max: 4
+  max_pending_tasks: 5
+  total_task_budget: 20
+scheduling:
+  strategy: deadline_earliest
+simulation:
+  max_sim_seconds: 3600

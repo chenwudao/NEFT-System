@@ -1,0 +1,163 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): small-seed2-regional_planning
+启动时间:                 2026-05-28 19:39:55
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/small/seed_2/runs\small-seed2-regional_planning
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\small\seed_2\configs\regional_planning.yaml
+
+---- 事件日志 ----
+[2026-05-28 19:39:55] [START] Experiment 'small-seed2-regional_planning' started.
+[2026-05-28 19:39:55] [INFO] [HEADLESS] mode=dynamic, strategy=regional_planning, fleet_size=3, stations=1, initial_tasks=3, task_budget=20, max_sim_seconds=3600, task_seed=replay=F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\small\seed_2\task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/small/seed_2/runs\small-seed2-regional_planning\task_generation_seed.yaml
+[2026-05-28 19:39:59] [PROGRESS] sim_elapsed=360s strategy=regional_planning tasks total=3 completed=0 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:40:02] [PROGRESS] sim_elapsed=720s strategy=regional_planning tasks total=3 completed=1 pending=0 in_progress=2 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:40:05] [PROGRESS] sim_elapsed=1080s strategy=regional_planning tasks total=7 completed=1 pending=3 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:40:08] [PROGRESS] sim_elapsed=1440s strategy=regional_planning tasks total=7 completed=2 pending=3 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:40:11] [PROGRESS] sim_elapsed=1800s strategy=regional_planning tasks total=7 completed=3 pending=3 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:40:14] [PROGRESS] sim_elapsed=2160s strategy=regional_planning tasks total=9 completed=3 pending=5 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:40:18] [PROGRESS] sim_elapsed=2520s strategy=regional_planning tasks total=9 completed=4 pending=3 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:40:21] [PROGRESS] sim_elapsed=2880s strategy=regional_planning tasks total=9 completed=4 pending=3 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:40:24] [PROGRESS] sim_elapsed=3240s strategy=regional_planning tasks total=9 completed=4 pending=3 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:40:27] [PROGRESS] sim_elapsed=3600s strategy=regional_planning tasks total=12 completed=5 pending=5 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:40:30] [PROGRESS] sim_elapsed=3960s strategy=regional_planning tasks total=12 completed=6 pending=5 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:40:33] [PROGRESS] sim_elapsed=4320s strategy=regional_planning tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:40:37] [PROGRESS] sim_elapsed=4680s strategy=regional_planning tasks total=12 completed=7 pending=4 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:40:40] [PROGRESS] sim_elapsed=5040s strategy=regional_planning tasks total=12 completed=7 pending=4 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:40:44] [PROGRESS] sim_elapsed=5400s strategy=regional_planning tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:40:47] [PROGRESS] sim_elapsed=5760s strategy=regional_planning tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:40:51] [PROGRESS] sim_elapsed=6120s strategy=regional_planning tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:40:54] [PROGRESS] sim_elapsed=6480s strategy=regional_planning tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:40:57] [PROGRESS] sim_elapsed=6840s strategy=regional_planning tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=1 moving=0 charging=2
+[2026-05-28 19:41:01] [PROGRESS] sim_elapsed=7200s strategy=regional_planning tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=1 moving=0 charging=2
+[2026-05-28 19:41:04] [PROGRESS] sim_elapsed=7560s strategy=regional_planning tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:08] [PROGRESS] sim_elapsed=7920s strategy=regional_planning tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:41:11] [PROGRESS] sim_elapsed=8280s strategy=regional_planning tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:41:15] [PROGRESS] sim_elapsed=8640s strategy=regional_planning tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:18] [PROGRESS] sim_elapsed=9000s strategy=regional_planning tasks total=12 completed=9 pending=2 in_progress=1 timeout=0 vehicles idle=3 moving=0 charging=0
+[2026-05-28 19:41:21] [PROGRESS] sim_elapsed=9360s strategy=regional_planning tasks total=12 completed=9 pending=2 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:24] [PROGRESS] sim_elapsed=9720s strategy=regional_planning tasks total=12 completed=9 pending=2 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:27] [PROGRESS] sim_elapsed=10080s strategy=regional_planning tasks total=12 completed=9 pending=2 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:30] [PROGRESS] sim_elapsed=10440s strategy=regional_planning tasks total=12 completed=9 pending=2 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:33] [PROGRESS] sim_elapsed=10800s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:36] [PROGRESS] sim_elapsed=11160s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:39] [PROGRESS] sim_elapsed=11520s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:42] [PROGRESS] sim_elapsed=11880s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:45] [PROGRESS] sim_elapsed=12240s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:48] [PROGRESS] sim_elapsed=12600s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:51] [PROGRESS] sim_elapsed=12960s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:41:54] [PROGRESS] sim_elapsed=13320s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=0 charging=1
+[2026-05-28 19:41:57] [PROGRESS] sim_elapsed=13680s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=0 charging=1
+[2026-05-28 19:42:00] [PROGRESS] sim_elapsed=14040s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=3 moving=0 charging=0
+[2026-05-28 19:42:03] [PROGRESS] sim_elapsed=14400s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:06] [PROGRESS] sim_elapsed=14760s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:09] [PROGRESS] sim_elapsed=15120s strategy=regional_planning tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:13] [PROGRESS] sim_elapsed=15480s strategy=regional_planning tasks total=12 completed=10 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:16] [PROGRESS] sim_elapsed=15840s strategy=regional_planning tasks total=12 completed=10 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:19] [PROGRESS] sim_elapsed=16200s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=3 moving=0 charging=0
+[2026-05-28 19:42:22] [PROGRESS] sim_elapsed=16560s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:25] [PROGRESS] sim_elapsed=16920s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:28] [PROGRESS] sim_elapsed=17280s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:31] [PROGRESS] sim_elapsed=17640s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:34] [PROGRESS] sim_elapsed=18000s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:37] [PROGRESS] sim_elapsed=18360s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=0 charging=1
+[2026-05-28 19:42:40] [PROGRESS] sim_elapsed=18720s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=0 charging=1
+[2026-05-28 19:42:43] [PROGRESS] sim_elapsed=19080s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:46] [PROGRESS] sim_elapsed=19440s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:49] [PROGRESS] sim_elapsed=19800s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:52] [PROGRESS] sim_elapsed=20160s strategy=regional_planning tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=3 moving=0 charging=0
+[2026-05-28 19:42:55] [PROGRESS] sim_elapsed=20520s strategy=regional_planning tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:42:58] [PROGRESS] sim_elapsed=20880s strategy=regional_planning tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:43:01] [PROGRESS] sim_elapsed=21240s strategy=regional_planning tasks total=12 completed=12 pending=0 in_progress=0 timeout=0 vehicles idle=3 moving=0 charging=0
+
+[2026-05-28 19:43:01] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: small-seed2-regional_planning
+停止原因: all_tasks_done
+仿真时长: 21240 仿真秒 / 185.6 现实秒
+
+[ 任务 ]
+  总数=12 完成=12 按时=9 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=75.00% 超时率=0.00%
+
+[ 得分 ]
+  总分=1047.7 每任务平均=87.31 按时平均=116.41
+
+[ 时效 ]
+  平均完成时长=6253.3s 平均超时=155.19min 吞吐=2.03 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=285365m 任务腿均长=10286m 里程方差(车均衡)=72022
+  总能耗=374.21kWh 单任务能耗=31.184kWh
+
+[ 车队 ]
+  总车数=3 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: small-seed2-regional_planning
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 21240.0
+wall_seconds_elapsed: 185.554354
+tasks:
+  total: 12
+  completed: 12
+  on_time: 9
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 0.75
+  timeout_rate: 0.0
+scores:
+  total: 1047.7100866666788
+  per_task_average: 87.3091738888899
+  per_task_on_time_average: 116.41223185185319
+  average: 87.3091738888899
+timing:
+  avg_completion_duration_sec: 6253.333333333333
+  avg_overdue_minutes: 155.19444444444443
+  throughput_tasks_per_hour: 2.0338983050847457
+distance_meters:
+  total_fleet_traveled: 285364.56199999945
+  average_completed_task_leg: 10285.571999999485
+  fleet_distance_stdev: 72021.9923145254
+energy:
+  total_energy: 374.2061654999991
+  energy_per_completed: 31.183847124999925
+vehicles_summary:
+  total: 3
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 14.81052700000028
+  battery_percentage: 24.68421166666713
+  total_distance_traveled: 45189.47299999974
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 45.50811799999963
+  battery_percentage: 75.84686333333272
+  total_distance_traveled: 62491.88200000036
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 61.47518950000103
+  battery_percentage: 61.47518950000103
+  total_distance_traveled: 177683.20699999933
+  energy_consumption_trip: 15.31470149999801
+  final_status: idle
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 2
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0

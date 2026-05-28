@@ -1,0 +1,150 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): small-seed2-cluster_auction_mas
+启动时间:                 2026-05-28 19:43:20
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/small/seed_2/runs\small-seed2-cluster_auction_mas
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\small\seed_2\configs\cluster_auction_mas.yaml
+
+---- 事件日志 ----
+[2026-05-28 19:43:20] [START] Experiment 'small-seed2-cluster_auction_mas' started.
+[2026-05-28 19:43:20] [INFO] [HEADLESS] mode=dynamic, strategy=cluster_auction_mas, fleet_size=3, stations=1, initial_tasks=3, task_budget=20, max_sim_seconds=3600, task_seed=replay=F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\small\seed_2\task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/small/seed_2/runs\small-seed2-cluster_auction_mas\task_generation_seed.yaml
+[2026-05-28 19:43:23] [PROGRESS] sim_elapsed=360s strategy=cluster_auction_mas tasks total=3 completed=0 pending=0 in_progress=3 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:43:26] [PROGRESS] sim_elapsed=720s strategy=cluster_auction_mas tasks total=3 completed=1 pending=0 in_progress=2 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:43:29] [PROGRESS] sim_elapsed=1080s strategy=cluster_auction_mas tasks total=7 completed=1 pending=4 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:43:33] [PROGRESS] sim_elapsed=1440s strategy=cluster_auction_mas tasks total=7 completed=3 pending=3 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:43:36] [PROGRESS] sim_elapsed=1800s strategy=cluster_auction_mas tasks total=7 completed=3 pending=3 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:43:39] [PROGRESS] sim_elapsed=2160s strategy=cluster_auction_mas tasks total=9 completed=4 pending=5 in_progress=0 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:43:42] [PROGRESS] sim_elapsed=2520s strategy=cluster_auction_mas tasks total=9 completed=4 pending=3 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:43:45] [PROGRESS] sim_elapsed=2880s strategy=cluster_auction_mas tasks total=9 completed=4 pending=3 in_progress=2 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:43:49] [PROGRESS] sim_elapsed=3240s strategy=cluster_auction_mas tasks total=9 completed=5 pending=3 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:43:52] [PROGRESS] sim_elapsed=3600s strategy=cluster_auction_mas tasks total=12 completed=5 pending=5 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:43:56] [PROGRESS] sim_elapsed=3960s strategy=cluster_auction_mas tasks total=12 completed=6 pending=5 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:43:59] [PROGRESS] sim_elapsed=4320s strategy=cluster_auction_mas tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:44:02] [PROGRESS] sim_elapsed=4680s strategy=cluster_auction_mas tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:44:06] [PROGRESS] sim_elapsed=5040s strategy=cluster_auction_mas tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:44:09] [PROGRESS] sim_elapsed=5400s strategy=cluster_auction_mas tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-28 19:44:12] [PROGRESS] sim_elapsed=5760s strategy=cluster_auction_mas tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-28 19:44:15] [PROGRESS] sim_elapsed=6120s strategy=cluster_auction_mas tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=0 moving=1 charging=2
+[2026-05-28 19:44:18] [PROGRESS] sim_elapsed=6480s strategy=cluster_auction_mas tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-28 19:44:21] [PROGRESS] sim_elapsed=6840s strategy=cluster_auction_mas tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=1 moving=1 charging=1
+[2026-05-28 19:44:24] [PROGRESS] sim_elapsed=7200s strategy=cluster_auction_mas tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-28 19:44:27] [PROGRESS] sim_elapsed=7560s strategy=cluster_auction_mas tasks total=12 completed=7 pending=5 in_progress=0 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:44:31] [PROGRESS] sim_elapsed=7920s strategy=cluster_auction_mas tasks total=12 completed=7 pending=4 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 19:44:35] [PROGRESS] sim_elapsed=8280s strategy=cluster_auction_mas tasks total=12 completed=7 pending=4 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:44:39] [PROGRESS] sim_elapsed=8640s strategy=cluster_auction_mas tasks total=12 completed=8 pending=4 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:44:43] [PROGRESS] sim_elapsed=9000s strategy=cluster_auction_mas tasks total=12 completed=8 pending=3 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 19:44:47] [PROGRESS] sim_elapsed=9360s strategy=cluster_auction_mas tasks total=12 completed=8 pending=3 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:44:50] [PROGRESS] sim_elapsed=9720s strategy=cluster_auction_mas tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=3 moving=0 charging=0
+[2026-05-28 19:44:54] [PROGRESS] sim_elapsed=10080s strategy=cluster_auction_mas tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:44:59] [PROGRESS] sim_elapsed=10440s strategy=cluster_auction_mas tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:03] [PROGRESS] sim_elapsed=10800s strategy=cluster_auction_mas tasks total=12 completed=9 pending=3 in_progress=0 timeout=0 vehicles idle=3 moving=0 charging=0
+[2026-05-28 19:45:06] [PROGRESS] sim_elapsed=11160s strategy=cluster_auction_mas tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=3 moving=0 charging=0
+[2026-05-28 19:45:10] [PROGRESS] sim_elapsed=11520s strategy=cluster_auction_mas tasks total=12 completed=10 pending=2 in_progress=0 timeout=0 vehicles idle=3 moving=0 charging=0
+[2026-05-28 19:45:14] [PROGRESS] sim_elapsed=11880s strategy=cluster_auction_mas tasks total=12 completed=10 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:17] [PROGRESS] sim_elapsed=12240s strategy=cluster_auction_mas tasks total=12 completed=10 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:20] [PROGRESS] sim_elapsed=12600s strategy=cluster_auction_mas tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:24] [PROGRESS] sim_elapsed=12960s strategy=cluster_auction_mas tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=0 charging=1
+[2026-05-28 19:45:27] [PROGRESS] sim_elapsed=13320s strategy=cluster_auction_mas tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=0 charging=1
+[2026-05-28 19:45:31] [PROGRESS] sim_elapsed=13680s strategy=cluster_auction_mas tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=0 charging=1
+[2026-05-28 19:45:34] [PROGRESS] sim_elapsed=14040s strategy=cluster_auction_mas tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:38] [PROGRESS] sim_elapsed=14400s strategy=cluster_auction_mas tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:41] [PROGRESS] sim_elapsed=14760s strategy=cluster_auction_mas tasks total=12 completed=11 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:45] [PROGRESS] sim_elapsed=15120s strategy=cluster_auction_mas tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:48] [PROGRESS] sim_elapsed=15480s strategy=cluster_auction_mas tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:51] [PROGRESS] sim_elapsed=15840s strategy=cluster_auction_mas tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:54] [PROGRESS] sim_elapsed=16200s strategy=cluster_auction_mas tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 19:45:57] [PROGRESS] sim_elapsed=16560s strategy=cluster_auction_mas tasks total=12 completed=11 pending=0 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+
+[2026-05-28 19:45:59] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: small-seed2-cluster_auction_mas
+停止原因: all_tasks_done
+仿真时长: 16800 仿真秒 / 159.2 现实秒
+
+[ 任务 ]
+  总数=12 完成=12 按时=7 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=58.33% 超时率=0.00%
+
+[ 得分 ]
+  总分=793.7 每任务平均=66.14 按时平均=113.38
+
+[ 时效 ]
+  平均完成时长=5853.3s 平均超时=78.01min 吞吐=2.57 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=276715m 任务腿均长=9194m 里程方差(车均衡)=42570
+  总能耗=346.83kWh 单任务能耗=28.902kWh
+
+[ 车队 ]
+  总车数=3 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: small-seed2-cluster_auction_mas
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 16800.0
+wall_seconds_elapsed: 159.21292
+tasks:
+  total: 12
+  completed: 12
+  on_time: 7
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 0.5833333333333334
+  timeout_rate: 0.0
+scores:
+  total: 793.6614133332725
+  per_task_average: 66.13845111110605
+  per_task_on_time_average: 113.38020190475322
+  average: 66.13845111110605
+timing:
+  avg_completion_duration_sec: 5853.333333333333
+  avg_overdue_minutes: 78.01333333333332
+  throughput_tasks_per_hour: 2.571428571428571
+distance_meters:
+  total_fleet_traveled: 276714.89800000563
+  average_completed_task_leg: 9194.138000000208
+  fleet_distance_stdev: 42570.47136372932
+energy:
+  total_energy: 346.8272380000078
+  energy_per_completed: 28.902269833333985
+vehicles_summary:
+  total: 3
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 30.52312599999803
+  battery_percentage: 50.87187666666338
+  total_distance_traveled: 77476.87400000195
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 42.986656000000586
+  battery_percentage: 71.64442666666766
+  total_distance_traveled: 59013.343999999466
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 56.9766264999959
+  battery_percentage: 56.976626499995895
+  total_distance_traveled: 140224.68000000424
+  energy_consumption_trip: 26.319052500003114
+  final_status: idle
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 2
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0

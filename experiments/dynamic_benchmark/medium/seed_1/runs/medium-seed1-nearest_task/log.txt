@@ -1,0 +1,239 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): medium-seed1-nearest_task
+启动时间:                 2026-05-28 19:49:41
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/medium/seed_1/runs\medium-seed1-nearest_task
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\medium\seed_1\configs\nearest_task.yaml
+
+---- 事件日志 ----
+[2026-05-28 19:49:41] [START] Experiment 'medium-seed1-nearest_task' started.
+[2026-05-28 19:49:41] [INFO] [HEADLESS] mode=dynamic, strategy=nearest_task, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=record(base_seed=288671021), seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/medium/seed_1/runs\medium-seed1-nearest_task\task_generation_seed.yaml
+[2026-05-28 19:49:45] [PROGRESS] sim_elapsed=360s strategy=nearest_task tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:49:48] [PROGRESS] sim_elapsed=720s strategy=nearest_task tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:49:51] [PROGRESS] sim_elapsed=1080s strategy=nearest_task tasks total=5 completed=2 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:49:55] [PROGRESS] sim_elapsed=1440s strategy=nearest_task tasks total=13 completed=3 pending=7 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 19:49:59] [PROGRESS] sim_elapsed=1800s strategy=nearest_task tasks total=13 completed=4 pending=6 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:50:06] [PROGRESS] sim_elapsed=2160s strategy=nearest_task tasks total=23 completed=5 pending=11 in_progress=7 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:50:09] [PROGRESS] sim_elapsed=2520s strategy=nearest_task tasks total=32 completed=7 pending=20 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:50:18] [PROGRESS] sim_elapsed=2880s strategy=nearest_task tasks total=32 completed=9 pending=17 in_progress=6 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 19:50:21] [PROGRESS] sim_elapsed=3240s strategy=nearest_task tasks total=32 completed=11 pending=17 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:50:28] [PROGRESS] sim_elapsed=3600s strategy=nearest_task tasks total=32 completed=12 pending=14 in_progress=6 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:50:35] [PROGRESS] sim_elapsed=3960s strategy=nearest_task tasks total=32 completed=13 pending=5 in_progress=14 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:50:39] [PROGRESS] sim_elapsed=4320s strategy=nearest_task tasks total=41 completed=13 pending=13 in_progress=15 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 19:50:42] [PROGRESS] sim_elapsed=4680s strategy=nearest_task tasks total=41 completed=15 pending=13 in_progress=13 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 19:50:46] [PROGRESS] sim_elapsed=5040s strategy=nearest_task tasks total=41 completed=18 pending=13 in_progress=10 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 19:50:49] [PROGRESS] sim_elapsed=5400s strategy=nearest_task tasks total=41 completed=19 pending=13 in_progress=9 timeout=0 vehicles idle=1 moving=2 charging=3
+[2026-05-28 19:50:53] [PROGRESS] sim_elapsed=5760s strategy=nearest_task tasks total=49 completed=20 pending=19 in_progress=10 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-28 19:50:56] [PROGRESS] sim_elapsed=6120s strategy=nearest_task tasks total=49 completed=20 pending=19 in_progress=10 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 19:50:59] [PROGRESS] sim_elapsed=6480s strategy=nearest_task tasks total=49 completed=22 pending=19 in_progress=8 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 19:51:03] [PROGRESS] sim_elapsed=6840s strategy=nearest_task tasks total=49 completed=22 pending=18 in_progress=9 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 19:51:06] [PROGRESS] sim_elapsed=7200s strategy=nearest_task tasks total=49 completed=23 pending=18 in_progress=8 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:51:15] [PROGRESS] sim_elapsed=7560s strategy=nearest_task tasks total=49 completed=24 pending=16 in_progress=9 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-28 19:51:19] [PROGRESS] sim_elapsed=7920s strategy=nearest_task tasks total=49 completed=26 pending=16 in_progress=7 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 19:51:22] [PROGRESS] sim_elapsed=8280s strategy=nearest_task tasks total=49 completed=26 pending=15 in_progress=8 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 19:51:29] [PROGRESS] sim_elapsed=8640s strategy=nearest_task tasks total=49 completed=26 pending=14 in_progress=9 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 19:51:32] [PROGRESS] sim_elapsed=9000s strategy=nearest_task tasks total=49 completed=30 pending=14 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:51:36] [PROGRESS] sim_elapsed=9360s strategy=nearest_task tasks total=49 completed=31 pending=14 in_progress=4 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:51:45] [PROGRESS] sim_elapsed=9720s strategy=nearest_task tasks total=49 completed=32 pending=11 in_progress=6 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:51:48] [PROGRESS] sim_elapsed=10080s strategy=nearest_task tasks total=49 completed=33 pending=11 in_progress=5 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 19:51:54] [PROGRESS] sim_elapsed=10440s strategy=nearest_task tasks total=49 completed=34 pending=10 in_progress=5 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 19:51:58] [PROGRESS] sim_elapsed=10800s strategy=nearest_task tasks total=49 completed=35 pending=10 in_progress=4 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:52:02] [PROGRESS] sim_elapsed=11160s strategy=nearest_task tasks total=49 completed=36 pending=10 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:52:07] [PROGRESS] sim_elapsed=11520s strategy=nearest_task tasks total=49 completed=37 pending=8 in_progress=4 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 19:52:10] [PROGRESS] sim_elapsed=11880s strategy=nearest_task tasks total=49 completed=37 pending=8 in_progress=4 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 19:52:14] [PROGRESS] sim_elapsed=12240s strategy=nearest_task tasks total=49 completed=37 pending=8 in_progress=4 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:52:17] [PROGRESS] sim_elapsed=12600s strategy=nearest_task tasks total=49 completed=38 pending=8 in_progress=3 timeout=0 vehicles idle=2 moving=1 charging=3
+[2026-05-28 19:52:20] [PROGRESS] sim_elapsed=12960s strategy=nearest_task tasks total=49 completed=38 pending=8 in_progress=3 timeout=0 vehicles idle=2 moving=2 charging=2
+[2026-05-28 19:52:23] [PROGRESS] sim_elapsed=13320s strategy=nearest_task tasks total=49 completed=39 pending=8 in_progress=2 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 19:52:26] [PROGRESS] sim_elapsed=13680s strategy=nearest_task tasks total=49 completed=39 pending=8 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:52:30] [PROGRESS] sim_elapsed=14040s strategy=nearest_task tasks total=49 completed=39 pending=7 in_progress=3 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:52:33] [PROGRESS] sim_elapsed=14400s strategy=nearest_task tasks total=49 completed=39 pending=7 in_progress=3 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:52:38] [PROGRESS] sim_elapsed=14760s strategy=nearest_task tasks total=49 completed=39 pending=6 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:52:41] [PROGRESS] sim_elapsed=15120s strategy=nearest_task tasks total=49 completed=39 pending=6 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:52:44] [PROGRESS] sim_elapsed=15480s strategy=nearest_task tasks total=49 completed=40 pending=6 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:52:47] [PROGRESS] sim_elapsed=15840s strategy=nearest_task tasks total=49 completed=41 pending=6 in_progress=2 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:52:50] [PROGRESS] sim_elapsed=16200s strategy=nearest_task tasks total=49 completed=42 pending=6 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:52:53] [PROGRESS] sim_elapsed=16560s strategy=nearest_task tasks total=49 completed=43 pending=6 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:52:56] [PROGRESS] sim_elapsed=16920s strategy=nearest_task tasks total=49 completed=43 pending=6 in_progress=0 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:53:01] [PROGRESS] sim_elapsed=17280s strategy=nearest_task tasks total=49 completed=43 pending=1 in_progress=5 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:53:04] [PROGRESS] sim_elapsed=17640s strategy=nearest_task tasks total=49 completed=43 pending=1 in_progress=5 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:53:07] [PROGRESS] sim_elapsed=18000s strategy=nearest_task tasks total=49 completed=43 pending=1 in_progress=5 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:53:10] [PROGRESS] sim_elapsed=18360s strategy=nearest_task tasks total=49 completed=43 pending=1 in_progress=5 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:53:13] [PROGRESS] sim_elapsed=18720s strategy=nearest_task tasks total=49 completed=44 pending=1 in_progress=4 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 19:53:17] [PROGRESS] sim_elapsed=19080s strategy=nearest_task tasks total=49 completed=44 pending=1 in_progress=4 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:53:20] [PROGRESS] sim_elapsed=19440s strategy=nearest_task tasks total=49 completed=45 pending=1 in_progress=3 timeout=0 vehicles idle=2 moving=2 charging=2
+[2026-05-28 19:53:23] [PROGRESS] sim_elapsed=19800s strategy=nearest_task tasks total=49 completed=45 pending=1 in_progress=3 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:53:26] [PROGRESS] sim_elapsed=20160s strategy=nearest_task tasks total=49 completed=45 pending=1 in_progress=3 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:53:29] [PROGRESS] sim_elapsed=20520s strategy=nearest_task tasks total=49 completed=45 pending=1 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:53:32] [PROGRESS] sim_elapsed=20880s strategy=nearest_task tasks total=49 completed=45 pending=1 in_progress=3 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 19:53:36] [PROGRESS] sim_elapsed=21240s strategy=nearest_task tasks total=49 completed=45 pending=1 in_progress=3 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 19:53:39] [PROGRESS] sim_elapsed=21600s strategy=nearest_task tasks total=49 completed=45 pending=1 in_progress=3 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:53:42] [PROGRESS] sim_elapsed=21960s strategy=nearest_task tasks total=49 completed=45 pending=1 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:53:45] [PROGRESS] sim_elapsed=22320s strategy=nearest_task tasks total=49 completed=45 pending=1 in_progress=3 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:53:48] [PROGRESS] sim_elapsed=22680s strategy=nearest_task tasks total=49 completed=46 pending=1 in_progress=2 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 19:53:52] [PROGRESS] sim_elapsed=23040s strategy=nearest_task tasks total=49 completed=46 pending=1 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:53:55] [PROGRESS] sim_elapsed=23400s strategy=nearest_task tasks total=49 completed=46 pending=1 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:53:58] [PROGRESS] sim_elapsed=23760s strategy=nearest_task tasks total=49 completed=46 pending=1 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:54:01] [PROGRESS] sim_elapsed=24120s strategy=nearest_task tasks total=49 completed=46 pending=1 in_progress=2 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:54:04] [PROGRESS] sim_elapsed=24480s strategy=nearest_task tasks total=49 completed=46 pending=1 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:54:07] [PROGRESS] sim_elapsed=24840s strategy=nearest_task tasks total=49 completed=46 pending=1 in_progress=2 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:54:10] [PROGRESS] sim_elapsed=25200s strategy=nearest_task tasks total=49 completed=46 pending=1 in_progress=2 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:54:13] [PROGRESS] sim_elapsed=25560s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-28 19:54:17] [PROGRESS] sim_elapsed=25920s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:54:20] [PROGRESS] sim_elapsed=26280s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:54:23] [PROGRESS] sim_elapsed=26640s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:54:26] [PROGRESS] sim_elapsed=27000s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:54:29] [PROGRESS] sim_elapsed=27360s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:54:32] [PROGRESS] sim_elapsed=27720s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 19:54:35] [PROGRESS] sim_elapsed=28080s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:54:39] [PROGRESS] sim_elapsed=28440s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:54:42] [PROGRESS] sim_elapsed=28800s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:54:45] [PROGRESS] sim_elapsed=29160s strategy=nearest_task tasks total=49 completed=47 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:54:48] [PROGRESS] sim_elapsed=29520s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=4 moving=1 charging=1
+[2026-05-28 19:54:51] [PROGRESS] sim_elapsed=29880s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:54:54] [PROGRESS] sim_elapsed=30240s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:54:57] [PROGRESS] sim_elapsed=30600s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:55:00] [PROGRESS] sim_elapsed=30960s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 19:55:03] [PROGRESS] sim_elapsed=31320s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:55:06] [PROGRESS] sim_elapsed=31680s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:55:10] [PROGRESS] sim_elapsed=32040s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:55:13] [PROGRESS] sim_elapsed=32400s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:55:16] [PROGRESS] sim_elapsed=32760s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:55:19] [PROGRESS] sim_elapsed=33120s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=2 charging=2
+[2026-05-28 19:55:22] [PROGRESS] sim_elapsed=33480s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:55:26] [PROGRESS] sim_elapsed=33840s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:55:29] [PROGRESS] sim_elapsed=34200s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 19:55:32] [PROGRESS] sim_elapsed=34560s strategy=nearest_task tasks total=49 completed=48 pending=1 in_progress=0 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-28 19:55:35] [PROGRESS] sim_elapsed=34920s strategy=nearest_task tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 19:55:38] [PROGRESS] sim_elapsed=35280s strategy=nearest_task tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-28 19:55:41] [PROGRESS] sim_elapsed=35640s strategy=nearest_task tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:55:44] [PROGRESS] sim_elapsed=36000s strategy=nearest_task tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-28 19:55:47] [PROGRESS] sim_elapsed=36360s strategy=nearest_task tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 19:55:50] [PROGRESS] sim_elapsed=36720s strategy=nearest_task tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-28 19:55:53] [PROGRESS] sim_elapsed=37080s strategy=nearest_task tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+
+[2026-05-28 19:55:55] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: medium-seed1-nearest_task
+停止原因: all_tasks_done
+仿真时长: 37320 仿真秒 / 373.8 现实秒
+
+[ 任务 ]
+  总数=49 完成=49 按时=28 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=57.14% 超时率=0.00%
+
+[ 得分 ]
+  总分=3377.2 每任务平均=68.92 按时平均=120.62
+
+[ 时效 ]
+  平均完成时长=7118.2s 平均超时=132.08min 吞吐=4.73 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=1381220m 任务腿均长=24038m 里程方差(车均衡)=116443
+  总能耗=2154.38kWh 单任务能耗=43.967kWh
+
+[ 车队 ]
+  总车数=6 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: medium-seed1-nearest_task
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 37320.0
+wall_seconds_elapsed: 373.757961
+tasks:
+  total: 49
+  completed: 49
+  on_time: 28
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 0.5714285714285714
+  timeout_rate: 0.0
+scores:
+  total: 3377.2234933334244
+  per_task_average: 68.92292843537601
+  per_task_on_time_average: 120.615124761908
+  average: 68.92292843537601
+timing:
+  avg_completion_duration_sec: 7118.181818181818
+  avg_overdue_minutes: 132.08095238095237
+  throughput_tasks_per_hour: 4.72668810289389
+distance_meters:
+  total_fleet_traveled: 1381219.9010000187
+  average_completed_task_leg: 24038.258755102444
+  fleet_distance_stdev: 116442.8838615743
+energy:
+  total_energy: 2154.377998000028
+  energy_per_completed: 43.96689791836792
+vehicles_summary:
+  total: 6
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+    '4': 0
+    '5': 0
+    '6': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 47.40604300000278
+  battery_percentage: 79.0100716666713
+  total_distance_traveled: 96593.95699999738
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 47.9092079999978
+  battery_percentage: 79.84867999999634
+  total_distance_traveled: 66090.79200000224
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 83.29567899999896
+  battery_percentage: 83.29567899999896
+  total_distance_traveled: 288234.6860000078
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 4
+  type: medium
+  battery_final: 74.01031899999853
+  battery_percentage: 74.01031899999853
+  total_distance_traveled: 304670.6740000034
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 5
+  type: medium
+  battery_final: 82.15423899999723
+  battery_percentage: 82.15423899999723
+  total_distance_traveled: 297848.7500000073
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 6
+  type: large
+  battery_final: 70.43791599999847
+  battery_percentage: 46.95861066666565
+  total_distance_traveled: 327781.04200000054
+  energy_consumption_trip: 53.319663999998355
+  final_status: idle
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0
+- id: cs2
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0

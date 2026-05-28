@@ -1,0 +1,231 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): medium-seed1-sa_score_search
+启动时间:                 2026-05-28 20:16:49
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/medium/seed_1/runs\medium-seed1-sa_score_search
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\medium\seed_1\configs\sa_score_search.yaml
+
+---- 事件日志 ----
+[2026-05-28 20:16:49] [START] Experiment 'medium-seed1-sa_score_search' started.
+[2026-05-28 20:16:49] [INFO] [HEADLESS] mode=dynamic, strategy=sa_score_search, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=replay=F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\medium\seed_1\task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/medium/seed_1/runs\medium-seed1-sa_score_search\task_generation_seed.yaml
+[2026-05-28 20:16:53] [PROGRESS] sim_elapsed=360s strategy=sa_score_search tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:16:56] [PROGRESS] sim_elapsed=720s strategy=sa_score_search tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:16:59] [PROGRESS] sim_elapsed=1080s strategy=sa_score_search tasks total=5 completed=2 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:17:02] [PROGRESS] sim_elapsed=1440s strategy=sa_score_search tasks total=13 completed=3 pending=7 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:17:07] [PROGRESS] sim_elapsed=1800s strategy=sa_score_search tasks total=13 completed=4 pending=6 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:17:16] [PROGRESS] sim_elapsed=2160s strategy=sa_score_search tasks total=23 completed=5 pending=12 in_progress=6 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:17:19] [PROGRESS] sim_elapsed=2520s strategy=sa_score_search tasks total=32 completed=7 pending=21 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:17:31] [PROGRESS] sim_elapsed=2880s strategy=sa_score_search tasks total=32 completed=9 pending=20 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:17:34] [PROGRESS] sim_elapsed=3240s strategy=sa_score_search tasks total=32 completed=11 pending=20 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:17:46] [PROGRESS] sim_elapsed=3600s strategy=sa_score_search tasks total=32 completed=11 pending=17 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:17:58] [PROGRESS] sim_elapsed=3960s strategy=sa_score_search tasks total=32 completed=12 pending=7 in_progress=13 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:18:02] [PROGRESS] sim_elapsed=4320s strategy=sa_score_search tasks total=41 completed=14 pending=15 in_progress=12 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:18:05] [PROGRESS] sim_elapsed=4680s strategy=sa_score_search tasks total=41 completed=15 pending=15 in_progress=11 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 20:18:09] [PROGRESS] sim_elapsed=5040s strategy=sa_score_search tasks total=41 completed=17 pending=15 in_progress=9 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 20:18:12] [PROGRESS] sim_elapsed=5400s strategy=sa_score_search tasks total=41 completed=18 pending=15 in_progress=8 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-28 20:18:15] [PROGRESS] sim_elapsed=5760s strategy=sa_score_search tasks total=49 completed=20 pending=23 in_progress=6 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-28 20:18:18] [PROGRESS] sim_elapsed=6120s strategy=sa_score_search tasks total=49 completed=21 pending=23 in_progress=5 timeout=0 vehicles idle=1 moving=2 charging=3
+[2026-05-28 20:18:21] [PROGRESS] sim_elapsed=6480s strategy=sa_score_search tasks total=49 completed=21 pending=23 in_progress=5 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-28 20:18:25] [PROGRESS] sim_elapsed=6840s strategy=sa_score_search tasks total=49 completed=21 pending=22 in_progress=6 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:18:29] [PROGRESS] sim_elapsed=7200s strategy=sa_score_search tasks total=49 completed=22 pending=22 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:18:41] [PROGRESS] sim_elapsed=7560s strategy=sa_score_search tasks total=49 completed=23 pending=21 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:18:44] [PROGRESS] sim_elapsed=7920s strategy=sa_score_search tasks total=49 completed=24 pending=21 in_progress=4 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 20:18:56] [PROGRESS] sim_elapsed=8280s strategy=sa_score_search tasks total=49 completed=25 pending=16 in_progress=8 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:19:04] [PROGRESS] sim_elapsed=8640s strategy=sa_score_search tasks total=49 completed=27 pending=14 in_progress=8 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:19:08] [PROGRESS] sim_elapsed=9000s strategy=sa_score_search tasks total=49 completed=30 pending=14 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:19:11] [PROGRESS] sim_elapsed=9360s strategy=sa_score_search tasks total=49 completed=30 pending=13 in_progress=6 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:19:14] [PROGRESS] sim_elapsed=9720s strategy=sa_score_search tasks total=49 completed=31 pending=13 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:19:17] [PROGRESS] sim_elapsed=10080s strategy=sa_score_search tasks total=49 completed=31 pending=13 in_progress=5 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 20:19:20] [PROGRESS] sim_elapsed=10440s strategy=sa_score_search tasks total=49 completed=32 pending=13 in_progress=4 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:19:27] [PROGRESS] sim_elapsed=10800s strategy=sa_score_search tasks total=49 completed=34 pending=11 in_progress=4 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:19:30] [PROGRESS] sim_elapsed=11160s strategy=sa_score_search tasks total=49 completed=34 pending=11 in_progress=4 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 20:19:33] [PROGRESS] sim_elapsed=11520s strategy=sa_score_search tasks total=49 completed=35 pending=11 in_progress=3 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 20:19:39] [PROGRESS] sim_elapsed=11880s strategy=sa_score_search tasks total=49 completed=35 pending=11 in_progress=3 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 20:19:46] [PROGRESS] sim_elapsed=12240s strategy=sa_score_search tasks total=49 completed=35 pending=6 in_progress=8 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 20:19:49] [PROGRESS] sim_elapsed=12600s strategy=sa_score_search tasks total=49 completed=36 pending=6 in_progress=7 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:19:53] [PROGRESS] sim_elapsed=12960s strategy=sa_score_search tasks total=49 completed=37 pending=6 in_progress=6 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 20:19:56] [PROGRESS] sim_elapsed=13320s strategy=sa_score_search tasks total=49 completed=38 pending=6 in_progress=5 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:19:59] [PROGRESS] sim_elapsed=13680s strategy=sa_score_search tasks total=49 completed=39 pending=6 in_progress=4 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:20:02] [PROGRESS] sim_elapsed=14040s strategy=sa_score_search tasks total=49 completed=41 pending=6 in_progress=2 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:20:05] [PROGRESS] sim_elapsed=14400s strategy=sa_score_search tasks total=49 completed=41 pending=6 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:20:08] [PROGRESS] sim_elapsed=14760s strategy=sa_score_search tasks total=49 completed=41 pending=6 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:20:13] [PROGRESS] sim_elapsed=15120s strategy=sa_score_search tasks total=49 completed=41 pending=6 in_progress=2 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:20:17] [PROGRESS] sim_elapsed=15480s strategy=sa_score_search tasks total=49 completed=42 pending=5 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:20:21] [PROGRESS] sim_elapsed=15840s strategy=sa_score_search tasks total=49 completed=42 pending=5 in_progress=2 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:20:24] [PROGRESS] sim_elapsed=16200s strategy=sa_score_search tasks total=49 completed=43 pending=5 in_progress=1 timeout=0 vehicles idle=2 moving=2 charging=2
+[2026-05-28 20:20:28] [PROGRESS] sim_elapsed=16560s strategy=sa_score_search tasks total=49 completed=43 pending=5 in_progress=1 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:20:32] [PROGRESS] sim_elapsed=16920s strategy=sa_score_search tasks total=49 completed=43 pending=5 in_progress=1 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 20:20:35] [PROGRESS] sim_elapsed=17280s strategy=sa_score_search tasks total=49 completed=43 pending=5 in_progress=1 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:20:38] [PROGRESS] sim_elapsed=17640s strategy=sa_score_search tasks total=49 completed=43 pending=5 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:20:41] [PROGRESS] sim_elapsed=18000s strategy=sa_score_search tasks total=49 completed=43 pending=5 in_progress=1 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:20:45] [PROGRESS] sim_elapsed=18360s strategy=sa_score_search tasks total=49 completed=44 pending=5 in_progress=0 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:20:48] [PROGRESS] sim_elapsed=18720s strategy=sa_score_search tasks total=49 completed=44 pending=5 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:20:52] [PROGRESS] sim_elapsed=19080s strategy=sa_score_search tasks total=49 completed=44 pending=5 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:20:55] [PROGRESS] sim_elapsed=19440s strategy=sa_score_search tasks total=49 completed=44 pending=5 in_progress=0 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:20:58] [PROGRESS] sim_elapsed=19800s strategy=sa_score_search tasks total=49 completed=44 pending=5 in_progress=0 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:21:02] [PROGRESS] sim_elapsed=20160s strategy=sa_score_search tasks total=49 completed=44 pending=5 in_progress=0 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:21:06] [PROGRESS] sim_elapsed=20520s strategy=sa_score_search tasks total=49 completed=44 pending=0 in_progress=5 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:21:09] [PROGRESS] sim_elapsed=20880s strategy=sa_score_search tasks total=49 completed=44 pending=0 in_progress=5 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:21:12] [PROGRESS] sim_elapsed=21240s strategy=sa_score_search tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:16] [PROGRESS] sim_elapsed=21600s strategy=sa_score_search tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-28 20:21:19] [PROGRESS] sim_elapsed=21960s strategy=sa_score_search tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=4 moving=1 charging=1
+[2026-05-28 20:21:22] [PROGRESS] sim_elapsed=22320s strategy=sa_score_search tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:25] [PROGRESS] sim_elapsed=22680s strategy=sa_score_search tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:28] [PROGRESS] sim_elapsed=23040s strategy=sa_score_search tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:31] [PROGRESS] sim_elapsed=23400s strategy=sa_score_search tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:34] [PROGRESS] sim_elapsed=23760s strategy=sa_score_search tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:37] [PROGRESS] sim_elapsed=24120s strategy=sa_score_search tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=6 moving=0 charging=0
+[2026-05-28 20:21:40] [PROGRESS] sim_elapsed=24480s strategy=sa_score_search tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:43] [PROGRESS] sim_elapsed=24840s strategy=sa_score_search tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:46] [PROGRESS] sim_elapsed=25200s strategy=sa_score_search tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:49] [PROGRESS] sim_elapsed=25560s strategy=sa_score_search tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:52] [PROGRESS] sim_elapsed=25920s strategy=sa_score_search tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:55] [PROGRESS] sim_elapsed=26280s strategy=sa_score_search tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:21:59] [PROGRESS] sim_elapsed=26640s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:02] [PROGRESS] sim_elapsed=27000s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:05] [PROGRESS] sim_elapsed=27360s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:08] [PROGRESS] sim_elapsed=27720s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:11] [PROGRESS] sim_elapsed=28080s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:14] [PROGRESS] sim_elapsed=28440s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:17] [PROGRESS] sim_elapsed=28800s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-28 20:22:20] [PROGRESS] sim_elapsed=29160s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-28 20:22:23] [PROGRESS] sim_elapsed=29520s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:26] [PROGRESS] sim_elapsed=29880s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:29] [PROGRESS] sim_elapsed=30240s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:32] [PROGRESS] sim_elapsed=30600s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:35] [PROGRESS] sim_elapsed=30960s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:38] [PROGRESS] sim_elapsed=31320s strategy=sa_score_search tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:41] [PROGRESS] sim_elapsed=31680s strategy=sa_score_search tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=6 moving=0 charging=0
+[2026-05-28 20:22:45] [PROGRESS] sim_elapsed=32040s strategy=sa_score_search tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:48] [PROGRESS] sim_elapsed=32400s strategy=sa_score_search tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:51] [PROGRESS] sim_elapsed=32760s strategy=sa_score_search tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:54] [PROGRESS] sim_elapsed=33120s strategy=sa_score_search tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:22:57] [PROGRESS] sim_elapsed=33480s strategy=sa_score_search tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:23:00] [PROGRESS] sim_elapsed=33840s strategy=sa_score_search tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:23:03] [PROGRESS] sim_elapsed=34200s strategy=sa_score_search tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+
+[2026-05-28 20:23:04] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: medium-seed1-sa_score_search
+停止原因: all_tasks_done
+仿真时长: 34320 仿真秒 / 374.6 现实秒
+
+[ 任务 ]
+  总数=49 完成=49 按时=25 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=51.02% 超时率=0.00%
+
+[ 得分 ]
+  总分=3716.2 每任务平均=75.84 按时平均=148.65
+
+[ 时效 ]
+  平均完成时长=7352.7s 平均超时=123.67min 吞吐=5.14 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=1025183m 任务腿均长=22670m 里程方差(车均衡)=75288
+  总能耗=1591.88kWh 单任务能耗=32.487kWh
+
+[ 车队 ]
+  总车数=6 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: medium-seed1-sa_score_search
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 34320.0
+wall_seconds_elapsed: 374.597498
+tasks:
+  total: 49
+  completed: 49
+  on_time: 25
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 0.5102040816326531
+  timeout_rate: 0.0
+scores:
+  total: 3716.177280000157
+  per_task_average: 75.84035265306443
+  per_task_on_time_average: 148.6470912000063
+  average: 75.84035265306443
+timing:
+  avg_completion_duration_sec: 7352.727272727273
+  avg_overdue_minutes: 123.67083333333333
+  throughput_tasks_per_hour: 5.13986013986014
+distance_meters:
+  total_fleet_traveled: 1025183.3399999987
+  average_completed_task_leg: 22669.870387755043
+  fleet_distance_stdev: 75287.84283343895
+energy:
+  total_energy: 1591.881691999998
+  energy_per_completed: 32.487381469387714
+vehicles_summary:
+  total: 6
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+    '4': 0
+    '5': 0
+    '6': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 45.48023200000441
+  battery_percentage: 75.80038666667403
+  total_distance_traveled: 104519.76799999579
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 43.78380099999694
+  battery_percentage: 72.97300166666157
+  total_distance_traveled: 88216.19900000325
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 74.01031899999853
+  battery_percentage: 74.01031899999853
+  total_distance_traveled: 182939.86399999564
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 4
+  type: medium
+  battery_final: 74.01031899999853
+  battery_percentage: 74.01031899999853
+  total_distance_traveled: 177256.90399999972
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 5
+  type: medium
+  battery_final: 83.04808899999318
+  battery_percentage: 83.04808899999318
+  total_distance_traveled: 171301.27400000446
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 6
+  type: large
+  battery_final: 42.453171999996044
+  battery_percentage: 28.30211466666403
+  total_distance_traveled: 300949.3309999997
+  energy_consumption_trip: 247.93874000000145
+  final_status: idle
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0
+- id: cs2
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0

@@ -1,0 +1,29 @@
+experiment:
+  name: large-seed1-priority_task
+  log_dir: experiments/dynamic_benchmark/large/seed_1/runs
+optimization:
+  mode: dynamic
+fleet:
+  small_count: 4
+  medium_count: 6
+  large_count: 2
+  station_count: 4
+charging_station:
+  default_capacity: 4
+  max_queue_time: 900
+task:
+  generation_seed_file: null
+  initial_tasks: 12
+  generation_interval_sec_min: 5
+  generation_interval_sec_max: 15
+  generation_batch_min: 2
+  generation_batch_max: 4
+  max_pending_tasks: 40
+  total_task_budget: 200
+scheduling:
+  strategy: priority_task
+  charge_load_weight_m: 10000.0
+  charge_queue_weight_m: 3000.0
+simulation:
+  speed_factor: 180
+  max_sim_seconds: 14400

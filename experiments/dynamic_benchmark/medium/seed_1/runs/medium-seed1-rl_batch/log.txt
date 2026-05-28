@@ -1,0 +1,218 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): medium-seed1-rl_batch
+启动时间:                 2026-05-28 20:23:30
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/medium/seed_1/runs\medium-seed1-rl_batch
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\medium\seed_1\configs\rl_batch.yaml
+
+---- 事件日志 ----
+[2026-05-28 20:23:30] [START] Experiment 'medium-seed1-rl_batch' started.
+[2026-05-28 20:23:31] [INFO] [HEADLESS] mode=dynamic, strategy=rl_batch, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=replay=F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\medium\seed_1\task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/medium/seed_1/runs\medium-seed1-rl_batch\task_generation_seed.yaml
+[2026-05-28 20:23:35] [PROGRESS] sim_elapsed=360s strategy=rl_batch tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:23:38] [PROGRESS] sim_elapsed=720s strategy=rl_batch tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:23:41] [PROGRESS] sim_elapsed=1080s strategy=rl_batch tasks total=5 completed=2 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:23:45] [PROGRESS] sim_elapsed=1440s strategy=rl_batch tasks total=13 completed=3 pending=7 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:23:50] [PROGRESS] sim_elapsed=1800s strategy=rl_batch tasks total=13 completed=4 pending=6 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:23:59] [PROGRESS] sim_elapsed=2160s strategy=rl_batch tasks total=23 completed=5 pending=12 in_progress=6 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:24:03] [PROGRESS] sim_elapsed=2520s strategy=rl_batch tasks total=32 completed=7 pending=21 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:24:17] [PROGRESS] sim_elapsed=2880s strategy=rl_batch tasks total=32 completed=9 pending=19 in_progress=4 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:24:20] [PROGRESS] sim_elapsed=3240s strategy=rl_batch tasks total=32 completed=11 pending=19 in_progress=2 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:24:32] [PROGRESS] sim_elapsed=3600s strategy=rl_batch tasks total=32 completed=11 pending=17 in_progress=4 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:24:41] [PROGRESS] sim_elapsed=3960s strategy=rl_batch tasks total=32 completed=13 pending=10 in_progress=9 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:24:46] [PROGRESS] sim_elapsed=4320s strategy=rl_batch tasks total=41 completed=14 pending=16 in_progress=11 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:24:49] [PROGRESS] sim_elapsed=4680s strategy=rl_batch tasks total=41 completed=16 pending=16 in_progress=9 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 20:24:57] [PROGRESS] sim_elapsed=5040s strategy=rl_batch tasks total=41 completed=17 pending=13 in_progress=11 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 20:25:00] [PROGRESS] sim_elapsed=5400s strategy=rl_batch tasks total=41 completed=20 pending=13 in_progress=8 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 20:25:07] [PROGRESS] sim_elapsed=5760s strategy=rl_batch tasks total=49 completed=22 pending=19 in_progress=8 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 20:25:11] [PROGRESS] sim_elapsed=6120s strategy=rl_batch tasks total=49 completed=24 pending=19 in_progress=6 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 20:25:14] [PROGRESS] sim_elapsed=6480s strategy=rl_batch tasks total=49 completed=25 pending=19 in_progress=5 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 20:25:17] [PROGRESS] sim_elapsed=6840s strategy=rl_batch tasks total=49 completed=25 pending=18 in_progress=6 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-28 20:25:21] [PROGRESS] sim_elapsed=7200s strategy=rl_batch tasks total=49 completed=25 pending=18 in_progress=6 timeout=0 vehicles idle=0 moving=3 charging=3
+[2026-05-28 20:25:24] [PROGRESS] sim_elapsed=7560s strategy=rl_batch tasks total=49 completed=26 pending=18 in_progress=5 timeout=0 vehicles idle=0 moving=4 charging=2
+[2026-05-28 20:25:34] [PROGRESS] sim_elapsed=7920s strategy=rl_batch tasks total=49 completed=26 pending=16 in_progress=7 timeout=0 vehicles idle=1 moving=4 charging=1
+[2026-05-28 20:25:38] [PROGRESS] sim_elapsed=8280s strategy=rl_batch tasks total=49 completed=27 pending=15 in_progress=7 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:25:41] [PROGRESS] sim_elapsed=8640s strategy=rl_batch tasks total=49 completed=29 pending=15 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:25:44] [PROGRESS] sim_elapsed=9000s strategy=rl_batch tasks total=49 completed=29 pending=15 in_progress=5 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:25:47] [PROGRESS] sim_elapsed=9360s strategy=rl_batch tasks total=49 completed=30 pending=15 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:25:55] [PROGRESS] sim_elapsed=9720s strategy=rl_batch tasks total=49 completed=32 pending=10 in_progress=7 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:25:58] [PROGRESS] sim_elapsed=10080s strategy=rl_batch tasks total=49 completed=33 pending=10 in_progress=6 timeout=0 vehicles idle=0 moving=5 charging=1
+[2026-05-28 20:26:01] [PROGRESS] sim_elapsed=10440s strategy=rl_batch tasks total=49 completed=35 pending=10 in_progress=4 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:26:07] [PROGRESS] sim_elapsed=10800s strategy=rl_batch tasks total=49 completed=36 pending=7 in_progress=6 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:26:11] [PROGRESS] sim_elapsed=11160s strategy=rl_batch tasks total=49 completed=36 pending=6 in_progress=7 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:26:14] [PROGRESS] sim_elapsed=11520s strategy=rl_batch tasks total=49 completed=36 pending=6 in_progress=7 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:26:19] [PROGRESS] sim_elapsed=11880s strategy=rl_batch tasks total=49 completed=36 pending=6 in_progress=7 timeout=0 vehicles idle=0 moving=6 charging=0
+[2026-05-28 20:26:23] [PROGRESS] sim_elapsed=12240s strategy=rl_batch tasks total=49 completed=39 pending=6 in_progress=4 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:26:26] [PROGRESS] sim_elapsed=12600s strategy=rl_batch tasks total=49 completed=39 pending=6 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:26:29] [PROGRESS] sim_elapsed=12960s strategy=rl_batch tasks total=49 completed=39 pending=6 in_progress=4 timeout=0 vehicles idle=2 moving=2 charging=2
+[2026-05-28 20:26:32] [PROGRESS] sim_elapsed=13320s strategy=rl_batch tasks total=49 completed=39 pending=6 in_progress=4 timeout=0 vehicles idle=2 moving=1 charging=3
+[2026-05-28 20:26:35] [PROGRESS] sim_elapsed=13680s strategy=rl_batch tasks total=49 completed=40 pending=6 in_progress=3 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 20:26:38] [PROGRESS] sim_elapsed=14040s strategy=rl_batch tasks total=49 completed=40 pending=6 in_progress=3 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:26:42] [PROGRESS] sim_elapsed=14400s strategy=rl_batch tasks total=49 completed=40 pending=6 in_progress=3 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:26:47] [PROGRESS] sim_elapsed=14760s strategy=rl_batch tasks total=49 completed=40 pending=5 in_progress=4 timeout=0 vehicles idle=2 moving=3 charging=1
+[2026-05-28 20:26:51] [PROGRESS] sim_elapsed=15120s strategy=rl_batch tasks total=49 completed=41 pending=4 in_progress=4 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:26:55] [PROGRESS] sim_elapsed=15480s strategy=rl_batch tasks total=49 completed=41 pending=4 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:26:58] [PROGRESS] sim_elapsed=15840s strategy=rl_batch tasks total=49 completed=41 pending=4 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:27:01] [PROGRESS] sim_elapsed=16200s strategy=rl_batch tasks total=49 completed=42 pending=4 in_progress=3 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:27:05] [PROGRESS] sim_elapsed=16560s strategy=rl_batch tasks total=49 completed=44 pending=0 in_progress=5 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:27:08] [PROGRESS] sim_elapsed=16920s strategy=rl_batch tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:27:11] [PROGRESS] sim_elapsed=17280s strategy=rl_batch tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:27:14] [PROGRESS] sim_elapsed=17640s strategy=rl_batch tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:27:17] [PROGRESS] sim_elapsed=18000s strategy=rl_batch tasks total=49 completed=45 pending=0 in_progress=4 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:27:21] [PROGRESS] sim_elapsed=18360s strategy=rl_batch tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:24] [PROGRESS] sim_elapsed=18720s strategy=rl_batch tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:27] [PROGRESS] sim_elapsed=19080s strategy=rl_batch tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:30] [PROGRESS] sim_elapsed=19440s strategy=rl_batch tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:33] [PROGRESS] sim_elapsed=19800s strategy=rl_batch tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-28 20:27:36] [PROGRESS] sim_elapsed=20160s strategy=rl_batch tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:39] [PROGRESS] sim_elapsed=20520s strategy=rl_batch tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:42] [PROGRESS] sim_elapsed=20880s strategy=rl_batch tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:45] [PROGRESS] sim_elapsed=21240s strategy=rl_batch tasks total=49 completed=46 pending=0 in_progress=3 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:48] [PROGRESS] sim_elapsed=21600s strategy=rl_batch tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:51] [PROGRESS] sim_elapsed=21960s strategy=rl_batch tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:54] [PROGRESS] sim_elapsed=22320s strategy=rl_batch tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:27:57] [PROGRESS] sim_elapsed=22680s strategy=rl_batch tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:00] [PROGRESS] sim_elapsed=23040s strategy=rl_batch tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:03] [PROGRESS] sim_elapsed=23400s strategy=rl_batch tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:06] [PROGRESS] sim_elapsed=23760s strategy=rl_batch tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:10] [PROGRESS] sim_elapsed=24120s strategy=rl_batch tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:13] [PROGRESS] sim_elapsed=24480s strategy=rl_batch tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:16] [PROGRESS] sim_elapsed=24840s strategy=rl_batch tasks total=49 completed=47 pending=0 in_progress=2 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:19] [PROGRESS] sim_elapsed=25200s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:22] [PROGRESS] sim_elapsed=25560s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:25] [PROGRESS] sim_elapsed=25920s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:28] [PROGRESS] sim_elapsed=26280s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:31] [PROGRESS] sim_elapsed=26640s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-28 20:28:34] [PROGRESS] sim_elapsed=27000s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=0 charging=1
+[2026-05-28 20:28:37] [PROGRESS] sim_elapsed=27360s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:40] [PROGRESS] sim_elapsed=27720s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:43] [PROGRESS] sim_elapsed=28080s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:46] [PROGRESS] sim_elapsed=28440s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:49] [PROGRESS] sim_elapsed=28800s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:52] [PROGRESS] sim_elapsed=29160s strategy=rl_batch tasks total=49 completed=48 pending=0 in_progress=1 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 20:28:55] [PROGRESS] sim_elapsed=29520s strategy=rl_batch tasks total=49 completed=49 pending=0 in_progress=0 timeout=0 vehicles idle=6 moving=0 charging=0
+
+[2026-05-28 20:28:55] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: medium-seed1-rl_batch
+停止原因: all_tasks_done
+仿真时长: 29520 仿真秒 / 324.8 现实秒
+
+[ 任务 ]
+  总数=49 完成=49 按时=26 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=53.06% 超时率=0.00%
+
+[ 得分 ]
+  总分=3795.3 每任务平均=77.45 按时平均=145.97
+
+[ 时效 ]
+  平均完成时长=6310.9s 平均超时=100.08min 吞吐=5.98 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=909334m 任务腿均长=22117m 里程方差(车均衡)=59817
+  总能耗=1398.10kWh 单任务能耗=28.533kWh
+
+[ 车队 ]
+  总车数=6 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: medium-seed1-rl_batch
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 29520.0
+wall_seconds_elapsed: 324.815801
+tasks:
+  total: 49
+  completed: 49
+  on_time: 26
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 0.5306122448979592
+  timeout_rate: 0.0
+scores:
+  total: 3795.2550733334415
+  per_task_average: 77.45418517007023
+  per_task_on_time_average: 145.97134897436314
+  average: 77.45418517007023
+timing:
+  avg_completion_duration_sec: 6310.909090909091
+  avg_overdue_minutes: 100.07971014492752
+  throughput_tasks_per_hour: 5.975609756097562
+distance_meters:
+  total_fleet_traveled: 909333.8550000109
+  average_completed_task_leg: 22116.613000000358
+  fleet_distance_stdev: 59816.860039434636
+energy:
+  total_energy: 1398.10327400002
+  energy_per_completed: 28.53271987755143
+vehicles_summary:
+  total: 6
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+    '4': 0
+    '5': 0
+    '6': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 47.40604300000278
+  battery_percentage: 79.0100716666713
+  total_distance_traveled: 96593.95699999738
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 19.860474999999084
+  battery_percentage: 33.10079166666514
+  total_distance_traveled: 94139.52500000087
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 32.77398999999393
+  battery_percentage: 32.77398999999393
+  total_distance_traveled: 148817.34000000416
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 4
+  type: medium
+  battery_final: 32.63777349999559
+  battery_percentage: 32.63777349999559
+  total_distance_traveled: 156908.1510000032
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 5
+  type: medium
+  battery_final: 25.09537450000064
+  battery_percentage: 25.095374500000638
+  total_distance_traveled: 153936.41699999967
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 6
+  type: large
+  battery_final: 96.52109799999707
+  battery_percentage: 64.34739866666472
+  total_distance_traveled: 258938.46500000564
+  energy_consumption_trip: 236.49994400000625
+  final_status: idle
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0
+- id: cs2
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0

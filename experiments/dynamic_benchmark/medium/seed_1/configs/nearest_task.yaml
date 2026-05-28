@@ -1,0 +1,25 @@
+experiment:
+  name: medium-seed1-nearest_task
+  log_dir: experiments/dynamic_benchmark/medium/seed_1/runs
+optimization:
+  mode: dynamic
+fleet:
+  small_count: 2
+  medium_count: 3
+  large_count: 1
+  station_count: 2
+task:
+  generation_seed_file: null
+  initial_tasks: 5
+  generation_interval_sec_min: 5
+  generation_interval_sec_max: 15
+  generation_batch_min: 5
+  generation_batch_max: 10
+  max_pending_tasks: 20
+  total_task_budget: 80
+scheduling:
+  strategy: nearest_task
+  relay_handoff:
+    proximity_threshold_m: 1500
+simulation:
+  max_sim_seconds: 7200
