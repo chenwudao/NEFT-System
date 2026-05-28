@@ -68,7 +68,7 @@ class APIController:
                 id=task_id,
                 position=Position(x=request.position.x, y=request.position.y),
                 weight=request.weight,
-                create_time=int(datetime.now().timestamp()),
+                create_time=self.data_manager.get_sim_time(),
                 deadline=request.deadline,
                 priority=request.priority,
             )

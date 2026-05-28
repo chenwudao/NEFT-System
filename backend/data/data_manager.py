@@ -26,7 +26,19 @@ class DataManager:
         # 使用可重入锁，避免同一线程内的嵌套调用导致死锁。
         self.lock = threading.RLock()
         self.logger = logging.getLogger(__name__)
+        self._sim_seconds: float = 0.0
         self._initialize_routing_graph_if_enabled()
+
+    def set_sim_seconds(self, sim_seconds: float) -> None:
+        """同步当前仿真时钟（秒），供任务时间戳 / 超时 / 计分使用。"""
+        self._sim_seconds = max(0.0, float(sim_seconds))
+
+    def get_sim_seconds(self) -> float:
+        return float(self._sim_seconds)
+
+    def get_sim_time(self) -> int:
+        """当前仿真时刻（整秒，Unix 风格整数时间轴）。"""
+        return int(self._sim_seconds)
 
     def _initialize_routing_graph_if_enabled(self):
         """初始化图路由。支持完整OSM路网或主干路精简版。"""
@@ -139,8 +151,8 @@ class DataManager:
             return list(self.tasks.values())
 
     def get_visible_tasks(self, now_ts: Optional[int] = None) -> List[Task]:
-        """返回当前可见任务（create_time <= now_ts）。"""
-        cur = int(datetime.now().timestamp()) if now_ts is None else int(now_ts)
+        """返回当前可见任务（create_time <= 当前仿真时刻）。"""
+        cur = self.get_sim_time() if now_ts is None else int(now_ts)
         with self.lock:
             return [t for t in self.tasks.values() if int(getattr(t, "create_time", 0)) <= cur]
 
@@ -158,10 +170,11 @@ class DataManager:
             if notify:
                 self._notify_task_update(task)
 
-    def update_task_status(self, task_id: int, status: TaskStatus):
+    def update_task_status(self, task_id: int, status: TaskStatus, now_ts: Optional[int] = None):
         with self.lock:
             if task_id in self.tasks:
-                self.tasks[task_id].update_status(status)
+                ts = self.get_sim_time() if now_ts is None else int(now_ts)
+                self.tasks[task_id].update_status(status, now_ts=ts)
                 self._notify_task_update(self.tasks[task_id])
 
     def assign_task_to_vehicle(self, task_id: int, vehicle_id: int):
@@ -171,7 +184,9 @@ class DataManager:
                 self.tasks[task_id].complete_path_distance = 0.0
                 self.tasks[task_id].assigned_vehicle_id = vehicle_id
                 # 任务一旦开始由车辆承运，即进入运输中状态。
-                self.tasks[task_id].update_status(TaskStatus.IN_PROGRESS)
+                self.tasks[task_id].update_status(
+                    TaskStatus.IN_PROGRESS, now_ts=self.get_sim_time()
+                )
                 self.vehicles[vehicle_id].add_task(task_id)
                 self._notify_task_update(self.tasks[task_id])
                 self._notify_vehicle_update(self.vehicles[vehicle_id])
@@ -605,8 +620,9 @@ class DataManager:
             task = self.tasks.get(task_id)
             if task is not None:
                 # 到达任务点即完成（按任务口径）。
-                task.update_status(TaskStatus.COMPLETED)
-                actual_ts = task.complete_time if task.complete_time else int(datetime.now().timestamp())
+                now_ts = self.get_sim_time()
+                task.update_status(TaskStatus.COMPLETED, now_ts=now_ts)
+                actual_ts = task.complete_time if task.complete_time else now_ts
                 task.score = self.path_calculator.calculate_task_score(
                     task, actual_ts, task.complete_path_distance, vehicle=vehicle
                 )
@@ -706,7 +722,7 @@ class DataManager:
                     map_edges.append([u, v])
             
             # 计算任务完成率
-            now_ts = int(datetime.now().timestamp())
+            now_ts = self.get_sim_time()
             visible_tasks = [
                 t for t in self.tasks.values()
                 if int(getattr(t, "create_time", 0)) <= now_ts
@@ -748,7 +764,7 @@ class DataManager:
             enrich_wgs84_point_dict(wh)
 
             return {
-                "timestamp": int(datetime.now().timestamp()),
+                "timestamp": now_ts,
                 "tasks": tasks_out,
                 "vehicles": vehicles_out,
                 "charging_stations": stations_out,

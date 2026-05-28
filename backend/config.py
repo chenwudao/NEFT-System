@@ -127,29 +127,46 @@ _DEFAULT_SCHEDULING: Dict[str, Any] = {
         "alpha_reward": 2.0,
         "seed":         42,
     },
+    # RL 装批（rl_batch 策略）
+    "rl_batch": {
+        "learning_rate": 0.1,
+        "epsilon": 0.15,
+        "epsilon_min": 0.05,
+        "epsilon_decay": 0.999,
+        "reward_shaping_beta": 0.25,
+        "timeout_penalty": 50.0,
+        "policy_path": "data/rl_batch_policy.json",
+        # nearest 装批上限：超过则只保留前 N 个再交 DFS 选批（默认 7）
+        "nearest_rl_cap": 7,
+    },
+    # 协同接力（relay_handoff 策略）：仅一个距离阈值（米）
+    "relay_handoff": {
+        "proximity_threshold_m": 5000.0,
+    },
 }
 
 _DEFAULT_VEHICLE: Dict[str, Dict[str, Any]] = {
+    # 小/中/大车型默认参数（yaml 未覆盖 vehicle 节时使用）
     "small": {
         "max_battery":             60.0,
         "max_load":                500.0,
-        "unit_energy_consumption": 0.00025,
+        "unit_energy_consumption": 0.001,
         "speed":                   10.0,
-        "charging_power":          0.015,
+        "charging_power":          0.05,
     },
     "medium": {
         "max_battery":             100.0,
         "max_load":                1500.0,
-        "unit_energy_consumption": 0.0003,
+        "unit_energy_consumption": 0.0015,
         "speed":                   10.0,
-        "charging_power":          0.022,
+        "charging_power":          0.1,
     },
     "large": {
         "max_battery":             150.0,
         "max_load":                5000.0,
-        "unit_energy_consumption": 0.0004,
-        "speed":                   8.0,
-        "charging_power":          0.030,
+        "unit_energy_consumption": 0.002,
+        "speed":                   10.0,
+        "charging_power":          0.2,
     },
 }
 
@@ -231,7 +248,7 @@ _DEFAULT_OPTIMIZATION: Dict[str, Any] = {
     # static:  上帝视角静态优化（任务全集已知）
     "mode": "dynamic",
     "static": {
-        "strategy": "static_exact_solver",
+        "strategy": "nearest_task",
         # 期望求解器（可选）：gurobi / cplex
         "solver": "gurobi",
         # 精确搜索的任务上限（超过后自动降级为近似分配）
@@ -294,7 +311,12 @@ class Config:
     # -------------------------------------------------------------------------
     @classmethod
     def get_vehicle_config(cls, vehicle_type: str) -> Dict[str, Any]:
-        return cls.VEHICLE_CONFIG.get(vehicle_type, cls.VEHICLE_CONFIG["medium"])
+        """返回指定车型参数；yaml 可局部覆盖，未写到的字段沿用 _DEFAULT_VEHICLE。"""
+        base = copy.deepcopy(_DEFAULT_VEHICLE.get(vehicle_type, _DEFAULT_VEHICLE["medium"]))
+        override = cls.VEHICLE_CONFIG.get(vehicle_type)
+        if isinstance(override, dict):
+            base.update({k: v for k, v in override.items() if v is not None})
+        return base
 
     @classmethod
     def get_charging_station_config(cls) -> Dict[str, Any]:

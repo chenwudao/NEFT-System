@@ -59,7 +59,7 @@ class HeaviestTaskScheduler(Scheduler):
 
         for v in snapshot.idle_vehicles_at_warehouse():
             cmd = utils.decide_at_warehouse(v, snapshot, pick_heaviest)
-            if cmd.action == "deliver":
+            if cmd.assigned_tasks:
                 claimed.update(cmd.assigned_tasks)
             commands.append(cmd)
 

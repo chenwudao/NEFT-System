@@ -45,7 +45,7 @@ def calculate_assignment_score(
         task: 任务对象
         vehicle: 车辆对象
         distance: 单程距离（米）
-        current_timestamp: 当前时间戳
+        current_timestamp: 当前仿真时刻（秒）
     
     Returns:
         综合评分（越高越好）
@@ -75,6 +75,54 @@ def calculate_assignment_score(
     return max(0.0, float(score))
 
 
+def calculate_batch_chain_score(
+    ordered_tasks,
+    vehicle,
+    snapshot,
+    current_timestamp: int,
+) -> float:
+    """按访问顺序估算一批任务的累计得分（与 calculate_task_score 公式一致）。
+
+    对每个任务依次估算：
+      - 到达时刻 = 当前时刻 + 路段耗时（距离 / assumed_speed）
+      - 距离惩罚基于从起点到该任务点的累计路径长度
+    """
+    if not ordered_tasks:
+        return 0.0
+
+    cur_ts = float(current_timestamp)
+    cur_xy = (float(vehicle.position.x), float(vehicle.position.y))
+    cumulative_dist = 0.0
+    total_score = 0.0
+
+    for task in ordered_tasks:
+        leg = snapshot.distance(cur_xy, task.position)
+        if leg == float("inf"):
+            return float("-inf")
+
+        cumulative_dist += float(leg)
+        travel_time = float(leg) / ASSUMED_SPEED_MPS if ASSUMED_SPEED_MPS > 0 else float("inf")
+        completion_time = cur_ts + travel_time
+
+        task_reward = TASK_ASSIGN_REWARD
+        priority_reward = float(getattr(task, "priority", 1)) * PRIORITY_REWARD
+        distance_cost = cumulative_dist * DISTANCE_PENALTY
+        early_minutes = max(0.0, float(task.deadline) - completion_time) / 60.0
+        early_reward = early_minutes * EARLY_COMPLETION_REWARD_PER_MIN
+        overdue_minutes = max(0.0, completion_time - float(task.deadline)) / 60.0
+        overdue_cost = overdue_minutes * OVERDUE_PENALTY_PER_MIN
+
+        total_score += max(
+            0.0,
+            task_reward + priority_reward - distance_cost + early_reward - overdue_cost,
+        )
+
+        cur_ts = completion_time
+        cur_xy = (float(task.position.x), float(task.position.y))
+
+    return total_score
+
+
 def calculate_plan_score(
     assignments: dict,
     task_by_id: dict,
@@ -90,7 +138,7 @@ def calculate_plan_score(
         task_by_id: {task_id: task_object}
         vehicle_by_id: {vehicle_id: vehicle_object}
         distance_matrix: {(vehicle_id, task_id): distance}
-        current_timestamp: 当前时间戳
+        current_timestamp: 当前仿真时刻（秒）
     
     Returns:
         包含各项评分的字典

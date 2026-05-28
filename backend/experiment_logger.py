@@ -279,8 +279,8 @@ class ExperimentLogger:
             if getattr(t, "complete_time", None) and t.complete_time > t.deadline:
                 overdue_minutes_list.append((t.complete_time - t.deadline) / 60.0)
         for t in timeouts:
-            # TIMEOUT 任务没 complete_time；以 sim 结束的 now 估算超时长度
-            now_est = int(datetime.now().timestamp())
+            # TIMEOUT 任务没 complete_time；以仿真结束时刻估算超时长度
+            now_est = int(sim_seconds_elapsed)
             overdue_minutes_list.append(max(0.0, (now_est - t.deadline) / 60.0))
         avg_overdue_minutes = (
             sum(overdue_minutes_list) / len(overdue_minutes_list)

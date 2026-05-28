@@ -33,7 +33,7 @@ class DecisionManager:
         mode = str(opt_cfg.get("mode", "dynamic")).strip().lower()
         if mode == "static":
             static_cfg = opt_cfg.get("static") or {}
-            return str(static_cfg.get("strategy", "static_exact_solver"))
+            return str(static_cfg.get("strategy", "nearest_task"))
         return str(config.get_scheduling_config().get("strategy", AlgorithmManager.DEFAULT_STRATEGY))
 
     # ------------------------------------------------------------------
@@ -46,7 +46,7 @@ class DecisionManager:
         if chosen not in self.algorithm_manager.get_available_strategies():
             opt_cfg = config.get_optimization_config()
             if str(opt_cfg.get("mode", "dynamic")).strip().lower() == "static":
-                chosen = str((opt_cfg.get("static") or {}).get("strategy", "static_exact_solver"))
+                chosen = str((opt_cfg.get("static") or {}).get("strategy", "nearest_task"))
                 if chosen not in self.algorithm_manager.get_available_strategies():
                     chosen = AlgorithmManager.DEFAULT_STRATEGY
             else:
@@ -83,7 +83,7 @@ class DecisionManager:
         )
 
         return {
-            "timestamp": int(datetime.now().timestamp()),
+            "timestamp": self.data_manager.get_sim_time(),
             "total_tasks": len(tasks),
             "pending_tasks": len(pending),
             "in_progress_tasks": len(in_progress),

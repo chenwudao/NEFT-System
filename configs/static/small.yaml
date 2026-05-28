@@ -1,16 +1,17 @@
-# 小规模配置（静态上帝视角）
+# 小规模（静态上帝视角）
+
 experiment:
   name: "small-scale-static_exact_solver"
   log_dir: "log"
 
 optimization:
-  mode: "static"   # dynamic | static
+  mode: "static"
   static:
-    strategy: "static_exact_solver"
-    solver: "gpu_exhaustive"   # gpu_exhaustive | gpu_search | exact | heuristic | gurobi
+    strategy: "nearest_task"
+    solver: "gpu_exhaustive"
     force_gurobi_only: false
     accept_feasible_when_force_gurobi_only: false
-    objective_mode: "simulation_score"   # proxy | simulation_score
+    objective_mode: "simulation_score"
     charge_time_penalty_per_s: 0.02
     charge_event_penalty: 20.0
     charge_queue_penalty: 40.0
@@ -36,7 +37,7 @@ optimization:
     gpu_exact_eval_topk: 512
     gpu_log_interval_s: 2.0
     gpu_explore_scale: 3.0
-    gpu_search_order: "depth_first"   # depth_first | breadth_first
+    gpu_search_order: "depth_first"
     gpu_require_cuda: true
     gpu_auto_batch_from_vram: true
     gpu_vram_util_ratio: 0.95
@@ -64,7 +65,6 @@ fleet:
 
 charging_station:
   default_capacity: 2
-  max_queue_time:   600
 
 task:
   generation_seed_file: "F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_1/nearest_task/task_generation_seed.yaml"
@@ -74,38 +74,10 @@ task:
   generation_batch_min:        1
   generation_batch_max:        2
   max_pending_tasks:           8
-  min_weight:           10.0
-  max_weight:           800.0
-  min_priority:         1
-  max_priority:         5
-  min_deadline_offset:  900
-  max_deadline_offset:  3600
-  total_task_budget:    30
+  total_task_budget:           30
 
 scheduling:
-  # static 模式下该字段不作为主策略，仅保留兼容
-  strategy:              "nearest_task"
-  low_battery_pct:       25.0
-  charge_until_pct:      90.0
-  battery_safety_margin: 1.15
-  charge_load_weight_m:  8000.0
-  charge_queue_weight_m: 2000.0
+  strategy: "nearest_task"
 
 simulation:
-  speed_factor:    120
-  tick_interval:   1.0
   max_sim_seconds: 3600
-  marker_tween_ms: 900
-  marker_tween_adaptive: true
-  stop_when_all_tasks_done: true
-
-scoring:
-  task_assign_reward: 120.0
-  priority_reward: 30.0
-  distance_penalty: 0.02
-  early_completion_reward_per_min: 2.0
-  overdue_penalty_per_min: 50.0
-  idle_penalty: 5.0
-  assumed_speed_mps: 10.0
-  urgent_deadline_window: 1800
-  max_deadline_window: 7200

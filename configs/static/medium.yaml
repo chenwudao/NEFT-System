@@ -1,16 +1,17 @@
-# 中规模配置：6 辆车 / 2 充电站 / 中等任务流量（静态模式）
+# 中规模（静态上帝视角）
+
 experiment:
   name: "medium-scale-static_exact_solver"
   log_dir: "log"
 
 optimization:
-  mode: "static"   # dynamic | static
+  mode: "static"
   static:
-    strategy: "static_exact_solver"
-    solver: "heuristic"      # gurobi | heuristic
+    strategy: "nearest_task"
+    solver: "heuristic"
     force_gurobi_only: false
     accept_feasible_when_force_gurobi_only: false
-    objective_mode: "proxy"   # proxy | simulation_score
+    objective_mode: "proxy"
     charge_time_penalty_per_s: 0.02
     charge_event_penalty: 20.0
     charge_queue_penalty: 40.0
@@ -41,22 +42,6 @@ fleet:
   large_count:   1
   station_count: 2
 
-charging_station:
-  default_capacity: 3
-  max_queue_time:   600
-
-vehicle:
-  small:
-    unit_energy_consumption: 0.001  
-    max_battery: 60.0
-  medium:
-    unit_energy_consumption: 0.0015 
-    max_battery: 100.0
-  large:
-    unit_energy_consumption: 0.002
-    max_battery: 150.0
-
-
 task:
   generation_seed_file: "F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-composite_score/task_generation_seed.yaml"
   initial_tasks:               5
@@ -65,46 +50,10 @@ task:
   generation_batch_min:        2
   generation_batch_max:        4
   max_pending_tasks:           20
-  min_weight:           10.0
-  max_weight:           500.0
-  min_priority:         1
-  max_priority:         5
-  min_deadline_offset:  1800
-  max_deadline_offset:  7200
-  total_task_budget:    80
+  total_task_budget:           80
 
 scheduling:
-  strategy:              "tabu_search"
-  low_battery_pct:       20.0
-  charge_until_pct:      90.0
-  battery_safety_margin: 1.15
-  charge_load_weight_m:  8000.0
-  charge_queue_weight_m: 2000.0
-  composite_weights:
-    priority:       1.0
-    urgency:        1.5
-    load:           0.3
-    distance:       1.0
-    scale_distance: 10000.0
-    urgency_window: 3600.0
+  strategy: "nearest_task"
 
 simulation:
-  speed_factor:    120
-  tick_interval:   1.0
-  # 任务生成截止时间，仿真秒（到达后停止生成新任务，但仿真继续直到所有任务结算）
   max_sim_seconds: 7200
-  marker_tween_ms: 900
-  marker_tween_adaptive: true
-  stop_when_all_tasks_done: true
-
-scoring:
-  # 默认评分参数（与当前系统原始默认值一致）
-  task_assign_reward: 120.0
-  priority_reward: 30.0
-  distance_penalty: 0.02
-  early_completion_reward_per_min: 2.0
-  overdue_penalty_per_min: 50.0
-  idle_penalty: 5.0
-  assumed_speed_mps: 10.0
-  urgent_deadline_window: 1800
-  max_deadline_window: 7200

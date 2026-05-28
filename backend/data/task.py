@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional, Iterable
+from typing import List, Dict, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -23,8 +23,8 @@ class Task:
     id: int
     position: Position
     weight: float
-    create_time: int
-    deadline: int
+    create_time: int   # 仿真秒：任务释放时刻
+    deadline: int      # 仿真秒：必须送达的截止时刻
     priority: int
     status: TaskStatus = TaskStatus.PENDING
     # 当前持有该货物的车辆；None 表示"还在仓库 / 已经卸在目的地 / 已完结"。
@@ -48,12 +48,13 @@ class Task:
     def get_deadline(self) -> int:
         return self.deadline
 
-    def update_status(self, status: TaskStatus):
+    def update_status(self, status: TaskStatus, now_ts: Optional[int] = None):
         self.status = status
+        ts = int(now_ts) if now_ts is not None else int(datetime.now().timestamp())
         if status == TaskStatus.IN_PROGRESS and self.start_time is None:
-            self.start_time = int(datetime.now().timestamp())
+            self.start_time = ts
         elif status == TaskStatus.COMPLETED and self.complete_time is None:
-            self.complete_time = int(datetime.now().timestamp())
+            self.complete_time = ts
 
     def to_dict(self) -> Dict:
         return {
@@ -75,9 +76,3 @@ class Task:
             "is_on_time": self.is_on_time
         }
 
-
-def apply_deadline_timeouts(tasks: Iterable[Task], current_timestamp: int) -> None:
-    """Mark overdue PENDING tasks as TIMEOUT (single place for realtime + meta evaluation)."""
-    for task in tasks:
-        if task.status == TaskStatus.PENDING and task.deadline < current_timestamp:
-            task.update_status(TaskStatus.TIMEOUT)

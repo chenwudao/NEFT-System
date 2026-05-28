@@ -1,212 +1,528 @@
-"""多车接力调度：支持 source->target 货物交接。
+"""协同接力调度：基于 nearest_task 装批，路网上近距离车辆可协商交换货物。
 
-策略要点：
-1) 先维护已有接力计划（会合 -> handoff）；
-2) 若无计划，尝试为"外场空闲且载货"车辆找一个接力接收车；
-3) 若不适合接力，则退化为常规配送决策。
+交换流程：
+    1. 两车在仓库外、路网距离 < proximity_threshold_m 时可协商（不限 idle / 行驶中）。
+    2. 合并车上任务做 k=2 聚类；max_load 较小的车优先从较轻簇按重量升序装货，
+       其余归另一车；若另一车放不下则放弃交换。
+    3. 约定 path 中点碰头，先到者等待；同节点后 handoff 转交。
+    4. 交换成功后，该**车辆对**须各自回仓一次才能再次交换（与其他车不受限）。
+    5. 每辆车须**首次离仓后再回仓一次**，才具备交换资格（避免开局同点触发）。
+    6. 交接后若无任务则回仓库。
+
+仓库装批与常规在途送货逻辑与 nearest_task 一致。
 """
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Set, Tuple
 
 from backend.algorithm import utils
 from backend.algorithm.scheduler import Command, Scheduler
+from backend.algorithm.schedulers.regional_planning import _kmeans_packages
 from backend.algorithm.snapshot import Snapshot
+from backend.config import config
+from backend.data.task import Task
+from backend.data.vehicle import Vehicle
+
+_POSITION_EPS = 1e-4
+
+
+def _proximity_threshold_m() -> float:
+    relay = config.get_scheduling_config().get("relay_handoff") or {}
+    return float(relay.get("proximity_threshold_m", 5000.0))
+
+
+def _pair_key(a_id: int, b_id: int) -> Tuple[int, int]:
+    return (min(a_id, b_id), max(a_id, b_id))
+
+
+@dataclass
+class _HandoffPlan:
+    vehicle_a: int
+    vehicle_b: int
+    meeting_xy: Tuple[float, float]
+    a_to_b: List[int] = field(default_factory=list)
+    b_to_a: List[int] = field(default_factory=list)
+
+
+@dataclass
+class _ExchangeProposal:
+    a_to_b: List[int]
+    b_to_a: List[int]
+    meeting_xy: Tuple[float, float]
+
+
+def _vehicle_by_id(snapshot: Snapshot) -> Dict[int, Vehicle]:
+    return {v.id: v for v in snapshot.vehicles}
+
+
+def _tasks_by_id(snapshot: Snapshot) -> Dict[int, Task]:
+    return {t.id: t for t in snapshot.tasks}
+
+
+def _at_warehouse(v: Vehicle, snapshot: Snapshot) -> bool:
+    wh = snapshot.warehouse_xy
+    return snapshot._near_point((v.position.x, v.position.y), wh)
+
+
+def _eligible_vehicles(snapshot: Snapshot) -> List[Vehicle]:
+    """仓库外、未抛锚的所有车辆（含行驶中 / 充电等）。"""
+    return [
+        v
+        for v in snapshot.vehicles
+        if not v.is_stranded() and not _at_warehouse(v, snapshot)
+    ]
+
+
+def _same_xy(
+    a_xy: Tuple[float, float],
+    b_xy: Tuple[float, float],
+    snapshot: Snapshot,
+) -> bool:
+    return snapshot._near_point(a_xy, b_xy, eps=_POSITION_EPS)
+
+
+def _at_meeting(v: Vehicle, meeting_xy: Tuple[float, float], snapshot: Snapshot) -> bool:
+    pos = (float(v.position.x), float(v.position.y))
+    return _same_xy(pos, meeting_xy, snapshot)
+
+
+def _vehicles_colocated(va: Vehicle, vb: Vehicle, snapshot: Snapshot) -> bool:
+    pos_a = (float(va.position.x), float(va.position.y))
+    pos_b = (float(vb.position.x), float(vb.position.y))
+    return _same_xy(pos_a, pos_b, snapshot)
+
+
+def _heading_to_meeting(v: Vehicle, meeting_xy: Tuple[float, float], snapshot: Snapshot) -> bool:
+    if v.current_target_xy is None:
+        return False
+    return _same_xy(v.current_target_xy, meeting_xy, snapshot)
+
+
+def _binary_split_tasks(
+    va: Vehicle,
+    vb: Vehicle,
+    tasks_a: List[Task],
+    tasks_b: List[Task],
+    snapshot: Snapshot,
+) -> Optional[Tuple[List[int], List[int]]]:
+    """按二分聚类 + 小载重车优先取轻簇，返回 (a_to_b, b_to_a) 或 None。"""
+    all_tasks = list(tasks_a) + list(tasks_b)
+    if not all_tasks:
+        return None
+
+    if len(all_tasks) == 1:
+        clusters = [all_tasks, []]
+    else:
+        packages = _kmeans_packages(all_tasks, 2)
+        clusters = [p.tasks for p in packages]
+        if len(clusters) == 1:
+            clusters = [clusters[0], []]
+
+    def cluster_weight(ts: List[Task]) -> float:
+        return sum(float(t.weight) for t in ts)
+
+    clusters.sort(key=cluster_weight)
+    light_cluster = list(clusters[0])
+
+    small_v, large_v = (va, vb) if va.max_load <= vb.max_load else (vb, va)
+    small_is_a = small_v.id == va.id
+
+    light_cluster.sort(key=lambda t: float(t.weight))
+
+    small_keeps: List[Task] = []
+    small_w = 0.0
+    cap = float(small_v.max_load)
+    for t in light_cluster:
+        w = float(t.weight)
+        if small_w + w <= cap + 1e-9:
+            small_keeps.append(t)
+            small_w += w
+
+    small_keep_ids = {t.id for t in small_keeps}
+    large_keeps = [t for t in all_tasks if t.id not in small_keep_ids]
+    large_w = sum(float(t.weight) for t in large_keeps)
+    if large_w > float(large_v.max_load) + 1e-9:
+        return None
+
+    if small_is_a:
+        a_final = {t.id for t in small_keeps}
+        b_final = {t.id for t in large_keeps}
+    else:
+        a_final = {t.id for t in large_keeps}
+        b_final = {t.id for t in small_keeps}
+
+    a_orig = {t.id for t in tasks_a}
+    b_orig = {t.id for t in tasks_b}
+    a_to_b = sorted(a_orig - a_final)
+    b_to_a = sorted(b_orig - b_final)
+
+    if not a_to_b and not b_to_a:
+        return None
+    return a_to_b, b_to_a
+
+
+def _propose_exchange(
+    va: Vehicle,
+    vb: Vehicle,
+    snapshot: Snapshot,
+) -> Optional[_ExchangeProposal]:
+    tasks_a = snapshot.vehicle_undelivered_tasks(va)
+    tasks_b = snapshot.vehicle_undelivered_tasks(vb)
+
+    if not tasks_a and not tasks_b:
+        return None
+
+    split = _binary_split_tasks(va, vb, tasks_a, tasks_b, snapshot)
+    if split is None:
+        return None
+    a_to_b, b_to_a = split
+
+    tasks_by_id = _tasks_by_id(snapshot)
+
+    recv_a = sum(float(tasks_by_id[t].weight) for t in b_to_a if t in tasks_by_id)
+    give_a = sum(float(tasks_by_id[t].weight) for t in a_to_b if t in tasks_by_id)
+    final_a = float(va.current_load) - give_a + recv_a
+    if final_a > float(va.max_load) + 1e-9:
+        return None
+
+    recv_b = sum(float(tasks_by_id[t].weight) for t in a_to_b if t in tasks_by_id)
+    give_b = sum(float(tasks_by_id[t].weight) for t in b_to_a if t in tasks_by_id)
+    final_b = float(vb.current_load) - give_b + recv_b
+    if final_b > float(vb.max_load) + 1e-9:
+        return None
+
+    pos_a = (float(va.position.x), float(va.position.y))
+    pos_b = (float(vb.position.x), float(vb.position.y))
+    meeting_xy = utils.path_midpoint(pos_a, pos_b, snapshot)
+
+    if not utils.can_reach_target(va, meeting_xy, snapshot, require_station_buffer=True):
+        return None
+    if not utils.can_reach_target(vb, meeting_xy, snapshot, require_station_buffer=True):
+        return None
+
+    return _ExchangeProposal(a_to_b=a_to_b, b_to_a=b_to_a, meeting_xy=meeting_xy)
 
 
 class RelayHandoffScheduler(Scheduler):
     name = "relay_handoff"
 
     def __init__(self) -> None:
-        # source_vid -> relay state
-        self._active_relays: Dict[int, Dict] = {}
+        self._handoff_plans: Dict[Tuple[int, int], _HandoffPlan] = {}
+        # 按车辆对冷却：仅 (1,2) 交换后须双双回仓；(1,3) 不受影响
+        self._pair_warehouse_gate: Dict[Tuple[int, int], Set[int]] = {}
+        # 交换完成后待恢复常规调度（送货 / 回仓）
+        self._resume_queue: Set[int] = set()
+        # 首次回仓门槛：离仓后再回仓一次，才允许参与任何交换
+        self._has_departed_warehouse: Set[int] = set()
+        self._returned_warehouse_once: Set[int] = set()
 
-    def _vehicle_map(self, snapshot: Snapshot):
-        return {v.id: v for v in snapshot.vehicles}
+    def _abort_handoff_plan(self, pair: Tuple[int, int], reason: str) -> None:
+        plan = self._handoff_plans.pop(pair, None)
+        if plan is None:
+            return
+        self._resume_queue.add(plan.vehicle_a)
+        self._resume_queue.add(plan.vehicle_b)
+        print(
+            f"[RelayHandoff] 取消交换 v{pair[0]} <-> v{pair[1]}: {reason}，"
+            f"恢复各自任务"
+        )
 
-    def _task_map(self, snapshot: Snapshot):
-        return {t.id: t for t in snapshot.tasks}
+    def drain_resume_commands(self, snapshot: Snapshot) -> List[Command]:
+        """交换完成后立即派发下一跳（送货或回仓）。"""
+        commands: List[Command] = []
+        handoff_busy = self._vehicles_in_active_handoff()
+        vehicles = _vehicle_by_id(snapshot)
+        for vid in list(self._resume_queue):
+            if vid in handoff_busy:
+                continue
+            v = vehicles.get(vid)
+            if v is None or v.is_stranded() or not v.is_idle() or v.has_target():
+                self._resume_queue.discard(vid)
+                continue
+            commands.append(utils.decide_en_route(v, snapshot))
+            self._resume_queue.discard(vid)
+        return commands
 
-    def _select_transfer_tasks(self, source, target, snapshot: Snapshot) -> List[int]:
-        """挑选值得交接的一批任务。"""
-        undelivered = snapshot.vehicle_undelivered_tasks(source)
-        if not undelivered:
+    def on_handoff_executed(
+        self,
+        src_id: int,
+        dst_id: int,
+        task_ids: List[int],
+        ok: bool,
+    ) -> None:
+        if not ok:
+            pair = _pair_key(src_id, dst_id)
+            if pair in self._handoff_plans:
+                self._abort_handoff_plan(pair, "转交执行失败")
+            return
+        pair = _pair_key(src_id, dst_id)
+        plan = self._handoff_plans.get(pair)
+        if plan is None:
+            return
+        if src_id == plan.vehicle_a:
+            plan.a_to_b = [t for t in plan.a_to_b if t not in task_ids]
+        elif src_id == plan.vehicle_b:
+            plan.b_to_a = [t for t in plan.b_to_a if t not in task_ids]
+        if not plan.a_to_b and not plan.b_to_a:
+            del self._handoff_plans[pair]
+            self._pair_warehouse_gate[pair] = set()
+            self._resume_queue.add(plan.vehicle_a)
+            self._resume_queue.add(plan.vehicle_b)
+            print(
+                f"[RelayHandoff] v{pair[0]} <-> v{pair[1]} 交换完成，"
+                f"须各自回仓一次后才能再次互换"
+            )
+
+    def _note_warehouse_visits(self, snapshot: Snapshot) -> None:
+        for v in snapshot.vehicles:
+            vid = v.id
+            if _at_warehouse(v, snapshot):
+                if vid in self._has_departed_warehouse and vid not in self._returned_warehouse_once:
+                    self._returned_warehouse_once.add(vid)
+                    print(f"[RelayHandoff] v{vid} 首次回仓，具备交换资格")
+                for pair in list(self._pair_warehouse_gate.keys()):
+                    if vid not in pair:
+                        continue
+                    self._pair_warehouse_gate[pair].add(vid)
+                    if len(self._pair_warehouse_gate[pair]) >= 2:
+                        del self._pair_warehouse_gate[pair]
+                        print(
+                            f"[RelayHandoff] v{pair[0]} <-> v{pair[1]} "
+                            f"均已回仓，可再次协商交换"
+                        )
+            else:
+                self._has_departed_warehouse.add(vid)
+
+    def _vehicle_exchange_eligible(self, vehicle_id: int) -> bool:
+        return vehicle_id in self._returned_warehouse_once
+
+    def _pair_exchange_allowed(self, a_id: int, b_id: int) -> bool:
+        if not self._vehicle_exchange_eligible(a_id) or not self._vehicle_exchange_eligible(b_id):
+            return False
+        return _pair_key(a_id, b_id) not in self._pair_warehouse_gate
+
+    def _vehicles_in_active_handoff(self) -> Set[int]:
+        busy: Set[int] = set()
+        for plan in self._handoff_plans.values():
+            busy.add(plan.vehicle_a)
+            busy.add(plan.vehicle_b)
+        return busy
+
+    def _execute_handoff_at_meeting(
+        self,
+        plan: _HandoffPlan,
+        snapshot: Snapshot,
+        vehicles: Dict[int, Vehicle],
+        handled: Set[int],
+    ) -> List[Command]:
+        pair = _pair_key(plan.vehicle_a, plan.vehicle_b)
+        va = vehicles.get(plan.vehicle_a)
+        vb = vehicles.get(plan.vehicle_b)
+        if va is None or vb is None:
+            self._handoff_plans.pop(pair, None)
             return []
 
-        picked: List[int] = []
-        rem = float(target.get_remaining_load())
-        # 优先：接收车离任务更近 + 截止更紧
-        ordered = sorted(
-            undelivered,
-            key=lambda t: (
-                float(t.deadline),
-                snapshot.distance(target.position, t.position)
-                - snapshot.distance(source.position, t.position),
-            ),
-        )
-        for t in ordered:
-            if float(t.weight) > rem + 1e-9:
-                continue
-            src_d = snapshot.distance(source.position, t.position)
-            dst_d = snapshot.distance(target.position, t.position)
-            # 只有当目标车明显更合适时才接力，避免无意义搬运
-            if dst_d + 80.0 <= src_d:
-                picked.append(int(t.id))
-                rem -= float(t.weight)
-        return picked
+        if not (_at_meeting(va, plan.meeting_xy, snapshot) and _at_meeting(vb, plan.meeting_xy, snapshot)):
+            return []
 
-    def _try_create_relay(self, snapshot: Snapshot, handled: set[int]) -> Optional[Tuple[int, Dict]]:
-        """尝试创建一个新接力计划。"""
-        idle_out = [v for v in snapshot.idle_vehicles_not_at_warehouse() if v.id not in handled]
-        if not idle_out:
-            return None
-        candidates_target = [v for v in snapshot.vehicles_need_decision() if v.id not in handled]
-        if not candidates_target:
-            return None
+        if not _vehicles_colocated(va, vb, snapshot):
+            return []
 
-        # source：外场、载货且电量偏低的车优先
-        idle_out.sort(
-            key=lambda v: (
-                len(snapshot.vehicle_undelivered_tasks(v)) == 0,
-                v.get_battery_percentage(),
-            )
-        )
-        for src in idle_out:
-            src_tasks = snapshot.vehicle_undelivered_tasks(src)
-            if not src_tasks:
+        cmds: List[Command] = []
+        if plan.a_to_b:
+            cmds.append(utils.make_handoff_command(va, vb, plan.a_to_b))
+            handled.add(va.id)
+        if plan.b_to_a:
+            cmds.append(utils.make_handoff_command(vb, va, plan.b_to_a))
+            handled.add(vb.id)
+
+        if not cmds:
+            self._abort_handoff_plan(pair, "无可转交任务")
+        return cmds
+
+    def _command_for_handoff_vehicle(
+        self,
+        v: Vehicle,
+        snapshot: Snapshot,
+    ) -> Optional[Command]:
+        for plan in self._handoff_plans.values():
+            if v.id not in (plan.vehicle_a, plan.vehicle_b):
                 continue
-            best_target = None
-            best_task_ids: List[int] = []
-            best_cost = float("inf")
-            for tgt in candidates_target:
-                if tgt.id == src.id:
-                    continue
-                if float(tgt.get_remaining_load()) <= 1e-9:
-                    continue
-                task_ids = self._select_transfer_tasks(src, tgt, snapshot)
-                if not task_ids:
-                    continue
-                d = snapshot.distance(tgt.position, src.position)
-                if d < best_cost:
-                    best_cost = d
-                    best_target = tgt
-                    best_task_ids = task_ids
-            if best_target is None:
+            other_id = plan.vehicle_b if v.id == plan.vehicle_a else plan.vehicle_a
+            other = _vehicle_by_id(snapshot).get(other_id)
+            if other is None:
                 continue
-            rv_xy = (float(src.position.x), float(src.position.y))
-            return src.id, {
-                "source_id": int(src.id),
-                "target_id": int(best_target.id),
-                "task_ids": list(best_task_ids),
-                "rv_xy": rv_xy,
-            }
+
+            if _at_meeting(v, plan.meeting_xy, snapshot) and _at_meeting(
+                other, plan.meeting_xy, snapshot
+            ):
+                if _vehicles_colocated(v, other, snapshot):
+                    return None
+                if v.is_idle():
+                    return utils.make_idle_command(v)
+                return None
+
+            if _at_meeting(v, plan.meeting_xy, snapshot):
+                if v.is_idle():
+                    return utils.make_idle_command(v)
+                return None
+
+            if _heading_to_meeting(v, plan.meeting_xy, snapshot):
+                return None
+
+            if utils.can_reach_target(
+                v, plan.meeting_xy, snapshot, require_station_buffer=True
+            ):
+                return utils.make_goto_node_command(v, plan.meeting_xy)
+            return None
         return None
 
+    def _try_start_handoff(
+        self,
+        va: Vehicle,
+        vb: Vehicle,
+        snapshot: Snapshot,
+    ) -> Optional[_HandoffPlan]:
+        if va.is_stranded() or vb.is_stranded():
+            return None
+        if _at_warehouse(va, snapshot) or _at_warehouse(vb, snapshot):
+            return None
+        if not self._pair_exchange_allowed(va.id, vb.id):
+            return None
+
+        dist = snapshot.distance(va.position, vb.position)
+        if dist > _proximity_threshold_m():
+            return None
+
+        proposal = _propose_exchange(va, vb, snapshot)
+        if proposal is None:
+            return None
+
+        return _HandoffPlan(
+            vehicle_a=va.id,
+            vehicle_b=vb.id,
+            meeting_xy=proposal.meeting_xy,
+            a_to_b=list(proposal.a_to_b),
+            b_to_a=list(proposal.b_to_a),
+        )
+
+    def _log_handoff_triggered(self, plan: _HandoffPlan, snapshot: Snapshot) -> None:
+        mx, my = plan.meeting_xy
+        dist = snapshot.distance(
+            _vehicle_by_id(snapshot)[plan.vehicle_a].position,
+            _vehicle_by_id(snapshot)[plan.vehicle_b].position,
+        )
+        print(
+            f"[RelayHandoff] 触发交换: v{plan.vehicle_a} <-> v{plan.vehicle_b}, "
+            f"距离={dist:.0f}m, 碰头点=({mx:.5f},{my:.5f}), "
+            f"v{plan.vehicle_a}->v{plan.vehicle_b}={plan.a_to_b}, "
+            f"v{plan.vehicle_b}->v{plan.vehicle_a}={plan.b_to_a}"
+        )
+
     def schedule(self, snapshot: Snapshot) -> List[Command]:
+        self._note_warehouse_visits(snapshot)
+
         commands: List[Command] = []
-        handled: set[int] = set()
-        vmap = self._vehicle_map(snapshot)
-        tmap = self._task_map(snapshot)
+        handled: Set[int] = set()
+        vehicles = _vehicle_by_id(snapshot)
+        handoff_busy = self._vehicles_in_active_handoff()
 
-        # 1) 维护已有接力计划
-        stale_sources = []
-        for source_id, relay in list(self._active_relays.items()):
-            src = vmap.get(source_id)
-            tgt = vmap.get(int(relay.get("target_id", -1)))
-            task_ids = [tid for tid in relay.get("task_ids", []) if tid in tmap]
-            if src is None or tgt is None or not task_ids:
-                stale_sources.append(source_id)
+        # 优先恢复上一轮交换完成的车辆
+        for cmd in self.drain_resume_commands(snapshot):
+            commands.append(cmd)
+            handled.add(cmd.vehicle_id)
+
+        for _pair, plan in list(self._handoff_plans.items()):
+            commands.extend(
+                self._execute_handoff_at_meeting(plan, snapshot, vehicles, handled)
+            )
+
+        handoff_busy = self._vehicles_in_active_handoff()
+
+        eligible = [
+            v for v in _eligible_vehicles(snapshot) if v.id not in handoff_busy
+        ]
+        eligible.sort(key=lambda v: v.id)
+        for i, va in enumerate(eligible):
+            if va.id in handoff_busy:
                 continue
+            for vb in eligible[i + 1 :]:
+                if vb.id in handoff_busy:
+                    continue
+                pair = _pair_key(va.id, vb.id)
+                if pair in self._handoff_plans:
+                    continue
+                plan = self._try_start_handoff(va, vb, snapshot)
+                if plan is None:
+                    continue
+                self._handoff_plans[pair] = plan
+                handoff_busy.add(va.id)
+                handoff_busy.add(vb.id)
+                self._log_handoff_triggered(plan, snapshot)
+                commands.extend(
+                    self._execute_handoff_at_meeting(plan, snapshot, vehicles, handled)
+                )
+                break
 
-            # 只保留仍在 source 车上的任务
-            task_ids = [tid for tid in task_ids if tid in set(src.assigned_task_ids)]
-            if not task_ids:
-                stale_sources.append(source_id)
+        for vid in sorted(handoff_busy):
+            if vid in handled:
                 continue
-            relay["task_ids"] = task_ids
-
-            src_needs = src in snapshot.vehicles_need_decision()
-            tgt_needs = tgt in snapshot.vehicles_need_decision()
-            same_pos = utils.same_position(src, tgt)
-
-            if src_needs and tgt_needs and same_pos:
-                # 原地交接
-                commands.append(utils.make_handoff_command(src, tgt, task_ids))
-                handled.add(src.id)
-                handled.add(tgt.id)
-                stale_sources.append(source_id)
+            veh = vehicles.get(vid)
+            if veh is None:
                 continue
+            cmd = self._command_for_handoff_vehicle(veh, snapshot)
+            if cmd is not None:
+                commands.append(cmd)
+                handled.add(vid)
 
-            rv_xy = tuple(relay.get("rv_xy", (src.position.x, src.position.y)))
-            if tgt_needs and tgt.id not in handled and not same_pos:
-                commands.append(utils.make_goto_node_command(tgt, rv_xy))
-                handled.add(tgt.id)
-            if src_needs and src.id not in handled:
-                # source 在会合点等待；若不在会合点则先回到会合点
-                if abs(src.position.x - rv_xy[0]) > 1e-4 or abs(src.position.y - rv_xy[1]) > 1e-4:
-                    commands.append(utils.make_goto_node_command(src, rv_xy))
-                else:
-                    commands.append(utils.make_idle_command(src))
-                handled.add(src.id)
-
-        for sid in stale_sources:
-            self._active_relays.pop(sid, None)
-
-        # 2) 如当前无可执行接力，尝试新建一个接力任务
-        if len(self._active_relays) < 3:  # 限制并发接力数量，避免震荡
-            created = self._try_create_relay(snapshot, handled)
-            if created is not None:
-                sid, relay = created
-                self._active_relays[sid] = relay
-                src = vmap.get(relay["source_id"])
-                tgt = vmap.get(relay["target_id"])
-                rv_xy = relay["rv_xy"]
-                if src is not None and src.id not in handled and src in snapshot.vehicles_need_decision():
-                    commands.append(utils.make_idle_command(src))
-                    handled.add(src.id)
-                if tgt is not None and tgt.id not in handled and tgt in snapshot.vehicles_need_decision():
-                    commands.append(utils.make_goto_node_command(tgt, rv_xy))
-                    handled.add(tgt.id)
-
-        # 3) 未参与接力的车辆按常规规则
         for v in snapshot.idle_vehicles_not_at_warehouse():
-            if v.id in handled:
+            if v.id in handled or v.id in handoff_busy:
                 continue
             commands.append(utils.decide_en_route(v, snapshot))
             handled.add(v.id)
 
-        claimed = set()
+        claimed: Set[int] = set()
 
-        def pick_batch(vehicle, tasks, snap):
+        def pick_batch(vehicle: Vehicle, tasks: List[Task], snap: Snapshot) -> List[Task]:
             unclaimed = [t for t in tasks if t.id not in claimed]
             unclaimed = utils.feasible_tasks_for(vehicle, unclaimed)
             if not unclaimed:
                 return []
-            unclaimed.sort(key=lambda t: (float(t.deadline), snap.distance(vehicle.position, t.position)))
-            chosen = []
+
+            start_xy = (vehicle.position.x, vehicle.position.y)
+            unclaimed.sort(key=lambda t: snap.distance(vehicle.position, t.position))
+
+            chosen: List[Task] = []
             for t in unclaimed:
                 cand = chosen + [t]
                 ordered = utils.greedy_chain(
-                    (vehicle.position.x, vehicle.position.y),
+                    start_xy,
                     [(x.position.x, x.position.y) for x in cand],
                     snap,
                 )
+                if not ordered:
+                    break
                 dist = utils.estimate_chain_distance_with_recharge(
-                    vehicle, ordered, snap, require_final_station_buffer=True
+                    vehicle,
+                    ordered,
+                    snap,
+                    require_final_station_buffer=True,
                 )
                 if dist == float("inf"):
                     break
                 chosen = cand
             return chosen
 
+        handoff_busy = self._vehicles_in_active_handoff()
         for v in snapshot.idle_vehicles_at_warehouse():
-            if v.id in handled:
+            if v.id in handled or v.id in handoff_busy:
                 continue
             cmd = utils.decide_at_warehouse(v, snapshot, pick_batch)
-            if cmd.action == "deliver":
+            if cmd.assigned_tasks:
                 claimed.update(cmd.assigned_tasks)
             commands.append(cmd)
+            handled.add(v.id)
 
         return commands
-

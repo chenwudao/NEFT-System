@@ -5,7 +5,7 @@ from backend.algorithm.algorithm_manager import AlgorithmManager
 from backend.algorithm.shortest_task_first import ShortestTaskFirstStrategy
 from backend.data.data_manager import DataManager
 from backend.data.position import Position
-from backend.data.task import Task, TaskStatus, apply_deadline_timeouts
+from backend.data.task import Task, TaskStatus
 from backend.data.vehicle import Vehicle, VehicleStatus
 @pytest.fixture
 def data_manager():
@@ -17,20 +17,6 @@ def data_manager():
 @pytest.fixture
 def algorithm_manager(data_manager):
     return AlgorithmManager(data_manager.path_calculator)
-
-
-def test_apply_deadline_timeouts_marks_overdue_only():
-    t_ok = Task(
-        id=1, position=Position(x=0, y=0), weight=1, create_time=0,
-        deadline=9999, priority=1, status=TaskStatus.PENDING,
-    )
-    t_old = Task(
-        id=2, position=Position(x=0, y=0), weight=1, create_time=0,
-        deadline=100, priority=1, status=TaskStatus.PENDING,
-    )
-    apply_deadline_timeouts([t_ok, t_old], current_timestamp=1000)
-    assert t_ok.status == TaskStatus.PENDING
-    assert t_old.status == TaskStatus.TIMEOUT
 
 
 def test_filter_feasible_tasks_excludes_non_pending(data_manager):
@@ -57,7 +43,7 @@ def test_filter_feasible_tasks_excludes_non_pending(data_manager):
 
 
 def test_strategy_selection_with_deadline_timeout(data_manager, algorithm_manager):
-    """测试截止时间超时后任务状态变更和策略执行"""
+    """过 deadline 的 PENDING 任务不会被自动标 TIMEOUT，仍可参与调度。"""
     vehicle = Vehicle(
         id=1, position=Position(x=0, y=0), battery=100, max_battery=100,
         current_load=0, max_load=100, unit_energy_consumption=0.1, speed=10.0,
@@ -73,8 +59,7 @@ def test_strategy_selection_with_deadline_timeout(data_manager, algorithm_manage
         "warehouse_position": (data_manager.warehouse_position.x, data_manager.warehouse_position.y),
         "timestamp": 1000,
     }
-    
-    # 直接执行策略，验证超时任务被过滤
+
     commands = algorithm_manager.schedule_realtime(
         strategy="shortest_task_first",
         idle_vehicles=data_manager.get_idle_vehicles(),
@@ -82,10 +67,8 @@ def test_strategy_selection_with_deadline_timeout(data_manager, algorithm_manage
         charging_stations=[],
         global_params=global_params,
     )
-    
-    # 验证任务已被标记为TIMEOUT
-    assert overdue.status == TaskStatus.TIMEOUT
-    # 验证返回的是命令列表
+
+    assert overdue.status == TaskStatus.PENDING
     assert isinstance(commands, list)
 
 

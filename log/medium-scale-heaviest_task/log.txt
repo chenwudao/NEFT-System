@@ -1,0 +1,154 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): medium-scale-heaviest_task
+启动时间:                 2026-05-28 13:02:52
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-heaviest_task
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\configs\dynamic\medium.yaml
+
+---- 事件日志 ----
+[2026-05-28 13:02:52] [START] Experiment 'medium-scale-heaviest_task' started.
+[2026-05-28 13:02:52] [INFO] [HEADLESS] mode=dynamic, strategy=heaviest_task, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=replay=F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-deadline_earliest/task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-heaviest_task\task_generation_seed.yaml
+[2026-05-28 13:02:56] [PROGRESS] sim_elapsed=360s strategy=heaviest_task tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 13:02:59] [PROGRESS] sim_elapsed=720s strategy=heaviest_task tasks total=5 completed=1 pending=0 in_progress=4 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 13:03:02] [PROGRESS] sim_elapsed=1080s strategy=heaviest_task tasks total=5 completed=2 pending=0 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 13:03:05] [PROGRESS] sim_elapsed=1440s strategy=heaviest_task tasks total=5 completed=2 pending=0 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 13:03:08] [PROGRESS] sim_elapsed=1800s strategy=heaviest_task tasks total=9 completed=5 pending=4 in_progress=0 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 13:03:12] [PROGRESS] sim_elapsed=2160s strategy=heaviest_task tasks total=9 completed=5 pending=3 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 13:03:15] [PROGRESS] sim_elapsed=2520s strategy=heaviest_task tasks total=9 completed=5 pending=3 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 13:03:19] [PROGRESS] sim_elapsed=2880s strategy=heaviest_task tasks total=9 completed=5 pending=0 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 13:03:22] [PROGRESS] sim_elapsed=3240s strategy=heaviest_task tasks total=11 completed=7 pending=0 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 13:03:25] [PROGRESS] sim_elapsed=3600s strategy=heaviest_task tasks total=11 completed=7 pending=0 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 13:03:28] [PROGRESS] sim_elapsed=3960s strategy=heaviest_task tasks total=11 completed=8 pending=0 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 13:03:32] [PROGRESS] sim_elapsed=4320s strategy=heaviest_task tasks total=11 completed=9 pending=0 in_progress=2 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-28 13:03:35] [PROGRESS] sim_elapsed=4680s strategy=heaviest_task tasks total=11 completed=11 pending=0 in_progress=0 timeout=0 vehicles idle=5 moving=1 charging=0
+[2026-05-28 13:03:38] [PROGRESS] sim_elapsed=5040s strategy=heaviest_task tasks total=11 completed=11 pending=0 in_progress=0 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-28 13:03:41] [PROGRESS] sim_elapsed=5400s strategy=heaviest_task tasks total=13 completed=11 pending=0 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 13:03:44] [PROGRESS] sim_elapsed=5760s strategy=heaviest_task tasks total=13 completed=11 pending=0 in_progress=2 timeout=0 vehicles idle=3 moving=2 charging=1
+[2026-05-28 13:03:47] [PROGRESS] sim_elapsed=6120s strategy=heaviest_task tasks total=13 completed=13 pending=0 in_progress=0 timeout=0 vehicles idle=5 moving=0 charging=1
+
+[2026-05-28 13:03:47] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: medium-scale-heaviest_task
+停止原因: all_tasks_done
+仿真时长: 6120 仿真秒 / 55.4 现实秒
+
+[ 任务 ]
+  总数=13 完成=13 按时=12 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=92.31% 超时率=0.00%
+
+[ 得分 ]
+  总分=1446.9 每任务平均=111.30 按时平均=120.58
+
+[ 时效 ]
+  平均完成时长=1410.0s 平均超时=2.75min 吞吐=7.65 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=197087m 任务腿均长=11007m 里程方差(车均衡)=22992
+  总能耗=317.19kWh 单任务能耗=24.399kWh
+
+[ 车队 ]
+  总车数=6 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: medium-scale-heaviest_task
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 6120.0
+wall_seconds_elapsed: 55.420258
+tasks:
+  total: 13
+  completed: 13
+  on_time: 12
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 0.9230769230769231
+  timeout_rate: 0.0
+scores:
+  total: 1446.9462266667356
+  per_task_average: 111.3035558974412
+  per_task_on_time_average: 120.57885222222797
+  average: 111.3035558974412
+timing:
+  avg_completion_duration_sec: 1410.0
+  avg_overdue_minutes: 2.75
+  throughput_tasks_per_hour: 7.647058823529412
+distance_meters:
+  total_fleet_traveled: 197087.13499999716
+  average_completed_task_leg: 11006.934384614859
+  fleet_distance_stdev: 22992.1654647954
+energy:
+  total_energy: 317.19334199999577
+  energy_per_completed: 24.39948784615352
+vehicles_summary:
+  total: 6
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+    '4': 0
+    '5': 0
+    '6': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 52.06570300000009
+  battery_percentage: 86.77617166666683
+  total_distance_traveled: 7934.29699999991
+  energy_consumption_trip: 7.93429699999991
+  final_status: idle
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 60.0
+  battery_percentage: 100.0
+  total_distance_traveled: 0.0
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 27.958749999998545
+  battery_percentage: 27.958749999998545
+  total_distance_traveled: 48027.50000000102
+  energy_consumption_trip: 12.19574249999835
+  final_status: idle
+  completed_tasks: 0
+- id: 4
+  type: medium
+  battery_final: 82.7010655000041
+  battery_percentage: 82.7010655000041
+  total_distance_traveled: 51532.62299999724
+  energy_consumption_trip: 35.90899649999787
+  final_status: charging
+  completed_tasks: 0
+- id: 5
+  type: medium
+  battery_final: 42.20029150000144
+  battery_percentage: 42.20029150000144
+  total_distance_traveled: 38533.138999999006
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 6
+  type: large
+  battery_final: 47.880848000000256
+  battery_percentage: 31.920565333333506
+  total_distance_traveled: 51059.57599999997
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 3
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0
+- id: cs2
+  capacity: 3
+  final_load: 0.16666666666666666
+  charging_vehicles:
+  - 4
+  queue_count: 1

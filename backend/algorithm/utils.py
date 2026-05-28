@@ -9,9 +9,8 @@
     5. 决策模板            decide_at_warehouse / decide_en_route
 
 电量预判机制（重点）：
-    所有算法都应通过 `decide_at_warehouse` / `decide_en_route` 模板
-    使用，模板内部会做"是否能到下一目标点 + 缓冲到最近充电站"的硬约束检查。
-    若不够电，先派去 `best_charging_station`（综合距离 + 负荷压力）。
+    仓库：`decide_at_warehouse` — 无货且无 pending 则 idle（`try_idle_at_warehouse`）；有货再按首跳 A/B 派单。
+    路上：`decide_en_route`（含阈值充电与首跳 A/B）。
 """
 
 from __future__ import annotations
@@ -118,6 +117,105 @@ def min_distance_to_any_station(
     return best if best != float("inf") else float("inf")
 
 
+def _charge_level(vehicle: Vehicle) -> float:
+    """充电目标电量（与派单逻辑一致，默认 charge_until_pct=90%）。"""
+    sched_cfg = config.get_scheduling_config()
+    charge_until_pct = max(1.0, min(100.0, float(sched_cfg.get("charge_until_pct", 90.0))))
+    return float(vehicle.max_battery) * charge_until_pct / 100.0
+
+
+def _energy_to_target_with_buffer(
+    vehicle: Vehicle,
+    from_xy: Tuple[float, float],
+    target_xy: Tuple[float, float],
+    snapshot: Snapshot,
+    *,
+    require_station_buffer: bool,
+) -> float:
+    """从 from_xy 到 target_xy（含充电站 buffer）所需能量，已乘安全系数。"""
+    leg_d = snapshot.distance(from_xy, target_xy)
+    if leg_d == float("inf"):
+        return float("inf")
+
+    extra = 0.0
+    if require_station_buffer and snapshot.charging_stations:
+        d_buf = min_distance_to_any_station(
+            target_xy, snapshot.charging_stations, snapshot
+        )
+        if d_buf == float("inf"):
+            return float("inf")
+        extra = d_buf
+
+    return energy_required_for_distance(vehicle, leg_d + extra) * _safety_margin()
+
+
+def _best_transit_station_for_target_from(
+    from_xy: Tuple[float, float],
+    from_battery: float,
+    target_xy: Tuple[float, float],
+    vehicle: Vehicle,
+    snapshot: Snapshot,
+    *,
+    require_station_buffer: bool = True,
+    prefer_load_cost: bool = True,
+) -> Optional[ChargingStation]:
+    """选中转充电站：当前位置/电量可达，且充到 charge_until_pct 后可到目标并留 buffer。"""
+    stations = list(getattr(snapshot, "charging_stations", []) or [])
+    if not stations:
+        return None
+
+    charge_level = _charge_level(vehicle)
+    margin = _safety_margin()
+    load_weight = 0.0
+    queue_weight = 0.0
+    if prefer_load_cost:
+        sched_cfg = config.get_scheduling_config()
+        load_weight = float(sched_cfg.get("charge_load_weight_m", 8000.0))
+        queue_weight = float(sched_cfg.get("charge_queue_weight_m", 2000.0))
+
+    best_station = None
+    best_cost = float("inf")
+    for st in stations:
+        st_xy = (float(st.position.x), float(st.position.y))
+        d_to_st = snapshot.distance(from_xy, st_xy)
+        if d_to_st == float("inf"):
+            continue
+        need_to_st = energy_required_for_distance(vehicle, d_to_st) * margin
+        if from_battery + 1e-9 < need_to_st:
+            continue
+
+        d_st_to_target = snapshot.distance(st_xy, target_xy)
+        if d_st_to_target == float("inf"):
+            continue
+
+        extra = 0.0
+        if require_station_buffer:
+            d_target_to_station = min_distance_to_any_station(target_xy, stations, snapshot)
+            if d_target_to_station == float("inf"):
+                continue
+            extra = d_target_to_station
+
+        need_after_charge = energy_required_for_distance(
+            vehicle, float(d_st_to_target) + float(extra)
+        ) * margin
+        if charge_level + 1e-9 < need_after_charge:
+            continue
+
+        waiting = max(
+            0,
+            int(getattr(st, "queue_count", 0)) - int(getattr(st, "capacity", 0)),
+        )
+        cost = (
+            float(d_to_st)
+            + float(getattr(st, "load_pressure", 0.0)) * load_weight
+            + waiting * queue_weight
+        )
+        if cost < best_cost:
+            best_cost = cost
+            best_station = st
+    return best_station
+
+
 def can_reach_target(
     vehicle: Vehicle,
     target_xy: Tuple[float, float],
@@ -212,6 +310,9 @@ def estimate_chain_distance_with_recharge(
 ) -> float:
     """估算车辆完成一条任务链的实际车程（允许中途绕行充电站）。
 
+    每段先尝试直达；不够则模拟先去充电站（充到 charge_until_pct，默认 90%）
+    再继续。装批判定与派单的中转充电逻辑一致。
+
     返回值：
       - 可行时：车行驶总距离（米），不含回仓；
       - 不可行时：float("inf")。
@@ -223,76 +324,53 @@ def estimate_chain_distance_with_recharge(
         return float("inf")
 
     stations = list(getattr(snapshot, "charging_stations", []) or [])
-    margin = _safety_margin()
+    charge_level = _charge_level(vehicle)
     cur = (float(vehicle.position.x), float(vehicle.position.y))
     battery = float(vehicle.battery)
     total_d = 0.0
 
-    def _best_reachable_station_from(
-        xy: Tuple[float, float], cur_battery: float
-    ) -> Optional[Tuple[ChargingStation, float]]:
-        best: Optional[Tuple[ChargingStation, float]] = None
-        best_d = float("inf")
-        for st in stations:
-            st_xy = (st.position.x, st.position.y)
-            d = snapshot.distance(xy, st_xy)
-            if d == float("inf"):
-                continue
-            need = energy_required_for_distance(vehicle, d) * margin
-            if cur_battery + 1e-9 < need:
-                continue
-            if d < best_d:
-                best_d = d
-                best = (st, d)
-        return best
-
     for i, target in enumerate(waypoints):
         while True:
-            leg_d = snapshot.distance(cur, target)
-            if leg_d == float("inf"):
+            need_buffer = require_final_station_buffer or (i < len(waypoints) - 1)
+            need = _energy_to_target_with_buffer(
+                vehicle,
+                cur,
+                target,
+                snapshot,
+                require_station_buffer=need_buffer,
+            )
+            if need == float("inf"):
                 return float("inf")
 
-            need_buffer = require_final_station_buffer or (i < len(waypoints) - 1)
-            extra = 0.0
-            if need_buffer and stations:
-                d_buf = min_distance_to_any_station(target, stations, snapshot)
-                if d_buf == float("inf"):
-                    return float("inf")
-                extra = d_buf
-
-            need = energy_required_for_distance(vehicle, leg_d + extra) * margin
             if battery + 1e-9 >= need:
+                leg_d = snapshot.distance(cur, target)
                 total_d += leg_d
                 battery -= energy_required_for_distance(vehicle, leg_d)
                 cur = target
                 break
 
-            # 不能直接安全到下一任务点，先尝试去可达充电站补能
+            # 直达不够：尝试先去充电站（充到 charge_until_pct）再送下一任务点
             if not stations:
                 return float("inf")
-            choice = _best_reachable_station_from(cur, battery)
-            if choice is None:
+            transit = _best_transit_station_for_target_from(
+                cur,
+                battery,
+                target,
+                vehicle,
+                snapshot,
+                require_station_buffer=need_buffer,
+                prefer_load_cost=False,
+            )
+            if transit is None:
                 return float("inf")
 
-            st, d_to_station = choice
+            st_xy = (float(transit.position.x), float(transit.position.y))
+            d_to_station = snapshot.distance(cur, st_xy)
+            if d_to_station == float("inf"):
+                return float("inf")
             total_d += d_to_station
-            battery -= energy_required_for_distance(vehicle, d_to_station)
-            cur = (st.position.x, st.position.y)
-            battery = float(vehicle.max_battery)
-
-            # 满电仍达不到目标 + buffer，判不可行，避免死循环
-            check_leg = snapshot.distance(cur, target)
-            if check_leg == float("inf"):
-                return float("inf")
-            check_extra = 0.0
-            if need_buffer and stations:
-                check_buf = min_distance_to_any_station(target, stations, snapshot)
-                if check_buf == float("inf"):
-                    return float("inf")
-                check_extra = check_buf
-            max_need = energy_required_for_distance(vehicle, check_leg + check_extra) * margin
-            if float(vehicle.max_battery) + 1e-9 < max_need:
-                return float("inf")
+            battery = charge_level
+            cur = st_xy
 
     return total_d
 
@@ -480,6 +558,36 @@ def make_goto_node_command(
 # ----------------------------------------------------------------------
 
 
+def path_midpoint(
+    a_xy: Tuple[float, float],
+    b_xy: Tuple[float, float],
+    snapshot: Snapshot,
+) -> Tuple[float, float]:
+    """两点最短路径上按路网距离折半的中间节点。"""
+    path = snapshot.path(a_xy, b_xy)
+    if not path:
+        return (float(a_xy[0]), float(a_xy[1]))
+    if len(path) == 1:
+        return path[0]
+
+    seg_lens: List[float] = []
+    total = 0.0
+    for i in range(len(path) - 1):
+        seg = snapshot.distance(path[i], path[i + 1])
+        seg_lens.append(seg)
+        total += seg
+    if total <= 1e-9:
+        return path[0]
+
+    half = total / 2.0
+    acc = 0.0
+    for i, seg in enumerate(seg_lens):
+        if acc + seg >= half - 1e-9:
+            return path[i + 1] if (half - acc) > seg / 2.0 else path[i]
+        acc += seg
+    return path[-1]
+
+
 def same_position(a: Vehicle, b: Vehicle, eps: float = 1e-4) -> bool:
     """两辆车是否在同一坐标（xy 差都小于 eps）。"""
     return (
@@ -523,81 +631,70 @@ def make_handoff_command(
 # ======================================================================
 
 
-def _need_charge_at_warehouse(
-    vehicle: Vehicle,
-    snapshot: Snapshot,
-    planned_chain: Optional[List[Tuple[float, float]]] = None,
-) -> bool:
-    """在仓库判断"是否该先充电"。
-
-    当前策略只保留两条轻量规则：
-      1) 当前电量百分比已低于阈值；
-      2) 若给定 planned_chain，至少要保证“首跳到达后还能到最近充电站”。
-    """
-    if needs_charge(vehicle):
-        return True
-    if planned_chain:
-        # 更严格的首跳安全约束：
-        # 仓库 -> 下一目标后，必须还能到最近充电站；否则先充电。
-        first_stop = planned_chain[0]
-        if not can_reach_target(
-            vehicle,
-            first_stop,
-            snapshot,
-            require_station_buffer=True,
-        ):
-            return True
-    return False
-
-
 def best_transit_station_for_target(
     vehicle: Vehicle,
     target_xy: Tuple[float, float],
     snapshot: Snapshot,
 ) -> Optional[ChargingStation]:
     """选择中转充电站：当前可达，且充到阈值后可到目标并预留到最近充电站缓冲。"""
-    stations = list(getattr(snapshot, "charging_stations", []) or [])
-    if not stations:
+    return _best_transit_station_for_target_from(
+        (float(vehicle.position.x), float(vehicle.position.y)),
+        float(vehicle.battery),
+        target_xy,
+        vehicle,
+        snapshot,
+        require_station_buffer=True,
+        prefer_load_cost=True,
+    )
+
+
+def try_idle_at_warehouse(vehicle: Vehicle, snapshot: Snapshot) -> Optional[Command]:
+    """车在仓库、车上无在途任务、且无 pending 可接时返回 idle，否则 None（不移动）。"""
+    if snapshot.vehicle_undelivered_tasks(vehicle):
         return None
+    if snapshot.available_tasks():
+        return None
+    return make_idle_command(vehicle)
 
-    sched_cfg = config.get_scheduling_config()
-    charge_until_pct = max(1.0, min(100.0, float(sched_cfg.get("charge_until_pct", 90.0))))
-    charge_level = float(vehicle.max_battery) * charge_until_pct / 100.0
-    margin = _safety_margin()
-    load_weight = float(sched_cfg.get("charge_load_weight_m", 8000.0))
-    queue_weight = float(sched_cfg.get("charge_queue_weight_m", 2000.0))
 
-    best_station = None
-    best_cost = float("inf")
-    for st in stations:
-        st_xy = (float(st.position.x), float(st.position.y))
-        if not can_reach_target(vehicle, st_xy, snapshot, require_station_buffer=False):
-            continue
+def command_for_warehouse_batch(
+    vehicle: Vehicle,
+    snapshot: Snapshot,
+    picked: List[Task],
+) -> Command:
+    """仓库已选好一批货：首跳条件 A 则 deliver；否则 B 则先去中转站充电；否则 idle。"""
+    picked = feasible_task_batch_for(vehicle, picked)
+    if not picked:
+        return make_idle_command(vehicle)
 
-        d_st_to_target = snapshot.distance(st_xy, target_xy)
-        if d_st_to_target == float("inf"):
-            continue
-        d_target_to_station = min_distance_to_any_station(target_xy, stations, snapshot)
-        if d_target_to_station == float("inf"):
-            continue
+    order = greedy_chain(
+        (vehicle.position.x, vehicle.position.y),
+        [(t.position.x, t.position.y) for t in picked],
+        snapshot,
+    )
+    if not order:
+        return make_idle_command(vehicle)
 
-        need = energy_required_for_distance(
-            vehicle, float(d_st_to_target) + float(d_target_to_station)
-        ) * margin
-        if charge_level + 1e-9 < need:
-            continue
+    id_by_xy = {(t.position.x, t.position.y): t for t in picked}
+    first_task = id_by_xy.get(order[0])
+    if first_task is None:
+        return make_idle_command(vehicle)
 
-        d_to_st = snapshot.distance(vehicle.position, st.position)
-        waiting = max(0, int(getattr(st, "queue_count", 0)) - int(getattr(st, "capacity", 0)))
-        cost = (
-            float(d_to_st)
-            + float(getattr(st, "load_pressure", 0.0)) * load_weight
-            + waiting * queue_weight
+    first_xy = (float(first_task.position.x), float(first_task.position.y))
+    batch_ids = [t.id for t in picked]
+
+    if can_reach_target(vehicle, first_xy, snapshot, require_station_buffer=True):
+        return make_deliver_command(
+            vehicle,
+            first_task,
+            assigned_tasks=batch_ids,
         )
-        if cost < best_cost:
-            best_cost = cost
-            best_station = st
-    return best_station
+
+    transit = best_transit_station_for_target(vehicle, first_xy, snapshot)
+    if transit is not None:
+        return make_charge_command(vehicle, transit)
+
+    return make_idle_command(vehicle)
 
 
 def decide_at_warehouse(
@@ -607,79 +704,48 @@ def decide_at_warehouse(
 ) -> Command:
     """在仓库时的标准决策：
 
-    1) 若电量已低于阈值 → 就近充电（综合负荷）
-    2) 否则让 pick_tasks 决定要接哪些任务；用贪心排序
-    3) 二次预判：电量能否跑完"仓库 → 各任务点 → 仓库"；不够则改去充电
-    4) 没有可接的任务 → idle
+    1) 车上无货且无 pending → idle（**不**空车充电、不移动）
+    2) 仅车上有货、无 pending → 按在途货派单（首跳 A/B）
+    3) 有 pending → pick_tasks，再按首跳 A/B 派 deliver 或 charge
     """
-    # 1) 阈值充电（先 cheap check）
-    if needs_charge(vehicle):
-        station = best_charging_station(vehicle, snapshot)
-        if station is not None:
-            return make_charge_command(vehicle, station)
-        return make_idle_command(vehicle)
+    idle = try_idle_at_warehouse(vehicle, snapshot)
+    if idle is not None:
+        return idle
 
+    on_board = snapshot.vehicle_undelivered_tasks(vehicle)
     pending = snapshot.available_tasks()
+
     if not pending:
+        if on_board:
+            return command_for_warehouse_batch(vehicle, snapshot, on_board)
         return make_idle_command(vehicle)
 
     picked = pick_tasks(vehicle, pending, snapshot)
     if not picked:
-        # 规则：拿不到批次就不主动补能，直接待命。
+        if on_board:
+            return command_for_warehouse_batch(vehicle, snapshot, on_board)
         return make_idle_command(vehicle)
 
-    picked = feasible_task_batch_for(vehicle, picked)
-    if not picked:
-        # 规则：批次不可装时不主动补能，直接待命。
-        return make_idle_command(vehicle)
-
-    order = greedy_chain(
-        (vehicle.position.x, vehicle.position.y),
-        [(t.position.x, t.position.y) for t in picked],
-        snapshot,
-    )
-    id_by_xy = {(t.position.x, t.position.y): t for t in picked}
-
-    first_task = id_by_xy[order[0]]
-    first_xy = (float(first_task.position.x), float(first_task.position.y))
-
-    # 3) 派单前电量判定：
-    #    a) 先看“直达目标 + 目标后可去充电站”；
-    #    b) 不行再看“先去充电站补能，再到目标，再到充电站”；
-    #    c) 仍不行则不走。
-    if not can_reach_target(vehicle, first_xy, snapshot, require_station_buffer=True):
-        transit = best_transit_station_for_target(vehicle, first_xy, snapshot)
-        if transit is not None:
-            return make_charge_command(vehicle, transit)
-        return make_idle_command(vehicle)
-
-    return make_deliver_command(
-        vehicle,
-        first_task,
-        assigned_tasks=[t.id for t in picked],
-    )
+    return command_for_warehouse_batch(vehicle, snapshot, picked)
 
 
 def decide_en_route(vehicle: Vehicle, snapshot: Snapshot) -> Command:
     """车不在仓库的标准决策。
 
-    - 阈值充电  → 就近充电
-    - 还有未送达任务 → 先选下一站；若到达后无法再去充电站，则先充电
-    - 都送完了 → 回仓库；若回仓后无法再去充电站，则先充电
+    - 阈值充电 → 就近充电
+    - 还有未送达任务 → 首跳条件 A/B
+    - 都送完了 → 回仓库
     """
     if needs_charge(vehicle):
         station = best_charging_station(vehicle, snapshot)
         if station is not None:
             return make_charge_command(vehicle, station)
-        # 没有充电站可用：还是尝试继续，最坏会 STRANDED（属于算法的"惩罚"）
 
     undelivered = snapshot.vehicle_undelivered_tasks(vehicle)
 
     if not undelivered:
-        # 直接回仓
         warehouse_xy = snapshot.warehouse_xy
         if not can_reach_target(vehicle, warehouse_xy, snapshot, require_station_buffer=True):
-            # 到仓后若不能继续去最近充电站，先去充电
             station = best_charging_station(vehicle, snapshot)
             if station is not None:
                 return make_charge_command(vehicle, station)

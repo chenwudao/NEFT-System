@@ -549,7 +549,7 @@ class PathCalculator:
 
         参数:
             task: 任务对象（需有 deadline, priority 属性）
-            completion_time: 实际完成时间（Unix 时间戳）
+            completion_time: 实际完成时间（仿真秒）
             complete_path_distance: 完整路径距离（米）
             vehicle: 车辆对象（可选，用于计算能耗）
             avg_path_length: 已废弃，保留参数兼容性

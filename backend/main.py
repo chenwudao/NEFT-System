@@ -90,7 +90,7 @@ def _is_static_mode() -> bool:
 def _configured_strategy_name() -> str:
     if _is_static_mode():
         static_cfg = _opt_cfg.get("static") or {}
-        return str(static_cfg.get("strategy", "static_exact_solver"))
+        return str(static_cfg.get("strategy", "nearest_task"))
     return DEFAULT_STRATEGY
 
 
@@ -275,6 +275,7 @@ async def start_simulation(_: SimulationStartRequest | None = None):
     _initialize_simulation(app, data_manager)
 
     app.state.sim_seconds_elapsed = 0.0
+    data_manager.set_sim_seconds(0.0)
     app.state.last_dynamic_scheduling_ts = 0.0
     app.state.last_progress_log_sim = 0.0
     app.state._gen_stop_logged = False
@@ -375,6 +376,7 @@ async def reset_simulation():
     dsm.last_commands = []
     app.state.decision_manager.last_selected_strategy = _configured_strategy_name()
     app.state.sim_seconds_elapsed = 0.0
+    data_manager.set_sim_seconds(0.0)
     app.state.last_dynamic_scheduling_ts = 0.0
     app.state.last_progress_log_sim = 0.0
     app.state._gen_stop_logged = False
@@ -590,26 +592,22 @@ def _generate_static_known_tasks(app: FastAPI, data_manager: DataManager) -> int
     seed_ctrl: TaskSeedController = app.state.task_seed_controller
     created = 0
 
-    static_start_wall = int(time.time())
-
     def _create_from_event(ev: Dict[str, Any]) -> Optional[Task]:
         pos_raw = ev.get("position") or {}
         pos = Position(
             x=float(pos_raw.get("x", 0.0)),
             y=float(pos_raw.get("y", 0.0)),
         )
-        ev_sim = float(ev.get("sim_seconds", 0.0))
-        # 把“仿真秒时间线”映射为“墙钟释放时间”，保证未来任务不会被提前执行。
-        wall_release = static_start_wall + int(max(0.0, ev_sim) / max(1e-6, float(SIM_SPEED_FACTOR)))
+        release_sim = int(max(0.0, float(ev.get("sim_seconds", 0.0))))
         t = _create_task(
             data_manager=data_manager,
             task_id=int(ev.get("task_id")),
             pos=pos,
             weight=float(ev.get("weight", 10.0)),
             priority=int(ev.get("priority", 1)),
-            create_time=wall_release,
+            create_time=release_sim,
             deadline_offset=int(ev.get("deadline_offset", 1800)),
-            notify=(wall_release <= static_start_wall),
+            notify=(release_sim <= 0),
         )
         return t
 
@@ -653,13 +651,6 @@ def _generate_static_known_tasks(app: FastAPI, data_manager: DataManager) -> int
         )
         if t is None:
             continue
-        # 覆盖 create_time 到静态时间线释放时刻（且同步 deadline）
-        wall_release = static_start_wall + int(max(0.0, cur_sim) / max(1e-6, float(SIM_SPEED_FACTOR)))
-        old_create = int(getattr(t, "create_time", wall_release))
-        old_deadline = int(getattr(t, "deadline", wall_release + 1800))
-        deadline_offset = max(0, old_deadline - old_create)
-        t.create_time = wall_release
-        t.deadline = wall_release + deadline_offset
         created += 1
         _runtime_tasks_generated += 1
         _task_id_counter = max(_task_id_counter, int(t.id))
@@ -678,7 +669,7 @@ def _generate_initial_tasks(app: FastAPI, data_manager: DataManager, n: int) -> 
         for ev in replay_events[:n]:
             pos_raw = ev.get("position") or {}
             pos = Position(x=float(pos_raw.get("x", 0.0)), y=float(pos_raw.get("y", 0.0)))
-            create_time = int(time.time())
+            create_time = int(max(0.0, float(ev.get("sim_seconds", 0.0))))
             t = _create_task(
                 data_manager=data_manager,
                 task_id=int(ev.get("task_id")),
@@ -750,7 +741,7 @@ def generate_random_task(
 
     weight = rng.uniform(task_cfg["min_weight"], task_cfg["max_weight"])
     priority = rng.randint(task_cfg["min_priority"], task_cfg["max_priority"])
-    create_time = int(time.time())
+    create_time = int(max(0.0, float(sim_seconds)))
     deadline_offset = rng.randint(
         int(task_cfg["min_deadline_offset"]),
         int(task_cfg["max_deadline_offset"]),
@@ -829,7 +820,7 @@ async def task_generator(app: FastAPI, data_manager: DataManager):
                         x=float(pos_raw.get("x", 0.0)),
                         y=float(pos_raw.get("y", 0.0)),
                     )
-                    create_time = int(time.time())
+                    create_time = int(sim_s)
                     t = _create_task(
                         data_manager=data_manager,
                         task_id=int(ev.get("task_id")),
@@ -893,6 +884,15 @@ async def task_generator(app: FastAPI, data_manager: DataManager):
 
 
 # ============================================================
+# 仿真时钟同步
+# ============================================================
+def _sync_sim_clock(app: FastAPI, data_manager: DataManager) -> None:
+    """把 app.state.sim_seconds_elapsed 同步到 DataManager（任务/超时/计分统一用仿真秒）。"""
+    sim = float(getattr(app.state, "sim_seconds_elapsed", 0.0))
+    data_manager.set_sim_seconds(sim)
+
+
+# ============================================================
 # 终止条件 / 周期性日志
 # ============================================================
 def _task_generation_stopped(app: FastAPI, data_manager: DataManager) -> bool:
@@ -934,12 +934,15 @@ def _all_tasks_settled(app: FastAPI, data_manager: DataManager) -> bool:
     return True
 
 
-def _has_released_unsettled_tasks(data_manager: DataManager, now_ts: Optional[int] = None) -> bool:
+def _has_released_unsettled_tasks(
+    data_manager: DataManager,
+    now_ts: Optional[int] = None,
+) -> bool:
     """是否存在“已到释放时间但尚未结算”的任务。"""
     from backend.data.task import TaskStatus
 
     if now_ts is None:
-        now_ts = int(time.time())
+        now_ts = data_manager.get_sim_time()
     for t in data_manager.get_tasks():
         if int(getattr(t, "create_time", 0)) > int(now_ts):
             continue
@@ -1025,7 +1028,7 @@ def _notify_released_static_tasks(app: FastAPI, data_manager: DataManager) -> No
     if not isinstance(notified, set):
         notified = set()
         app.state.static_release_notified_ids = notified
-    now_ts = int(time.time())
+    now_ts = data_manager.get_sim_time()
     for t in data_manager.get_tasks():
         if int(getattr(t, "create_time", 0)) > now_ts:
             continue
@@ -1090,6 +1093,7 @@ async def background_tasks(
             app.state.sim_seconds_elapsed = float(
                 getattr(app.state, "sim_seconds_elapsed", 0.0)
             ) + sim_dt
+            _sync_sim_clock(app, data_manager)
             _notify_released_static_tasks(app, data_manager)
 
             # 周期性 progress 日志：每 ~300 仿真秒落一行到 log.txt
@@ -1161,10 +1165,7 @@ async def background_tasks(
                     # 兜底终止：任务不再生成 + 全车回仓空闲 + 连续多轮无派送命令
                     # 视为“剩余任务当前不可完成”，自动结束，并把未完成任务记 0 分。
                     if STOP_WHEN_ALL_TASKS_DONE and _task_generation_stopped(app, data_manager):
-                        has_unsettled = _has_released_unsettled_tasks(
-                            data_manager,
-                            now_ts=int(time.time()),
-                        )
+                        has_unsettled = _has_released_unsettled_tasks(data_manager)
                         deliver_count = sum(
                             1 for c in (commands or []) if c.get("action") == "deliver"
                         )
@@ -1238,6 +1239,7 @@ if __name__ == "__main__":
         fake_app.state = SimpleNamespace()
         fake_app.state.simulation_running = True
         fake_app.state.sim_seconds_elapsed = 0.0
+        data_manager.set_sim_seconds(0.0)
         fake_app.state.last_dynamic_scheduling_ts = 0.0
         fake_app.state.last_progress_log_sim = 0.0
         fake_app.state._gen_stop_logged = False
@@ -1293,8 +1295,6 @@ if __name__ == "__main__":
 
         stop_reason = "manual_stop"
         while fake_app.state.simulation_running:
-            # 与在线模式保持一致：每 tick 先等待一个真实时间片，
-            # 避免“仿真秒暴走但墙钟几乎不走”导致 release/deadline 偏差。
             time.sleep(max(0.0, float(TICK_INTERVAL_SEC)))
             sim_dt = SIM_SPEED_FACTOR * TICK_INTERVAL_SEC
 
@@ -1317,6 +1317,7 @@ if __name__ == "__main__":
                         )
 
             fake_app.state.sim_seconds_elapsed += sim_dt
+            _sync_sim_clock(fake_app, data_manager)
             _notify_released_static_tasks(fake_app, data_manager)
 
             last_prog = float(getattr(fake_app.state, "last_progress_log_sim", 0.0))
@@ -1342,7 +1343,7 @@ if __name__ == "__main__":
                         pos=pos,
                         weight=float(ev.get("weight", 10.0)),
                         priority=int(ev.get("priority", 1)),
-                        create_time=int(time.time()),
+                        create_time=int(float(fake_app.state.sim_seconds_elapsed)),
                         deadline_offset=int(ev.get("deadline_offset", 1800)),
                     )
                     _runtime_tasks_generated += 1
@@ -1386,10 +1387,7 @@ if __name__ == "__main__":
                 commands = decision_manager.dynamic_scheduling()
                 fake_app.state.last_dynamic_scheduling_ts = now_wall
             if STOP_WHEN_ALL_TASKS_DONE and _task_generation_stopped(fake_app, data_manager):
-                has_unsettled = _has_released_unsettled_tasks(
-                    data_manager,
-                    now_ts=int(time.time()),
-                )
+                has_unsettled = _has_released_unsettled_tasks(data_manager)
                 deliver_count = sum(
                     1 for c in (commands or []) if c.get("action") == "deliver"
                 )

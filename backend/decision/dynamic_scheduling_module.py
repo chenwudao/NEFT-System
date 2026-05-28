@@ -24,7 +24,7 @@ from backend.algorithm.scheduler import (
 from backend.algorithm.snapshot import Snapshot
 from backend.config import config
 from backend.data.data_manager import DataManager
-from backend.data.task import Task, TaskStatus, apply_deadline_timeouts
+from backend.data.task import Task, TaskStatus
 from backend.data.vehicle import VehicleStatus
 
 
@@ -46,18 +46,16 @@ class DynamicSchedulingModule:
     def run_once(self, strategy: str) -> List[Dict]:
         """拍快照 → 跑算法 → 落地命令。返回这一轮产生的命令（dict）。"""
         self._current_strategy = str(strategy or "")
-        # 先把超时任务统一打 TIMEOUT，避免算法看到它们。
-        apply_deadline_timeouts(
-            self.data_manager.get_tasks(), int(datetime.now().timestamp())
-        )
 
         snapshot = Snapshot.capture(self.data_manager)
-        if not snapshot.vehicles_need_decision():
+        resolved = self.algorithm_manager.resolve_strategy_name(strategy)
+        # relay_handoff 需每轮扫描全部车辆对（含行驶中），不能因无 IDLE 车而跳过
+        if not snapshot.vehicles_need_decision() and resolved != "relay_handoff":
             self.last_commands = []
             return []
 
         try:
-            commands = self.algorithm_manager.schedule(strategy, snapshot)
+            commands = self.algorithm_manager.schedule(resolved, snapshot)
         except Exception as e:
             print(f"[ERROR DynamicSchedulingModule] scheduler '{strategy}' raised: {e}")
             import traceback
@@ -66,9 +64,20 @@ class DynamicSchedulingModule:
             return []
 
         out: List[Dict] = []
+        had_handoff = False
         for cmd in commands:
             executed = self._execute(cmd, snapshot)
             out.append(executed.to_dict())
+            if executed.action == ACTION_HANDOFF:
+                had_handoff = True
+
+        if had_handoff and resolved == "relay_handoff":
+            relay = self._relay_scheduler()
+            if relay is not None:
+                snap2 = Snapshot.capture(self.data_manager)
+                for rcmd in relay.drain_resume_commands(snap2):
+                    executed = self._execute(rcmd, snap2)
+                    out.append(executed.to_dict())
 
         self.last_commands = out
         return out
@@ -95,7 +104,10 @@ class DynamicSchedulingModule:
             return cmd
 
         if cmd.target_xy is None:
-            # 其余 action 必须带 target
+            # 仓库只装货：deliver + assigned_tasks + 无 task_id/目标坐标
+            if cmd.action == ACTION_DELIVER and cmd.assigned_tasks:
+                self._handle_deliver(vehicle, cmd)
+                return cmd
             print(f"[WARN] Command {cmd} missing target_xy; ignored.")
             return cmd
 
@@ -131,6 +143,9 @@ class DynamicSchedulingModule:
             "priority_task",
             "heaviest_task",
             "deadline_earliest",
+            "dfs_score_search",
+            "sa_score_search",
+            "rl_batch",
         }
         at_warehouse = (
             abs(float(vehicle.position.x) - float(snapshot.warehouse_xy[0])) < 1e-4
@@ -266,35 +281,59 @@ class DynamicSchedulingModule:
             f"[Timeout] Task {task.id} marked TIMEOUT: unreachable even after charging transition."
         )
 
+    def _relay_scheduler(self):
+        sch = self.algorithm_manager._registry.get("relay_handoff")
+        if sch is not None and sch.name == "relay_handoff":
+            return sch
+        return None
+
     def _handle_handoff(self, vehicle, cmd: Command) -> None:
         """把 cmd.vehicle_id 车上的 task_ids_to_transfer 交给 cmd.target_vehicle_id。"""
         if cmd.target_vehicle_id is None or not cmd.task_ids_to_transfer:
             print(f"[WARN] Handoff command missing target / tasks: {cmd}")
             return
+
+        position_eps = 1e-4
+        relay = self._relay_scheduler()
+
         ok = self.data_manager.transfer_cargo(
-            cmd.vehicle_id, cmd.target_vehicle_id, list(cmd.task_ids_to_transfer)
+            cmd.vehicle_id,
+            cmd.target_vehicle_id,
+            list(cmd.task_ids_to_transfer),
+            position_eps=position_eps,
         )
+        if relay is not None:
+            relay.on_handoff_executed(
+                cmd.vehicle_id,
+                cmd.target_vehicle_id,
+                list(cmd.task_ids_to_transfer),
+                ok,
+            )
         if not ok:
             print(
                 f"[WARN] Handoff rejected: v{cmd.vehicle_id} -> v{cmd.target_vehicle_id}, "
                 f"tasks={cmd.task_ids_to_transfer}（位置不合 / 载重不足 / 任务不在此车上）"
             )
 
+    def _load_assigned_tasks_at_warehouse(
+        self, vehicle, task_ids: List[int]
+    ) -> None:
+        """仓库装货：pending → IN_PROGRESS 并挂到车上。"""
+        now_ts = self.data_manager.get_sim_time()
+        for tid in task_ids:
+            task = self.data_manager.get_task(tid)
+            if task is None or task.status != TaskStatus.PENDING:
+                continue
+            if int(getattr(task, "create_time", 0)) > now_ts:
+                continue
+            self.data_manager.assign_task_to_vehicle(tid, vehicle.id)
+            vehicle.update_load(vehicle.current_load + float(task.weight))
+
     def _handle_deliver(self, vehicle, cmd: Command) -> None:
         """transport 语义：同时支持"在仓库装货"与"半路跳下一站"。"""
-        now_ts = int(datetime.now().timestamp())
-        # 1) 如果 cmd.assigned_tasks 非空，说明这一次是在仓库批量接单：
-        #    逐一把 task 状态置 IN_PROGRESS + 加到车上 + 累加载重
+        now_ts = self.data_manager.get_sim_time()
         if cmd.assigned_tasks:
-            for tid in cmd.assigned_tasks:
-                task = self.data_manager.get_task(tid)
-                if task is None or task.status != TaskStatus.PENDING:
-                    continue
-                # 任务未到释放时刻，不允许提前装载（静态上帝视角仅可提前规划，不能提前执行）
-                if int(getattr(task, "create_time", 0)) > now_ts:
-                    continue
-                self.data_manager.assign_task_to_vehicle(tid, vehicle.id)
-                vehicle.update_load(vehicle.current_load + task.weight)
+            self._load_assigned_tasks_at_warehouse(vehicle, cmd.assigned_tasks)
 
         # 2) 启动前往"下一个任务点"的路径
         target_task = self.data_manager.get_task(cmd.task_id) if cmd.task_id is not None else None

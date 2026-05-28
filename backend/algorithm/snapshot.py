@@ -39,14 +39,13 @@ class Snapshot:
     @classmethod
     def capture(cls, data_manager) -> "Snapshot":
         wh = data_manager.get_warehouse_position()
-        import time
 
         return cls(
             vehicles=list(data_manager.get_vehicles()),
             tasks=list(data_manager.get_tasks()),
             charging_stations=list(data_manager.get_charging_stations()),
             warehouse_xy=(wh.x, wh.y),
-            timestamp=int(time.time()),
+            timestamp=int(data_manager.get_sim_time()),
             path_calculator=data_manager.path_calculator,
         )
 

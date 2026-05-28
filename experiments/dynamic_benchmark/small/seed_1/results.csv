@@ -1,0 +1,11 @@
+﻿scale,seed_index,algorithm,experiment_name,stop_reason,sim_seconds_elapsed,wall_seconds_elapsed,tasks_total,tasks_completed,tasks_on_time,tasks_timeout,completion_rate,on_time_rate,timeout_rate,total_score,per_task_average,throughput_tasks_per_hour,total_fleet_traveled_m,log_dir,seed_file,wall_run_seconds
+small,1,nearest_task,,,,,,,,,0.0,0.0,,0.0,,,,F:\Data Structure\NEFT-System-main\NEFT-System\log\dry-run-placeholder,,0.0
+small,1,priority_task,,,,,,,,,0.0,0.0,,0.0,,,,F:\Data Structure\NEFT-System-main\NEFT-System\log\dry-run-placeholder,,0.0
+small,1,heaviest_task,,,,,,,,,0.0,0.0,,0.0,,,,F:\Data Structure\NEFT-System-main\NEFT-System\log\dry-run-placeholder,,0.0
+small,1,deadline_earliest,,,,,,,,,0.0,0.0,,0.0,,,,F:\Data Structure\NEFT-System-main\NEFT-System\log\dry-run-placeholder,,0.0
+small,1,dfs_score_search,,,,,,,,,0.0,0.0,,0.0,,,,F:\Data Structure\NEFT-System-main\NEFT-System\log\dry-run-placeholder,,0.0
+small,1,sa_score_search,,,,,,,,,0.0,0.0,,0.0,,,,F:\Data Structure\NEFT-System-main\NEFT-System\log\dry-run-placeholder,,0.0
+small,1,rl_batch,,,,,,,,,0.0,0.0,,0.0,,,,F:\Data Structure\NEFT-System-main\NEFT-System\log\dry-run-placeholder,,0.0
+small,1,regional_planning,,,,,,,,,0.0,0.0,,0.0,,,,F:\Data Structure\NEFT-System-main\NEFT-System\log\dry-run-placeholder,,0.0
+small,1,cluster_auction_mas,,,,,,,,,0.0,0.0,,0.0,,,,F:\Data Structure\NEFT-System-main\NEFT-System\log\dry-run-placeholder,,0.0
+small,1,relay_handoff,,,,,,,,,0.0,0.0,,0.0,,,,F:\Data Structure\NEFT-System-main\NEFT-System\log\dry-run-placeholder,,0.0

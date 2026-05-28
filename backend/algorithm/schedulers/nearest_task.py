@@ -3,7 +3,7 @@
 * 在仓库：按“离当前点最近”贪心串成一批任务，装得下就一趟带走
 * 在外面：车上还有没送的货 → 去最近的那个；否则回仓库
 
-这是所有更复杂算法的"对照基线"。
+仓库决策统一走 utils.decide_at_warehouse（无任务不空车充电；B 条件带货过渡充电）。
 """
 
 from __future__ import annotations
@@ -21,12 +21,9 @@ class NearestTaskScheduler(Scheduler):
     def schedule(self, snapshot: Snapshot) -> List[Command]:
         commands: List[Command] = []
 
-        # 1) 已经在路上、刚到某个任务点的车
         for v in snapshot.idle_vehicles_not_at_warehouse():
             commands.append(utils.decide_en_route(v, snapshot))
 
-        # 2) 停在仓库、待命接新任务的车
-        #    每轮最多把 pending 任务"抢"光：这里保证多辆车不会抢到同一个任务。
         claimed = set()
         available = list(snapshot.available_tasks())
 
@@ -61,48 +58,11 @@ class NearestTaskScheduler(Scheduler):
             return chosen
 
         for v in snapshot.idle_vehicles_at_warehouse():
-            # nearest_task 特化：
-            # 在仓库阶段仅在“低电阈值”时充电，避免开局出现
-            # “仓库 -> 充电站 -> 仓库”的主动空转。
-            if utils.needs_charge(v):
-                station = utils.best_charging_station(v, snapshot)
-                if station is not None:
-                    commands.append(utils.make_charge_command(v, station))
-                else:
-                    commands.append(utils.make_idle_command(v))
-                continue
-
-            picked = pick_batch(v, available, snapshot)
-            if not picked:
-                commands.append(utils.make_idle_command(v))
-                continue
-
-            picked = utils.feasible_task_batch_for(v, picked)
-            if not picked:
-                commands.append(utils.make_idle_command(v))
-                continue
-
-            ordered = utils.greedy_chain(
-                (v.position.x, v.position.y),
-                [(t.position.x, t.position.y) for t in picked],
-                snapshot,
-            )
-            if not ordered:
-                commands.append(utils.make_idle_command(v))
-                continue
-
-            id_by_xy = {(t.position.x, t.position.y): t for t in picked}
-            first_task = id_by_xy.get(ordered[0])
-            if first_task is None:
-                commands.append(utils.make_idle_command(v))
-                continue
-
-            cmd = utils.make_deliver_command(
-                v,
-                first_task,
-                assigned_tasks=[t.id for t in picked],
-            )
-            claimed.update(cmd.assigned_tasks)
+            cmd = utils.decide_at_warehouse(v, snapshot, pick_batch)
+            if cmd.assigned_tasks:
+                claimed.update(cmd.assigned_tasks)
+            elif cmd.action == "charge" and cmd.assigned_tasks:
+                claimed.update(cmd.assigned_tasks)
             commands.append(cmd)
 
         return commands
