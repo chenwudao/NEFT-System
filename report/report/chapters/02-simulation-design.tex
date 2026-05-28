@@ -1,0 +1,324 @@
+% ============================================
+% Chapter 2: Simulation Design
+% ============================================
+
+\chapter{Simulation Design}
+
+\section{System Architecture}
+
+The system adopts a B/S architecture with separated front-end and back-end. The back-end implements the simulation core logic in Python, while the front-end provides visualization and interaction via HTML/JavaScript. Figure~\ref{fig:architecture} illustrates the overall system architecture.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{chapters/img1.png}
+    \caption{System Architecture}
+    \label{fig:architecture}
+\end{figure}
+
+The responsibilities of each layer are as follows:
+
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Visualization Layer:} Displays vehicle real-time positions, task locations, and charging station status on AMap; uses Chart.js to plot completion rates and score trends; receives real-time data pushed via WebSocket.
+    \item \textbf{API Layer:} Builds RESTful and WebSocket interfaces based on FastAPI, handling simulation control (start, pause, reset).
+    \item \textbf{Decision Layer:} Coordinates the simulation main loop, captures a system snapshot at each scheduling tick, invokes the algorithm layer to produce command lists, and executes them on the data layer.
+    \item \textbf{Algorithm Layer:} Registers all dispatching strategies through a central algorithm manager; each strategy reads the snapshot and returns per-vehicle next-step commands.
+    \item \textbf{Data Management Layer:} Maintains the state of all entities (vehicles, tasks, charging stations) and exposes a snapshot mechanism for read-only algorithm access.
+    \item \textbf{Road Network:} Builds city road topology from OpenStreetMap via OSMnx, providing Dijkstra shortest-path queries.
+\end{itemize}
+
+\subsection{Visualization Highlights}
+
+The visualization interface brings the system architecture to life, providing real-time insight into the dispatching process as it unfolds on the road network. Figure~\ref{fig:vis-overview} showcases the AMap-based dashboard.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{chapters/Visualization1.png}
+        \caption{Real-time vehicle positions and task distribution on AMap}
+        \label{fig:vis-dashboard}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{chapters/Visualization2.png}
+        \caption{Charging station status, route paths, and fleet coordination}
+        \label{fig:vis-charging}
+    \end{subfigure}
+    \caption{System Visualization Dashboard --- Real-time Fleet Monitoring Interface}
+    \label{fig:vis-overview}
+\end{figure}
+
+As shown in Figure~\ref{fig:vis-overview}, the interface offers several key capabilities:
+
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Real-time vehicle tracking:} Each vehicle's position updates every simulation tick via WebSocket push, with distinct markers for different vehicle types (small/medium/large). Vehicle status (IDLE, MOVING, CHARGING) is color-coded for quick identification.
+    \item \textbf{Task distribution overview:} Pending, in-progress, and completed tasks are displayed with different markers on the map, providing an intuitive understanding of workload distribution across the road network.
+    \item \textbf{Charging station monitoring:} Station occupancy, queue length, and load pressure are displayed in real time, helping to verify that the charging decision algorithm correctly balances load across stations.
+    \item \textbf{Route visualization:} Calculated delivery routes are drawn as polylines on the map, allowing visual inspection of route quality --- crossing paths, unnecessarily long detours, and charging station detours are immediately visible.
+    \item \textbf{Statistical dashboard:} Alongside the map, Chart.js renders live-updating charts for completion rate, cumulative score, and fleet utilization trends, enabling at-a-glance performance assessment during simulation.
+\end{itemize}
+
+This visualization proved invaluable during development. For example, watching a vehicle take an illogical detour immediately revealed a bug in the charging station selection logic that would have been difficult to catch from log files alone. Similarly, the route visualization made it easy to compare the route quality of different algorithms side by side.
+
+\section{Unified Scheduling Interface}
+
+Dispatching algorithms for electric logistics fleets must simultaneously handle task selection, batch loading, route ordering, battery feasibility, and charging-station choice. Implementing each strategy as a standalone script makes fair comparison difficult: results are only meaningful when every algorithm runs under \textbf{identical simulation conditions}---the same road network, fleet parameters, task generation sequence, and scoring rules.
+
+To address this, the simulation core exposes a \textbf{snapshot-driven, unified scheduling interface}:
+
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Snapshot as input:} Before each decision round, the system captures a read-only snapshot of the current world state---vehicle positions, battery levels, pending tasks, charging-station occupancy, and the current simulation time $t_{\text{sim}}$. Algorithms never mutate state directly; they only read the snapshot and return commands.
+    \item \textbf{Command as output:} Each algorithm produces a list of commands, one per vehicle that needs a decision, specifying the \emph{next} action (deliver, charge, return, handoff, etc.). Multi-stop delivery emerges from repeated snapshot-to-decision cycles rather than from a monolithic plan.
+    \item \textbf{Shared utility toolbox:} A common utility module provides default helpers for distance queries, battery pre-checks with mid-route recharge simulation, greedy route ordering, charging-station scoring, and standard decision templates for warehouse and en-route contexts. Developers can compose these defaults or override only the task-selection logic to implement custom strategies with minimal boilerplate.
+    \item \textbf{Pluggable registration:} New schedulers inherit a common base class, declare a strategy name, and register with the algorithm manager. All strategies are selectable through a single configuration field, enabling head-to-head benchmarks.
+\end{itemize}
+
+This design ensures that greedy heuristics, search-based batch loaders, multi-agent auction schemes, and relay-coordination strategies all operate on the same physical model and are evaluated with the same metrics. Chapter~3 describes how individual algorithms plug into this interface.
+
+\section{Simulation Time Model}
+
+A central design choice is to decouple \textbf{simulation time} from \textbf{wall-clock time}. All task timestamps, deadlines, timeouts, and scoring calculations use simulation seconds ($t_{\text{sim}}$), ensuring that algorithm comparisons are independent of hardware speed or UI rendering overhead.
+
+\subsection{Clock Advancement}
+
+The simulation advances in discrete ticks. Each tick:
+\begin{itemize}[leftmargin=4em]
+    \item Waits one tick interval in real seconds (default 1.0\,s).
+    \item Advances simulation time by $\Delta t_{\text{sim}} = \text{speed factor} \times \text{tick interval}$ (default speed factor $= 120$, so 1 real second $\approx$ 120 simulation seconds).
+    \item Moves vehicles along their routes, updates battery levels, and charges vehicles at stations proportionally to $\Delta t_{\text{sim}}$.
+\end{itemize}
+
+The snapshot timestamp and all task creation/deadline values refer to this simulation clock. The experiment log records both elapsed simulation time and elapsed wall-clock time for transparency.
+
+\subsection{Stop Conditions}
+
+The simulation terminates when:
+\begin{itemize}[leftmargin=4em]
+    \item All tasks reach a terminal state (completed or timed out), and the auto-stop-on-completion option is enabled.
+    \item The user manually stops the simulation.
+\end{itemize}
+
+Importantly, the maximum simulation seconds setting is \textbf{not} a hard simulation stop. It marks the cutoff for \emph{new task generation}: once $t_{\text{sim}}$ reaches this threshold (or the total task budget is exhausted), no further tasks are injected, but the simulation continues until all existing tasks are settled. This prevents premature termination while still bounding task volume.
+
+\section{Simulation Main Loop}
+
+The simulation core is a time-step-driven main loop, as illustrated in Figure~\ref{fig:sim-loop}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{chapters/img2.png}
+    \caption{Simulation Main Loop}
+    \label{fig:sim-loop}
+\end{figure}
+
+Each tick consists of four core steps:
+
+\begin{enumerate}[leftmargin=4em]
+    \item \textbf{Physics Update:} Advance all MOVING vehicles along their Dijkstra routes by $\Delta t_{\text{sim}}$; update battery consumption; charge vehicles at stations; handle task pickup/delivery and charging queuing.
+    \item \textbf{Clock \& Task Generation:} Increment $t_{\text{sim}}$; generate new random tasks if within budget and before the generation cutoff; mark overdue tasks as timed out.
+    \item \textbf{Dispatch Decision:} Capture a snapshot of the current world state, invoke the selected scheduling strategy, and execute the returned command list (assign routes, load tasks, trigger handoffs).
+    \item \textbf{Broadcast:} Push updated vehicle positions, scores, and statistics to the frontend via WebSocket.
+\end{enumerate}
+
+The dispatch step follows a strict read-only contract: algorithms observe the snapshot and emit commands; all state mutations happen in the dynamic scheduling execution layer.
+
+\section{Road Network Modeling}
+
+\subsection{Graph Definition}
+
+The road network is modeled as an undirected weighted graph $G = (V, E, w)$, where:
+\begin{itemize}[leftmargin=4em]
+    \item $V$ is the set of road intersections (nodes).
+    \item $E \subseteq V \times V$ is the set of road segments (edges).
+    \item $w: E \to \mathbb{R}^+$ is the edge weight function representing road segment length in meters.
+\end{itemize}
+
+The system builds the graph from OpenStreetMap data (Panyu District, Guangzhou) via OSMnx, with optional main-road filtering to reduce graph size while preserving major arterials.
+
+\subsection{Shortest Path Algorithm}
+
+Shortest paths between two points are computed using Dijkstra's algorithm. For given origin $s$ and destination $t$, the algorithm returns the shortest distance $d(s,t)$ and the corresponding sequence of path points. The snapshot layer implements a distance cache mechanism, computing each origin-destination pair only once, significantly improving query efficiency during dispatching.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{chapters/osm_main_roads.png}
+        \caption{Panyu District Main Road Network}
+        \label{fig:osm-main-roads}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{chapters/osm_panyu_backend_analysis_v1.png}
+        \caption{Road Network with Traffic Analysis}
+        \label{fig:osm-analysis}
+    \end{subfigure}
+    \caption{Real Road Network Based on OpenStreetMap (Panyu District)}
+    \label{fig:osm-road-network}
+\end{figure}
+
+\section{Vehicle Model}
+
+Vehicles are the basic execution units of the dispatching system. Three vehicle types are defined with parameters shown in Table~\ref{tab:vehicle-params}.
+
+\begin{table}[H]
+    \centering
+    \caption{Vehicle Type Parameters}
+    \label{tab:vehicle-params}
+    \begin{reporttabular}{cccccc}
+        \toprule
+        \textbf{Type} & \makecell{\textbf{Battery}\\(kWh)} & \makecell{\textbf{Payload}\\(kg)} & \makecell{\textbf{Energy}\\(kWh/m)} & \makecell{\textbf{Charge Power}\\(kWh/s)} & \makecell{\textbf{Speed}\\(m/s)} \\
+        \midrule
+        Small  & 60  & 500  & $1.0 \times 10^{-3}$ & 0.050 & 10.0 \\
+        Medium & 100 & 1500 & $1.5 \times 10^{-3}$ & 0.100 & 10.0 \\
+        Large  & 150 & 5000 & $2.0 \times 10^{-3}$ & 0.200 & 10.0 \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+The vehicle state machine is shown in Figure~\ref{fig:vehicle-state}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{chapters/img3.png}
+    \caption{Vehicle State Machine}
+    \label{fig:vehicle-state}
+\end{figure}
+
+The energy consumption follows a linear model:
+\begin{equation}
+    E_{\text{consumed}} = d \times \eta
+\end{equation}
+where $d$ is travel distance (meters) and $\eta$ is the vehicle's unit energy consumption (kWh/m).
+
+\section{Task Model}
+
+\subsection{Task Definition}
+
+Each task $T$ is defined as a 6-tuple:
+\begin{equation}
+    T = (t_{\text{create}}, x, y, w, t_{\text{deadline}}, p)
+\end{equation}
+
+The fields are:
+\begin{itemize}[leftmargin=4em]
+    \item $t_{\text{create}}$: Task creation time (\textbf{simulation timestamp} in seconds).
+    \item $(x, y)$: Delivery destination coordinates (road network node).
+    \item $w$: Cargo weight (kg), must not exceed vehicle remaining payload.
+    \item $t_{\text{deadline}}$: Deadline (simulation seconds); overdue tasks incur penalties.
+    \item $p$: Priority (1--5), higher values indicate greater importance.
+\end{itemize}
+
+A task becomes available for assignment only when $t_{\text{sim}} \ge t_{\text{create}}$.
+
+\subsection{Task Generation}
+
+Tasks are generated randomly during simulation according to configurable parameters:
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Generation interval:} Uniform distribution between minimum and maximum values in simulation seconds.
+    \item \textbf{Batch size:} Uniform distribution between configured minimum and maximum batch sizes.
+    \item \textbf{Total budget:} Stops generating after reaching the configured total task budget.
+    \item \textbf{Generation cutoff:} Stops generating once $t_{\text{sim}}$ reaches the maximum simulation seconds threshold.
+    \item \textbf{Location:} Randomly selected from road network nodes.
+    \item \textbf{Maximum pending tasks:} Limits the unassigned task queue size.
+    \item \textbf{Reproducibility:} A saved task-generation seed file can be reused so that all algorithms in a benchmark share the identical task sequence.
+\end{itemize}
+
+\subsection{Task State Machine}
+
+A task progresses through the following states during its lifecycle:
+\begin{equation}
+    \text{Pending} \rightarrow \text{Assigned} \rightarrow \text{In Progress} \rightarrow \text{Completed} \;|\; \text{Timed Out}
+\end{equation}
+
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Pending:} Awaiting assignment.
+    \item \textbf{Assigned:} Assigned to a vehicle but delivery not yet started.
+    \item \textbf{In Progress:} Vehicle is en route to the task location.
+    \item \textbf{Completed:} Successfully delivered, score awarded.
+    \item \textbf{Timed Out:} Deadline passed without completion.
+\end{itemize}
+
+\section{Charging Station Model}
+
+Charging stations are a critical component of electric logistics systems. The model incorporates the following elements:
+
+\subsection{Basic Attributes}
+
+Each charging station $S$ is defined as:
+\begin{equation}
+    S = (\text{id}, x, y, \text{capacity}, N_{\text{queue}}, \text{load pressure})
+\end{equation}
+
+Capacity is the number of charging slots (maximum vehicles charging simultaneously), $N_{\text{queue}}$ is the current total occupancy (charging + waiting), and load pressure is the comprehensive load indicator.
+
+\subsection{Queuing Mechanism}
+
+When a vehicle arrives at a charging station, the system decides based on current occupancy:
+\begin{itemize}[leftmargin=4em]
+    \item If current charging vehicles $<$ capacity, enter charging immediately.
+    \item If all slots are occupied, join the waiting queue.
+    \item When a vehicle finishes charging and departs, the first vehicle in the waiting queue is automatically promoted.
+\end{itemize}
+
+\subsection{Load Pressure Evaluation}
+
+To quantify the busyness of a charging station, we define the load pressure metric:
+\begin{equation}
+    \text{load pressure} = \min\left(1.0, \frac{N_{\text{charging}} + N_{\text{waiting}}}{\text{capacity} \times 2}\right)
+\end{equation}
+
+This metric is used by dispatching algorithms when selecting a charging station, combining distance and load pressure to find the optimal choice:
+\begin{equation}
+    \text{cost}(s) = d(v, s) + \text{load pressure}(s) \times w_{\text{load}} + N_{\text{waiting}} \times w_{\text{queue}}
+\end{equation}
+where $w_{\text{load}}$ and $w_{\text{queue}}$ are weight coefficients (defaults: 8000\,m and 2000\,m respectively).
+
+\section{Scoring Mechanism}
+
+A comprehensive scoring mechanism is designed to quantitatively evaluate the performance of each dispatching strategy. The same formula is used for final task settlement and for batch-selection objective functions inside search-based algorithms.
+
+\subsection{Task Score}
+
+The score for a single task $T$ at assignment time is:
+\begin{equation}
+    \text{score}(T) = R_{\text{base}} + p \times R_{\text{priority}} - d_{\text{round}} \times P_{\text{dist}} + R_{\text{early}} - P_{\text{overdue}}
+\end{equation}
+
+where $R_{\text{early}} = \max(0, (t_{\text{deadline}} - t_{\text{finish}})/60) \times R_{\text{early/min}}$ and $P_{\text{overdue}} = \max(0, (t_{\text{finish}} - t_{\text{deadline}})/60) \times P_{\text{overdue/min}}$. All times are in simulation seconds.
+
+Parameters are listed in Table~\ref{tab:scoring-params}.
+
+\begin{table}[H]
+    \centering
+    \caption{Scoring Parameters}
+    \label{tab:scoring-params}
+    \begin{reporttabular}{ccc}
+        \toprule
+        \textbf{Parameter} & \textbf{Description} & \textbf{Value} \\
+        \midrule
+        $R_{\text{base}}$   & Base assignment reward          & 120.0 \\
+        $R_{\text{priority}}$ & Per-priority-level reward       & 30.0  \\
+        $P_{\text{dist}}$   & Distance penalty coefficient   & 0.02 / m \\
+        $R_{\text{early/min}}$ & Early completion reward / min & 2.0 \\
+        $P_{\text{overdue/min}}$ & Overdue penalty / min        & 50.0 \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+\subsection{Overall Evaluation Metrics}
+
+In the experimental analysis, algorithm performance is evaluated using the following metrics:
+
+\begin{enumerate}[leftmargin=4em]
+    \item \textbf{Completion Rate:} $\displaystyle \frac{N_{\text{completed}}}{N_{\text{total}}} \times 100\%$, reflecting task processing capability.
+    \item \textbf{On-time Rate:} $\displaystyle \frac{N_{\text{on-time}}}{N_{\text{completed}}} \times 100\%$, reflecting timeliness.
+    \item \textbf{Total Score:} $\sum \text{score}(T)$, reflecting overall reward.
+    \item \textbf{Average Completion Time:} Average simulation time from task creation to completion, reflecting response speed.
+    \item \textbf{Throughput:} Tasks completed per simulation hour, reflecting system efficiency.
+    \item \textbf{Total Fleet Distance:} Total distance traveled by all vehicles, reflecting energy cost.
+    \item \textbf{Distance StdDev:} Standard deviation of distance traveled per vehicle, reflecting load balance.
+    \item \textbf{Simulation Duration:} Elapsed simulation time at termination, distinct from wall-clock runtime.
+\end{enumerate}

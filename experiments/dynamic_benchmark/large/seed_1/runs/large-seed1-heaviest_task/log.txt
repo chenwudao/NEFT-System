@@ -1,0 +1,14 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): large-seed1-heaviest_task
+启动时间:                 2026-05-28 23:31:21
+日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/large/seed_1/runs\large-seed1-heaviest_task
+配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\large\seed_1\configs\heaviest_task.yaml
+
+---- 事件日志 ----
+[2026-05-28 23:31:21] [START] Experiment 'large-seed1-heaviest_task' started.
+[2026-05-28 23:31:21] [INFO] [HEADLESS] mode=dynamic, strategy=heaviest_task, fleet_size=9, stations=3, initial_tasks=8, task_budget=80, max_sim_seconds=11800, task_seed=replay=F:\Data Structure\NEFT-System-main\NEFT-System\experiments\dynamic_benchmark\large\seed_1\task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\experiments/dynamic_benchmark/large/seed_1/runs\large-seed1-heaviest_task\task_generation_seed.yaml
+[2026-05-28 23:31:25] [PROGRESS] sim_elapsed=360s strategy=heaviest_task tasks total=8 completed=1 pending=0 in_progress=7 timeout=0 vehicles idle=5 moving=4 charging=0
+[2026-05-28 23:31:29] [PROGRESS] sim_elapsed=720s strategy=heaviest_task tasks total=8 completed=4 pending=0 in_progress=4 timeout=0 vehicles idle=7 moving=2 charging=0
+[2026-05-28 23:31:33] [PROGRESS] sim_elapsed=1080s strategy=heaviest_task tasks total=14 completed=5 pending=0 in_progress=9 timeout=0 vehicles idle=1 moving=8 charging=0
+[2026-05-28 23:31:36] [PROGRESS] sim_elapsed=1440s strategy=heaviest_task tasks total=14 completed=5 pending=0 in_progress=9 timeout=0 vehicles idle=2 moving=7 charging=0
+[2026-05-28 23:31:39] [PROGRESS] sim_elapsed=1800s strategy=heaviest_task tasks total=14 completed=7 pending=0 in_progress=7 timeout=0 vehicles idle=2 moving=7 charging=0

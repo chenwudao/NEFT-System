@@ -1,0 +1,177 @@
+% ============================================
+% Chapter 4: Experiment Design
+% ============================================
+
+\chapter{Experiment Design}
+
+\section{Experimental Environment}
+
+The experiments are conducted in the following environment:
+
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Hardware:} Intel Core i7-12700H, 16GB RAM, Windows 11
+    \item \textbf{Software:} Python 3.12, FastAPI, NetworkX, OSMnx
+    \item \textbf{Road Network:} Real OpenStreetMap road network (Panyu District, Guangzhou), with Dijkstra shortest-path routing
+    \item \textbf{Execution Mode:} Headless backend execution, bypassing the frontend to eliminate rendering and network overhead
+    \item \textbf{Time Model:} Simulation time with default speed factor 120; all task timestamps, deadlines, and metrics use simulation seconds
+\end{itemize}
+
+A dedicated benchmark runner script orchestrates all experiments, ensuring every algorithm runs under the same road network, fleet parameters, and task-generation seed.
+
+\section{Three-Scale Configuration}
+
+To systematically evaluate the performance of each algorithm, three problem scales are designed as shown in Table~\ref{tab:scale-config}. Parameters not listed in the YAML files inherit system defaults.
+
+\begin{table}[H]
+    \centering
+    \caption{Three-Scale Experimental Configuration}
+    \label{tab:scale-config}
+    \begin{reporttabular}{lccc}
+        \toprule
+        \textbf{Parameter} & \textbf{Small} & \textbf{Medium} & \textbf{Large} \\
+        \midrule
+        Small vehicles  & 2  & 2  & 4  \\
+        Medium vehicles & 1  & 3  & 6  \\
+        Large vehicles  & 0  & 1  & 2  \\
+        \textbf{Total fleet} & \textbf{3} & \textbf{6} & \textbf{12} \\
+        Charging stations & 1  & 2  & 4  \\
+        Charging slots (default) & 2 & 3 & 4 \\
+        \midrule
+        \textbf{Total task budget} & \textbf{20} & \textbf{80} & \textbf{200} \\
+        Initial tasks    & 3  & 5  & 12 \\
+        Generation interval (sim.\,s) & 5--15 & 5--15 & 5--15 \\
+        Batch size       & 2--4 & 5--10 & 2--4 \\
+        Max pending      & 5  & 20 & 40 \\
+        Task generation cutoff (sim.\,s) & 3600 & 7200 & 14400 \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+Note that the task generation cutoff controls when new task generation stops, not when the simulation ends. After the cutoff, the simulation continues until all existing tasks are completed or timed out.
+
+\section{Algorithm Set}
+
+Ten dynamic scheduling strategies are benchmarked:
+
+\begin{table}[H]
+    \centering
+    \caption{Benchmarked Algorithms}
+    \label{tab:algorithms}
+    \reporttableset{0.98\textwidth}
+    \begin{reporttabular}{>{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}l}
+        \toprule
+        \textbf{Category} & \textbf{Strategy} & \textbf{Description} \\
+        \midrule
+        Greedy baseline & Nearest Task First & Nearest-first maximal batch \\
+        Greedy baseline & Heaviest Task First & Heaviest-first maximal batch \\
+        Greedy baseline & Earliest Deadline First & Earliest-deadline-first (EDF) \\
+        Greedy baseline & Priority First & Highest-priority-first \\
+        Search-based    & DFS Score Search & DFS over maximal feasible batches \\
+        Search-based    & SA Score Search & Simulated annealing batch search \\
+        Search-based    & RL Batch & Nearest-pool + DFS + Q-learning \\
+        Multi-vehicle   & Regional Planning & K-means packages + vehicle claiming \\
+        Multi-vehicle   & Cluster Auction MAS & Sequential auction over clustered lots \\
+        Multi-vehicle   & Relay Handoff & In-route cargo relay between nearby vehicles \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+\section{Experimental Methodology}
+
+\subsection{Shared-Seed Protocol}
+
+To eliminate the impact of task-generation randomness on algorithm comparison, we adopt a \textbf{shared-seed protocol} rather than independent random runs per algorithm (shown in Figure~\ref{fig:exp-flow}):
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.6cm,
+        proc/.style={rectangle, draw, rounded corners, minimum width=3.8cm, minimum height=0.7cm, align=center, font=\small},
+        arrow/.style={-{Stealth[length=2.5mm]}, thick},
+    ]
+
+        \node[proc, fill=blue!10] (start) {Start};
+        \node[proc, fill=blue!10, below of=start] (scale) {Select Scale (S/M/L)};
+        \node[proc, fill=green!10, below of=scale] (seed) {Select Seed Index};
+        \node[proc, fill=orange!10, below of=seed] (gen) {Run Nearest Task First to generate shared task seed};
+        \node[proc, fill=green!10, below of=gen] (loop) {Run Each Algorithm with Shared Seed};
+        \node[proc, fill=red!10, below of=loop] (csv) {Aggregate CSV + Bar Chart};
+        \node[proc, fill=blue!10, below of=csv] (next) {Next Seed / Scale?};
+
+        \draw[arrow] (start) -- (scale);
+        \draw[arrow] (scale) -- (seed);
+        \draw[arrow] (seed) -- (gen);
+        \draw[arrow] (gen) -- (loop);
+        \draw[arrow] (loop) -- (csv);
+        \draw[arrow] (csv) -- (next);
+        \draw[arrow] (next.east) -- ++(2.2,0) node[right,font=\small] {Yes} -- ++(0,8.8) -- (scale.east);
+
+    \end{tikzpicture}
+    \caption{Shared-Seed Experimental Flow}
+    \label{fig:exp-flow}
+\end{figure}
+
+Key design decisions:
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Seed generation:} For each (scale, seed) pair, Nearest Task First runs first without a preset seed. The resulting task sequence is saved for reuse.
+    \item \textbf{Fair comparison:} All ten algorithms replay the \emph{identical} task sequence by loading the same seed file; only the scheduling strategy differs.
+    \item \textbf{Seed counts:} Small scale uses 2 seeds; medium and large scales use 1 seed each, yielding 4 independent task sequences across all scales.
+    \item \textbf{Total runs:} $4 \text{ seeds} \times 10 \text{ algorithms} = 40$ headless simulation runs.
+    \item \textbf{Configuration isolation:} Each run writes its own configuration and log under a dedicated experiment output directory.
+\end{itemize}
+
+\subsection{Benchmark Runner Implementation}
+
+The benchmark runner automates the following steps:
+
+\begin{enumerate}[leftmargin=4em]
+    \item Load base YAML configs for small, medium, and large scales.
+    \item For each seed: generate (or reuse) the shared task seed via Nearest Task First.
+    \item Iterate all ten algorithms, changing only the strategy and the seed file reference.
+    \item Invoke the headless backend for each run.
+    \item Parse the results block from each experiment log.
+    \item Write per-seed CSV summaries and comparison bar charts.
+\end{enumerate}
+
+This pipeline ensures reproducibility: re-running the benchmark can skip already-completed runs and resume from incomplete seeds.
+
+\section{Evaluation Metrics System}
+
+Each simulation run records the following metrics (all time-based values in simulation seconds unless noted):
+
+\begin{table}[H]
+    \centering
+    \caption{Evaluation Metrics System}
+    \label{tab:metrics}
+    \reporttableset{0.98\textwidth}
+    \begin{reporttabular}{>{\raggedright\arraybackslash}l c >{\raggedright\arraybackslash}l}
+        \toprule
+        \textbf{Metric} & \textbf{Calculation} & \textbf{Interpretation} \\
+        \midrule
+        Completion Rate & $\dfrac{N_{\text{completed}}}{N_{\text{total}}}$ & Task processing capability \\
+        On-time Rate    & $\dfrac{N_{\text{on-time}}}{N_{\text{completed}}}$ & Timeliness \\
+        Total Score     & $\sum \text{score}(T_i)$ & Overall reward \\
+        Avg Completion Time & $\dfrac{1}{N}\sum(t_{\text{finish}} - t_{\text{create}})$ & Response speed (sim.\,s) \\
+        Throughput      & $\dfrac{N_{\text{completed}}}{\text{sim.\ hours}}$ & System efficiency \\
+        Total Distance  & $\sum_v \text{dist}(v)$ & Energy cost \\
+        Distance StdDev & $\sigma(\{\text{dist}(v)\})$ & Load balance \\
+        Simulation Duration & --- & Total simulation time consumed \\
+        Wall Duration   & --- & Real-world runtime (reference only) \\
+        Stranded Vehicles & --- & Safety / robustness indicator \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+\subsection{Algorithm Selection Criteria}
+
+When comparing algorithms, we use a multi-criteria decision approach:
+
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Primary criterion:} Total Score --- directly reflects the final payoff of the strategy under the unified scoring formula.
+    \item \textbf{Secondary criteria:} Completion Rate and On-time Rate --- reflect service quality.
+    \item \textbf{Auxiliary criteria:} Avg Completion Time and Throughput --- reflect efficiency in simulation time.
+    \item \textbf{Reference criteria:} Total Distance, Distance StdDev, and Stranded Vehicles --- reflect resource utilization and robustness.
+    \item \textbf{Runtime reference:} Wall-clock duration is logged but not used for ranking, since all algorithms share the same simulation-time model.
+\end{itemize}
+
+Per-seed results are aggregated into CSV files and visualized as grouped bar charts (Total Score and Completion Rate) for direct cross-algorithm comparison within each scale.

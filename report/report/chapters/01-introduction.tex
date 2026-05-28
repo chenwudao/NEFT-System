@@ -1,0 +1,47 @@
+% ============================================
+% Chapter 1: Introduction
+% ============================================
+
+\chapter{Introduction}
+
+\section{Project Background}
+
+Driven by carbon neutrality policies and the development of urban green logistics, new energy logistics vehicles have been widely adopted in urban distribution. Unlike traditional fuel vehicles, electric logistics vehicles are restricted by battery capacity
+and payload limits, while also facing range anxiety, necessary recharging demands and queuing pressure at charging stations. Urban delivery tasks arrive dynamically with random locations and cargo weights, making manual scheduling inefficient in balancing timeliness, travel cost and energy consumption.
+
+This project establishes a simulation system from the perspective of a central warehouse manager to realize cooperative scheduling and route planning of new energy fleets. Dispatching algorithms for such fleets are typically complex and difficult to compare in isolation; we therefore build a unified simulation framework so that multiple strategies can be evaluated under identical conditions. Under the constraints of road network, battery power, load capacity and charging station occupancy, multiple dispatching strategies are designed and compared to provide practical references for urban logistics operation.
+
+\section{Problem Definition}
+
+\textbf{Problem Statement:} Given a city delivery environment consisting of a central warehouse, task locations, and charging stations, a fleet of electric vehicles must complete dynamically arriving delivery tasks under the following constraints:
+
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Fleet constraints:} Limited number of vehicles, each with maximum battery capacity $B_{\max}$ and maximum payload $W_{\max}$, varying by vehicle type.
+    \item \textbf{Task constraints:} Each task has a creation time $t_{\text{create}}$, location coordinates $(x,y)$, cargo weight $w$, deadline $t_{\text{deadline}}$, and priority $p$.
+    \item \textbf{Charging constraints:} Vehicles can recharge at charging stations, which have limited charging slots and queuing delays.
+    \item \textbf{Objective:} Maximize the total reward (score), where tasks completed earlier with shorter travel distances yield higher rewards, while overdue tasks incur penalties.
+\end{itemize}
+
+\section{Experiment Objectives}
+
+The main objectives of this experiment are:
+
+\begin{enumerate}[leftmargin=4em]
+    \item Design and implement a complete urban logistics simulation system, covering road network modeling, vehicle modeling, task generation, charging station modeling, and scoring mechanisms.
+    \item Implement multiple electric vehicle dispatching strategies, including greedy baselines, search-based batch loaders, and multi-vehicle coordination algorithms --- ten strategies in total.
+    \item Conduct systematic comparative tests across three problem scales (small, medium, large), with shared task-generation seeds to ensure fair comparison.
+    \item Analyze the suitability of each strategy under different scales and determine which strategy performs best under which conditions.
+    \item Design an AMap-based graphical interface to visualize the vehicle dispatching process, real-time status, and statistical data.
+\end{enumerate}
+
+\section{Report Structure}
+
+The report is organized as follows:
+
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Chapter 2 Simulation Design:} Details the overall system architecture, simulation-time model, unified scheduling interface, and core data models.
+    \item \textbf{Chapter 3 Algorithm Design:} Describes the design philosophy and implementation of all ten dispatching strategies.
+    \item \textbf{Chapter 4 Experiment Design:} Explains the experimental environment, three-scale configuration, experimental methodology, and evaluation metrics.
+    \item \textbf{Chapter 5 Results and Analysis:} Presents experimental results for each scale and algorithm, with comparative analysis using tables and charts.
+    \item \textbf{Chapter 6 Conclusion:} Summarizes the project outcomes, team member contributions, and lessons learned.
+\end{itemize}

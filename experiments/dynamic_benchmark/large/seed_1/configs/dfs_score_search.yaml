@@ -4,26 +4,26 @@ experiment:
 optimization:
   mode: dynamic
 fleet:
-  small_count: 4
-  medium_count: 6
-  large_count: 2
-  station_count: 4
+  small_count: 3
+  medium_count: 5
+  large_count: 1
+  station_count: 3
 charging_station:
   default_capacity: 4
   max_queue_time: 900
 task:
   generation_seed_file: null
-  initial_tasks: 12
+  initial_tasks: 8
   generation_interval_sec_min: 5
   generation_interval_sec_max: 15
-  generation_batch_min: 2
-  generation_batch_max: 4
-  max_pending_tasks: 40
-  total_task_budget: 200
+  generation_batch_min: 5
+  generation_batch_max: 10
+  max_pending_tasks: 30
+  total_task_budget: 80
 scheduling:
   strategy: dfs_score_search
   charge_load_weight_m: 10000.0
   charge_queue_weight_m: 3000.0
 simulation:
-  speed_factor: 180
-  max_sim_seconds: 14400
+  speed_factor: 120
+  max_sim_seconds: 11800

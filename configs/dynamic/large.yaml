@@ -1,4 +1,6 @@
-# 大规模：12 辆车 / 4 充电站 / 高任务流量
+# 大规模：9 辆车 / 3 充电站
+# 目标总任务数 ~80（medium 实测 49）；在 medium 基础上略增车队，并延长任务生成窗口。
+# benchmark 会以 nearest_task 生成 seed，generation_seed_file 仅占位。
 
 experiment:
   name: "large-scale-regional_planning"
@@ -8,24 +10,24 @@ optimization:
   mode: "dynamic"
 
 fleet:
-  small_count:   4
-  medium_count:  6
-  large_count:   2
-  station_count: 4
+  small_count:   3
+  medium_count:  5
+  large_count:   1
+  station_count: 3
 
 charging_station:
   default_capacity: 4
   max_queue_time:   900
 
 task:
-  generation_seed_file: "F:/Data Structure/NEFT-System-main/NEFT-System/log/large-scale-nearest_task/task_generation_seed.yaml"
-  initial_tasks:               12
+  generation_seed_file: NULL
+  initial_tasks:               8
   generation_interval_sec_min: 5
   generation_interval_sec_max: 15
-  generation_batch_min:        2
-  generation_batch_max:        4
-  max_pending_tasks:           40
-  total_task_budget:           200
+  generation_batch_min:        5
+  generation_batch_max:        10
+  max_pending_tasks:           30
+  total_task_budget:           80
 
 scheduling:
   strategy: "regional_planning"
@@ -33,5 +35,5 @@ scheduling:
   charge_queue_weight_m: 3000.0
 
 simulation:
-  speed_factor:    180
-  max_sim_seconds:   14400
+  speed_factor:    120
+  max_sim_seconds: 11800

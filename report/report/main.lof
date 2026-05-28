@@ -1,0 +1,17 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces System Architecture}}{7}{figure.caption.5}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces System Visualization Dashboard --- Real-time Fleet Monitoring Interface}}{8}{figure.caption.6}%
+\contentsline {figure}{\numberline {2.3}{\ignorespaces Simulation Main Loop}}{11}{figure.caption.7}%
+\contentsline {figure}{\numberline {2.4}{\ignorespaces Real Road Network Based on OpenStreetMap (Panyu District)}}{13}{figure.caption.8}%
+\contentsline {figure}{\numberline {2.5}{\ignorespaces Vehicle State Machine}}{14}{figure.caption.10}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Shared-Seed Experimental Flow}}{26}{figure.caption.16}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Small-scale total score comparison seed~1.}}{30}{figure.caption.19}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Small-scale total score comparison seed~2.}}{31}{figure.caption.20}%
+\contentsline {figure}{\numberline {5.3}{\ignorespaces Medium-scale total score comparison (seed~1, 49 tasks).}}{33}{figure.caption.22}%
+\contentsline {figure}{\numberline {5.4}{\ignorespaces Large-scale total score comparison (seed~1, 32 tasks).}}{35}{figure.caption.24}%
+\contentsline {figure}{\numberline {5.5}{\ignorespaces static result for gurobi.}}{36}{figure.caption.25}%
+\addvspace {10\p@ }

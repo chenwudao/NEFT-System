@@ -1,0 +1,248 @@
+% ============================================
+% Chapter 3: Algorithm Design
+% ============================================
+
+\chapter{Algorithm Design}
+
+This chapter details the design philosophy and implementation of each dispatching strategy. All algorithms share the same snapshot-to-command interface and a common utility toolbox, making them easy to compare, extend, and benchmark under identical simulation conditions.
+
+\section{Unified Scheduling Framework}
+
+\subsection{Snapshot and Command}
+
+Every scheduling round begins with a read-only snapshot captured from the data layer, containing:
+\begin{itemize}[leftmargin=4em]
+    \item All vehicles: current positions, battery, payload, status, and on-board tasks.
+    \item All tasks with their lifecycle states.
+    \item All charging stations: positions, capacity, queue length, and load pressure.
+    \item The current simulation time $t_{\text{sim}}$.
+    \item Cached shortest-path queries over the road network.
+\end{itemize}
+
+The algorithm returns a list of commands. Each command specifies one vehicle's \emph{next step}:
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Deliver:} go to a task location (optionally loading a batch at the warehouse).
+    \item \textbf{Charge:} go to a charging station.
+    \item \textbf{Return:} go back to the warehouse.
+    \item \textbf{Go to node:} move to an arbitrary coordinate (e.g., a relay meeting point).
+    \item \textbf{Handoff:} transfer cargo to another co-located vehicle.
+    \item \textbf{Idle:} stay put.
+\end{itemize}
+
+Multi-stop delivery is achieved by repeated snapshot-to-decision cycles: after each leg completes, the vehicle becomes idle and the scheduler is invoked again.
+
+\subsection{Shared Utility Toolbox}
+
+A shared utility module centralizes logic that every strategy would otherwise re-implement. Table~\ref{tab:utils} summarizes the main capability groups; developers can use these defaults as-is or override only the task-selection step:
+
+\begin{table}[H]
+    \centering
+    \caption{Shared Utility Capability Groups}
+    \label{tab:utils}
+    \reporttableset{0.98\textwidth}
+    \begin{reporttabular}{>{\raggedright\arraybackslash}l >{\raggedright\arraybackslash}l}
+        \toprule
+        \textbf{Category} & \textbf{Capabilities} \\
+        \midrule
+        Query \& filter & Road-network distance, payload-feasible task filtering, nearest task/station lookup \\
+        Battery \& charge & Reachability checks, chain-distance estimation with mid-route recharge, low-battery detection, optimal station selection \\
+        Route ordering & Greedy nearest-neighbor chaining, MST-based visit ordering \\
+        Command construction & Standard builders for deliver, charge, return, handoff, and idle actions \\
+        Decision templates & Warehouse and en-route decision flows with built-in battery safety \\
+        Relay helpers & Path midpoint calculation, cargo-transfer feasibility checks \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+To implement a custom scheduler, one typically overrides only the task-picking logic; battery checks, charging fallback, route ordering, and command construction are handled automatically by the shared templates.
+
+\subsection{Battery Pre-Check and Mid-Route Recharge}
+
+Before dispatching a vehicle, the system verifies battery feasibility for the entire planned chain, simulating mid-route charging detours when direct travel is insufficient. Algorithm~\ref{algo:battery_check} outlines this chain-distance estimation procedure.
+
+\begin{algorithm}[H]
+    \caption{Battery Pre-check with Mid-Route Recharge}
+    \label{algo:battery_check}
+    \begin{algorithmic}[1]
+        \Function{EstimateChainDistance}{vehicle, waypoints, snapshot}
+            \State $cur \gets$ vehicle position,\ $battery \gets$ vehicle battery level
+            \State $totalDist \gets 0$,\ $\eta \gets$ unit energy consumption,\ $\gamma \gets$ safety margin (1.15)
+            \For{each $target$ in waypoints}
+                \Loop
+                    \State $need \gets$ energy to reach $target$ (+ station buffer if required) $\times \gamma$
+                    \If{$battery \ge need$}
+                        \State Advance $cur$ to $target$; update $totalDist$ and $battery$; \textbf{break}
+                    \EndIf
+                    \Comment{Insufficient: detour to best reachable transit station, recharge to 90\%}
+                    \State $station \gets$ best transit station from $cur$ toward $target$
+                    \If{no reachable station} \Return infeasible \EndIf
+                    \State Detour to $station$; reset $battery$ to charge target; continue loop
+                \EndLoop
+            \EndFor
+            \State \Return $totalDist$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{Decision Templates}
+
+Most per-vehicle strategies follow a two-context pattern: warehouse decisions and en-route decisions, as shown in Algorithm~\ref{algo:template}.
+
+\begin{algorithm}[H]
+    \caption{Unified Per-Vehicle Decision Template}
+    \label{algo:template}
+    \begin{algorithmic}[1]
+        \Require Snapshot $snap$, custom task-picking rule
+        \Ensure List of commands
+        \State $commands \gets$ empty list
+        \Comment{En-route vehicles: threshold charge, next undelivered task, or return}
+        \For{each en-route idle vehicle $v$}
+            \State Append en-route decision for $v$
+        \EndFor
+        \Comment{Warehouse vehicles: pick batch via strategy-specific logic}
+        \State $claimed \gets$ empty set
+        \For{each warehouse idle vehicle $v$}
+            \State $cmd \gets$ warehouse decision for $v$ using the custom task-picking rule
+            \If{$cmd$ assigns new tasks} \State $claimed$.update(assigned task ids) \EndIf
+            \State $commands$.append($cmd$)
+        \EndFor
+        \State \Return $commands$
+    \end{algorithmic}
+\end{algorithm}
+
+At the warehouse, the template sorts the picked batch via greedy route ordering, checks full-chain battery feasibility, and issues either a deliver command (loading all tasks) or a transit charge command if the first hop requires recharging first.
+
+\section{Greedy Baseline Strategies}
+
+Four greedy baselines differ only in how they sort candidate tasks before greedily building a maximal feasible prefix batch. All share the same warehouse and en-route decision templates.
+
+\subsection{Nearest Task First}
+
+Sorts unclaimed tasks by distance from the vehicle; greedily adds tasks in nearest-first order while the chain remains payload- and battery-feasible. The simplest and fastest baseline, suitable when response time matters.
+
+\subsection{Heaviest Task First}
+
+Sorts by descending cargo weight (tie-break: distance). Assigns heavy cargo early to prevent payload-constrained vehicles from being stuck with only light tasks later.
+
+\subsection{Earliest Deadline First}
+
+Sorts by ascending deadline (tie-break: distance). A classic real-time scheduling heuristic (EDF) that prioritizes time-sensitive deliveries.
+
+\subsection{Priority First}
+
+Sorts by descending priority (tie-break: distance). Suitable when VIP or urgent orders must be served first regardless of distance.
+
+All four follow the batch-building pattern shown in Algorithm~\ref{algo:greedy_batch}.
+
+\begin{algorithm}[H]
+    \caption{Greedy Maximal Feasible Batch (shared by all four baselines)}
+    \label{algo:greedy_batch}
+    \begin{algorithmic}[1]
+        \Function{PickBatch}{vehicle, tasks, snapshot, sort rule}
+            \State $candidates \gets$ payload-feasible tasks sorted by the given rule
+            \State $chosen \gets [\ ]$
+            \For{each task $t$ in $candidates$}
+                \State $ordered \gets$ greedy route order for $chosen \cup \{t\}$
+                \If{chain distance infeasible} \textbf{break} \EndIf
+                \State $chosen \gets chosen \cup \{t\}$
+            \EndFor
+            \State \Return $chosen$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+\section{Search-Based Batch Loaders}
+
+These strategies replace the greedy prefix rule with explicit search over feasible task subsets, using a unified batch chain score as the objective.
+
+\subsection{DFS Score Search}
+
+Enumerates all \textbf{maximal feasible batches}---subsets where no additional single task can be added without violating payload or battery constraints---via depth-first search with payload pruning. Selects the batch with the highest predicted chain score. Guarantees the optimal batch per vehicle per decision round among maximal feasible sets, at exponential worst-case cost (mitigated by small pending queues in practice).
+
+\subsection{SA Score Search}
+
+Uses simulated annealing to approximate the DFS optimum over the same maximal-feasible batch space. Neighbor moves add, remove, or swap tasks within the candidate pool; the cooling schedule balances exploration and exploitation. Faster than DFS when pending task count is large, with a reheat mechanism to escape local optima.
+
+\subsection{RL Batch}
+
+A hybrid approach combining heuristic pruning with reinforcement learning:
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Candidate pool:} Build a nearest-first greedy prefix, then cap the pool size (default 7 tasks).
+    \item \textbf{Batch selection:} Run DFS score search within the capped pool to pick the best maximal batch.
+    \item \textbf{Online learning:} Maintain a Q-table over state--action pairs where state encodes nearest-count and battery tier; update Q-values from observed batch rewards after delivery completion ($\epsilon$-greedy exploration with decay).
+\end{itemize}
+
+This design keeps per-decision latency bounded while allowing the policy to adapt across repeated simulations.
+
+\section{Multi-Vehicle Coordination Strategies}
+
+These strategies go beyond independent per-vehicle decisions and explicitly coordinate fleet-level task allocation.
+
+\subsection{Regional Planning}
+
+When pending tasks $\ge 5$:
+\begin{enumerate}[leftmargin=4em]
+    \item Cluster tasks via K-means ($k=5$) into geographic \emph{packages}, sorted by total weight.
+    \item Idle warehouse vehicles \emph{claim} packages: a vehicle that can carry the entire package competes on predicted batch score; if no vehicle fits, defer if a returning empty vehicle could take it, otherwise assign the best-scoring feasible subset.
+    \item Remaining idle vehicles pick up leftover packages, prioritizing the vehicle farthest from the warehouse.
+\end{enumerate}
+For fewer than 5 pending tasks, the strategy degrades to Nearest Task First.
+
+\subsection{Cluster Auction MAS}
+
+Models each idle warehouse vehicle as an independent \textbf{agent}. Tasks are clustered into lots (K-means packages or single-task lots when pending $< 5$). Agents submit bids:
+\begin{equation}
+    \text{bid}(v, lot) = \text{predicted score}(v, lot) - \alpha \times d(v, \text{lot centroid})
+\end{equation}
+A central coordinator runs a \textbf{sequential auction}: lots are offered in descending weight order; the highest feasible full-package bid wins (one lot per vehicle per round). If no full-package bid exists, partial-batch bids are accepted. This multi-agent design distributes decision-making while avoiding the combinatorial explosion of a single global optimizer.
+
+\subsection{Relay Handoff}
+
+Enables \textbf{in-route cargo exchange} between nearby vehicles:
+\begin{enumerate}[leftmargin=4em]
+    \item Warehouse batching follows the Nearest Task First rule.
+    \item Each round, scan all non-stranded vehicle pairs outside the warehouse whose road-network distance is below a proximity threshold.
+    \item Merge on-board tasks, K-means split into two clusters; the lighter-load vehicle takes the lighter cluster (ascending weight order) and the other takes the remainder, subject to payload feasibility.
+    \item Vehicles meet at the path midpoint; the first arrival waits; upon co-location, a handoff command transfers cargo.
+    \item Each vehicle pair may exchange at most once per outbound-return cycle to prevent oscillation.
+\end{enumerate}
+
+This strategy explores cooperative delivery patterns that single-vehicle algorithms cannot achieve, such as rebalancing cargo mid-route when two vehicles converge.
+
+\section{Algorithm Complexity Summary}
+
+Table~\ref{tab:complexity} summarizes the time complexity of all ten algorithms, assuming $V$ idle vehicles and $T$ pending tasks per decision round.
+
+\begin{table}[H]
+    \centering
+    \caption{Algorithm Complexity Comparison}
+    \label{tab:complexity}
+    \reporttableset{0.98\textwidth}
+    \begin{reporttabular}{>{\raggedright\arraybackslash}l c >{\raggedright\arraybackslash}l}
+        \toprule
+        \textbf{Algorithm} & \textbf{Time Complexity} & \textbf{Characteristics} \\
+        \midrule
+        Nearest Task First       & $O(V \cdot T \log T)$ & Simplest greedy baseline \\
+        Heaviest Task First      & $O(V \cdot T \log T)$ & Weight-prioritized greedy \\
+        Earliest Deadline First  & $O(V \cdot T \log T)$ & Deadline-prioritized (EDF) \\
+        Priority First           & $O(V \cdot T \log T)$ & Priority-prioritized greedy \\
+        DFS Score Search         & $O(2^{m})$ & Optimal maximal batch; $m$ = pool size \\
+        SA Score Search          & $O(N_{\text{iter}} \cdot m)$ & SA approximation of DFS \\
+        RL Batch                 & $O(2^{k} + |Q|)$ & Capped pool ($k \le 7$) + Q-table lookup \\
+        Regional Planning        & $O(k \cdot V \cdot T)$ & K-means + per-package scoring \\
+        Cluster Auction MAS      & $O(k \cdot V \cdot T)$ & K-means + sequential auction \\
+        Relay Handoff            & $O(V^2 \cdot T)$ & Pair scan + handoff negotiation \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+\section{Extending with Custom Algorithms}
+
+Adding a new strategy requires three steps:
+\begin{enumerate}[leftmargin=4em]
+    \item Implement a new scheduler class that reads the snapshot and returns commands.
+    \item Register the class in the dynamic scheduler registry.
+    \item Select the new strategy name in the YAML configuration file.
+\end{enumerate}
+
+For most custom heuristics, overriding only the task-picking logic inside the warehouse decision template is sufficient; the shared utilities handle battery safety, charging fallback, route ordering, and command construction automatically.

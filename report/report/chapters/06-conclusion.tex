@@ -1,0 +1,61 @@
+% ============================================
+% Chapter 6: Conclusion and Reflections
+% ============================================
+
+\chapter{Conclusion and Reflections}
+
+\section{Project Summary}
+
+This project designed and implemented NEFT, a simulation platform for electric logistics fleet cooperative dispatching, and evaluated ten dynamic scheduling strategies under controlled, reproducible conditions. The main outcomes are:
+
+\subsection{Simulation System}
+
+\begin{itemize}[leftmargin=4em]
+    \item Built a graph-based road network (OpenStreetMap / OSMnx) with Dijkstra shortest-path routing and a simulation-time clock decoupled from wall-clock execution.
+    \item Modeled three vehicle types, dynamic task generation with shared seeds, charging-station queuing, and a unified scoring function used for both settlement and batch-selection objectives.
+    \item Delivered a snapshot-to-command scheduling interface with shared utility modules, enabling fair comparison and rapid prototyping of new strategies.
+    \item Implemented a FastAPI + WebSocket + AMap visualization front-end for real-time monitoring.
+\end{itemize}
+
+\subsection{Algorithm Portfolio}
+
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{Greedy baselines (4):} Nearest Task First, Heaviest Task First, Earliest Deadline First, Priority First.
+    \item \textbf{Search-based batch loaders (3):} DFS Score Search, SA Score Search, RL Batch.
+    \item \textbf{Multi-vehicle coordination (3):} Regional Planning, Cluster Auction MAS, Relay Handoff.
+    \item All strategies share battery pre-check, mid-route recharge simulation, and charging-station load balancing through common decision templates.
+\end{itemize}
+
+\subsection{Experimental Findings}
+
+\begin{itemize}[leftmargin=4em]
+    \item Ran 40 headless dynamic benchmarks (4 shared seeds $\times$ 10 algorithms) under identical task sequences per seed.
+    \item Dynamic algorithms achieve near-perfect completion; total score and on-time rate separate strategies, especially at medium scale (on-time 41--57\%).
+    \item \textbf{DFS Score Search} and \textbf{RL Batch} lead at medium scale ($\approx$3800 points); \textbf{RL Batch} and search variants lead at small scale; \textbf{Cluster Auction MAS} scores highest at large scale on the tested seed.
+    \item A supplementary Gurobi static solver baseline did not consistently outperform dynamic policies; at small and medium scales several dynamic strategies scored higher, possibly because time-penalty terms in the MIP model distort the objective relative to the online scoring function.
+\end{itemize}
+
+\section{Lessons Learned}
+
+\begin{enumerate}[leftmargin=4em]
+    \item \textbf{Fair comparison requires infrastructure, not just algorithms.} The snapshot interface and shared task seeds were essential; without them, score differences would reflect random task noise rather than strategy quality.
+    \item \textbf{Batch loading dominates medium-scale performance.} When pending queues grow, explicit search over feasible batches (DFS / RL) substantially beats single-key greedy sorting.
+    \item \textbf{Cooperation has a scale threshold.} Relay and auction mechanisms need sufficient fleet size and geographic task spread; otherwise coordination overhead hurts more than it helps.
+    \item \textbf{Static optima $\neq$ dynamic benchmark winners.} Exact solvers are only meaningful when the mathematical model faithfully encodes the same penalties and timing semantics as the simulator; mismatched time-penalty modeling can make ``optimal'' static plans score worse than simple online heuristics.
+    \item \textbf{Visualization accelerates debugging.} Map-based route display exposed charging and routing edge cases that log inspection alone would have missed.
+\end{enumerate}
+
+\section{Future Work}
+
+\begin{itemize}[leftmargin=4em]
+    \item Refine the static MIP formulation so that deadline and overdue penalties align exactly with the dynamic scoring module, enabling a fair static-vs-dynamic gap analysis.
+    \item Extend benchmarks with more seeds per scale and report mean $\pm$ std.\ dev.\ for statistical confidence.
+    \item Tune cooperative strategies (relay thresholds, auction bid weights) and test on denser task streams where handoff should pay off.
+    \item Explore hybrid policies that switch between greedy, search, and multi-agent modes based on pending-queue size and fleet utilization.
+\end{itemize}
+
+\section{Team Reflections}
+
+This project took us from textbook scheduling concepts to a working system where vehicles move on a real map, charge at stations, and compete under a unified score. Implementing ten strategies on one interface showed how much engineering effort lies beyond the core algorithm --- battery safety, seed reproducibility, and simulation-time semantics all shaped the final rankings as much as the dispatching logic itself.
+
+The experimental phase changed how we evaluate algorithms: a single impressive run is misleading, but shared seeds across ten strategies revealed clear patterns --- search wins at medium load, coordination matters at large scale, and simple nearest-neighbor rules remain a strong baseline. Working in a team mirrored real software practice: simulation core, algorithms, visualization, and analysis had to integrate through clear contracts, much like the snapshot-to-command design we built for the schedulers themselves.

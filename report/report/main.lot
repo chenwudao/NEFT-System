@@ -1,0 +1,18 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Vehicle Type Parameters}}{13}{table.caption.9}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces Scoring Parameters}}{17}{table.caption.11}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Shared Utility Capability Groups}}{19}{table.caption.12}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Algorithm Complexity Comparison}}{23}{table.caption.13}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Three-Scale Experimental Configuration}}{25}{table.caption.14}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Benchmarked Algorithms}}{25}{table.caption.15}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Evaluation Metrics System}}{27}{table.caption.17}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Small-Scale Dynamic Benchmark Results (mean of 2 seeds)}}{29}{table.caption.18}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Medium-Scale Dynamic Benchmark Results (seed~1, 49 tasks)}}{32}{table.caption.21}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Large-Scale Dynamic Benchmark Results (seed~1, 32 tasks)}}{34}{table.caption.23}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Static Omniscient Solver Results (Gurobi)}}{36}{table.caption.26}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces Best Dynamic Strategy per Scale}}{37}{table.caption.27}%
+\addvspace {10\p@ }

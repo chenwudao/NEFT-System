@@ -1,0 +1,158 @@
+\documentclass[12pt,a4paper,oneside]{book}
+
+% ============================================
+% Packages
+% ============================================
+\usepackage[top=2.5cm,bottom=2.5cm,left=3cm,right=2.5cm]{geometry}
+\setlength{\headheight}{15pt}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,shapes,positioning,calc,decorations.pathmorphing,backgrounds,fit}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{makecell}
+\usepackage{indentfirst}
+\setlength{\parindent}{2em}
+
+% ---- Report table style: scale-to-fit via \resizebox ----
+% Default width; override per table with \reporttableset{0.75\textwidth} before reporttabular.
+\newcommand{\ReportTableStretch}{1.08}
+\newcommand{\ReportTableColSep}{3.5pt}
+\newcommand{\ReportFitTableWidth}{0.92\textwidth}
+
+\newcommand{\ReportTableSetup}{%
+  \renewcommand\arraystretch{\ReportTableStretch}%
+  \setlength{\tabcolsep}{\ReportTableColSep}%
+}
+
+\newcommand{\reporttableset}[1]{\renewcommand{\ReportFitTableWidth}{#1}}
+
+% Usage inside \begin{table}[H]...\end{table}:
+%   \reporttableset{0.75\textwidth}  % optional
+%   \begin{reporttabular}{<col spec>} ... \end{reporttabular}
+% Prefer l/c columns over fixed p{..} widths to avoid awkward pre-scale line breaks.
+\newsavebox{\reporttablebox}
+\newenvironment{reporttabular}[1]{%
+  \ReportTableSetup
+  \begin{lrbox}{\reporttablebox}%
+  \footnotesize
+  \begin{tabular}{#1}%
+}{%
+  \end{tabular}%
+  \end{lrbox}%
+  \resizebox{\ReportFitTableWidth}{!}{\usebox{\reporttablebox}}%
+}
+
+% Backward-compatible aliases.
+\newenvironment{reporttable}{\begin{table}[H]}{\end{table}}
+\newenvironment{fittabular}[1]{\begin{reporttabular}{#1}}{\end{reporttabular}}
+
+
+% ============================================
+% Header & Footer
+% ============================================
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ============================================
+% Chapter Format
+% ============================================
+\titleformat{\chapter}[display]
+  {\centering\Huge\bfseries}
+  {\chaptername\ \thechapter}{20pt}{}
+\titlespacing{\chapter}{0pt}{0pt}{20pt}
+
+% ============================================
+% Algorithm Style
+% ============================================
+\algrenewcommand\algorithmicrequire{\textbf{Require:}}
+\algrenewcommand\algorithmicensure{\textbf{Ensure:}}
+
+% ============================================
+% Listing Style
+% ============================================
+\lstdefinestyle{code}{
+    basicstyle=\footnotesize\ttfamily,
+    numbers=left,
+    numberstyle=\tiny,
+    frame=single,
+    breaklines=true,
+    columns=flexible,
+    language=Python,
+    backgroundcolor=\color{gray!5},
+}
+
+
+
+\begin{document}
+
+% ============================================
+% Title Page
+% ============================================
+\begin{titlepage}
+    \begin{center}
+        \vspace*{3cm}
+        {\Huge\textbf{New Energy Fleet}}\\[4pt]
+        {\Huge\textbf{Transport System}}\\[12pt]
+        {\Large\textbf{Experiment Report}}\\[2cm]
+        {\large Course: DataStructure}\\[0.8cm]
+        {\large Date: \today}\\[3cm]
+        \begin{tabular}{rl}
+            Member 1: & Ruixi Liang \\
+            Member 2: & Junxi Chen \\
+            Member 3: & Zichao Yang \\
+            Member 4: & Jinyi Pang \\
+        \end{tabular}
+        \vfill
+    \end{center}
+\end{titlepage}
+
+% ============================================
+% Abstract
+% ============================================
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+This experiment addresses the cooperative dispatching problem for electric logistics fleets in urban environments by designing and implementing a complete simulation system. The system uses a graph-based road network constructed via OSMnx and Dijkstra's shortest path algorithm. The fleet consists of three types of electric vehicles (small, medium, large), each with battery capacity and payload constraints. During simulation, delivery tasks are dynamically generated on the road graph; all release times and deadlines use simulation time. A unified scoring mechanism evaluates both final task settlement and batch-loading heuristics consistently across strategies.
+
+Ten dynamic dispatching strategies are implemented under a common Snapshot-to-Command interface and compared: four greedy baselines (nearest task, priority task, heaviest task, deadline earliest), three search-based batch loaders (DFS score search, SA score search, RL batch), and three multi-vehicle coordination algorithms (regional planning, cluster auction MAS, relay handoff). Benchmarks replay shared task-generation seeds across three YAML-configured scales (small: 3 vehicles; medium: 6 vehicles; large: 12 vehicles).
+
+Dynamic results show near-perfect completion rates with clear score separation: search-based methods (DFS score search, RL batch) dominate at medium scale (best score 3824.3), while cluster auction MAS leads at large scale (3278.7). All policies share common safety logic---low-battery charging, route-level battery feasibility, and load-aware charging-station selection with queuing---and the platform provides an AMap-based visualization interface.
+
+\noindent\textbf{Keywords}: Electric logistics, vehicle routing problem, cooperative dispatching, graph search, metaheuristic algorithm
+
+\tableofcontents
+
+\listoffigures
+\listoftables
+
+% ============================================
+% Main Content
+% ============================================
+\include{chapters/01-introduction}
+\include{chapters/02-simulation-design}
+\include{chapters/03-algorithm-design}
+\include{chapters/04-experiment-design}
+\include{chapters/05-results-analysis}
+\include{chapters/06-conclusion}
+
+\end{document}

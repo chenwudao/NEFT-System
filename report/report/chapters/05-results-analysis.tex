@@ -1,0 +1,228 @@
+% ============================================
+% Chapter 5: Results and Analysis
+% ============================================
+
+\chapter{Results and Analysis}
+
+This chapter presents the dynamic scheduling benchmark results from \texttt{experiments/dynamic\_benchmark/}. All algorithms under the same scale share an identical task-generation seed; small scale is averaged over two seeds, while medium and large scales use one seed each. All time-based metrics are in simulation seconds.
+
+\section{Small-Scale Results}
+
+\subsection{Performance Table}
+
+The small-scale configuration uses 3 vehicles, 1 charging station, and a task budget of 20. Table~\ref{tab:small-results} reports the mean over seed~1 and seed~2 (11--12 tasks settled per run).
+
+\begin{table}[H]
+    \centering
+    \caption{Small-Scale Dynamic Benchmark Results (mean of 2 seeds)}
+    \label{tab:small-results}
+    \reporttableset{0.98\textwidth}
+    \begin{reporttabular}{>{\raggedright\arraybackslash}l cccc}
+        \toprule
+        \textbf{Algorithm} & \textbf{Comp.(\%)} & \textbf{On-time(\%)} & \textbf{Total Score} & \textbf{Avg Time (s)} \\
+        \midrule
+        RL Batch                 & 100.0 & 73.3 & $\mathbf{1262.4}$ & 5974 \\
+        SA Score Search          & 100.0 & 72.5 & 1243.9 & 4190 \\
+        DFS Score Search         & 100.0 & \textbf{81.7} & 1242.4 & 4888 \\
+        Nearest Task First       & 100.0 & 68.3 & 1238.4 & 5177 \\
+        Regional Planning        & 100.0 & 72.5 & 1171.0 & 5304 \\
+        Priority First           & 100.0 & 72.5 & 1166.4 & 4564 \\
+        Heaviest Task First      & 100.0 & 63.3 & 1066.1 & 5531 \\
+        Cluster Auction MAS      & 100.0 & 64.2 & 1037.4 & 5155 \\
+        Relay Handoff            & 100.0 & 64.2 & 1030.6 & 5793 \\
+        Earliest Deadline First  & 100.0 & 72.5 & 940.7 & 4717 \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chapters/comparison0.png}
+    \caption{Small-scale total score comparison seed~1.}
+    \label{fig:small-score}
+\end{figure}
+
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chapters/comparison00.png}
+    \caption{Small-scale total score comparison seed~2.}
+    \label{fig:small-score}
+\end{figure}
+
+
+
+
+\subsection{Analysis}
+
+\begin{itemize}[leftmargin=4em]
+    \item All ten algorithms achieve \textbf{100\% completion} on both seeds; differentiation comes from total score and on-time rate.
+    \item Search-based batch loaders (\textbf{RL Batch}, \textbf{SA Score Search}, \textbf{DFS Score Search}) occupy the top tier (1242--1262 mean score). \textbf{DFS Score Search} also yields the highest mean on-time rate (81.7\%).
+    \item \textbf{Earliest Deadline First} scores lowest (940.7 mean), indicating that deadline-only sorting is insufficient when batch loading and battery constraints dominate.
+    \item Seed~2 is more volatile: \textbf{Earliest Deadline First} drops to 699.1 while \textbf{DFS Score Search} reaches 1142.6 with 83.3\% on-time, confirming sensitivity to task sequence even under shared infrastructure.
+    \item Cooperative strategies (\textbf{Relay Handoff}, \textbf{Cluster Auction MAS}) do not outperform greedy baselines at this scale, likely because the fleet is small and handoff overhead is not yet justified.
+\end{itemize}
+
+\section{Medium-Scale Results}
+
+\subsection{Performance Table}
+
+The medium-scale run uses 6 vehicles, 2 charging stations, and settles 49 tasks. Results from seed~1 are shown in Table~\ref{tab:medium-results}.
+
+\begin{table}[H]
+    \centering
+    \caption{Medium-Scale Dynamic Benchmark Results (seed~1, 49 tasks)}
+    \label{tab:medium-results}
+    \reporttableset{0.98\textwidth}
+    \begin{reporttabular}{>{\raggedright\arraybackslash}l cccc}
+        \toprule
+        \textbf{Algorithm} & \textbf{Comp.(\%)} & \textbf{On-time(\%)} & \textbf{Total Score} & \textbf{Avg Time (s)} \\
+        \midrule
+        DFS Score Search         & 100.0 & 53.1 & $\mathbf{3824.3}$ & 6990 \\
+        RL Batch                 & 100.0 & 53.1 & 3795.3 & 6311 \\
+        SA Score Search          & 100.0 & 51.0 & 3716.2 & 7353 \\
+        Nearest Task First       & 100.0 & \textbf{57.1} & 3377.2 & 7118 \\
+        Relay Handoff            & 100.0 & 51.0 & 2913.1 & 7503 \\
+        Priority First           & 100.0 & 40.8 & 2824.1 & 8869 \\
+        Regional Planning        & 100.0 & 49.0 & 2385.3 & 7099 \\
+        Cluster Auction MAS      & 100.0 & 49.0 & 2385.3 & 7145 \\
+        Heaviest Task First      & 100.0 & 40.8 & 2112.6 & 9240 \\
+        Earliest Deadline First  & 100.0 & 46.9 & 1716.3 & 8190 \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chapters/comparison1.png}
+    \caption{Medium-scale total score comparison (seed~1, 49 tasks).}
+    \label{fig:medium-score}
+\end{figure}
+
+\subsection{Analysis}
+
+\begin{itemize}[leftmargin=4em]
+    \item Completion remains \textbf{100\%} for all algorithms, but on-time rates fall to 41--57\%, reflecting tighter deadlines relative to fleet capacity.
+    \item \textbf{DFS Score Search} (3824.3) and \textbf{RL Batch} (3795.3) clearly outperform greedy baselines, validating explicit batch-score optimization under higher load.
+    \item Simple greedy rules diverge: \textbf{Nearest Task First} stays competitive (3377.2) while \textbf{Earliest Deadline First} collapses to 1716.3 --- deadline sorting alone cannot compensate for poor batch composition.
+    \item Multi-vehicle coordinators (\textbf{Regional Planning}, \textbf{Cluster Auction MAS}) score 2385.3 with identical outcomes on this seed, suggesting similar package-decomposition behavior but no advantage over search-based per-vehicle batching here.
+    \item The score gap between best and worst widens to 2108 points (3824.3 vs.\ 1716.3), showing that algorithm choice matters substantially at medium scale.
+\end{itemize}
+
+\section{Large-Scale Results}
+
+\subsection{Performance Table}
+
+The large-scale run uses 12 vehicles, 4 charging stations, and settles 32 tasks within the generation window. Table~\ref{tab:large-results} lists seed~1 results.
+
+\begin{table}[H]
+    \centering
+    \caption{Large-Scale Dynamic Benchmark Results (seed~1, 32 tasks)}
+    \label{tab:large-results}
+    \reporttableset{0.98\textwidth}
+    \begin{reporttabular}{>{\raggedright\arraybackslash}l cccc}
+        \toprule
+        \textbf{Algorithm} & \textbf{Comp.(\%)} & \textbf{On-time(\%)} & \textbf{Total Score} & \textbf{Avg Time (s)} \\
+        \midrule
+        Cluster Auction MAS      & 96.9 & 96.8 & $\mathbf{3278.7}$ & 1194 \\
+        SA Score Search          & 100.0 & \textbf{96.9} & 3221.3 & 1089 \\
+        Regional Planning        & 100.0 & 96.9 & 3045.0 & 1530 \\
+        Heaviest Task First      & 100.0 & 93.8 & 2982.8 & 1395 \\
+        RL Batch                 & 100.0 & 93.8 & 2907.9 & 1305 \\
+        Earliest Deadline First  & 100.0 & 93.8 & 2907.9 & 1323 \\
+        DFS Score Search         & 100.0 & 93.8 & 2907.9 & 1305 \\
+        Priority First           & 100.0 & 93.8 & 2727.1 & 1377 \\
+        Nearest Task First       & 100.0 & 96.9 & 2652.6 & 1368 \\
+        Relay Handoff            & 100.0 & 93.8 & 2244.0 & 1764 \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chapters/comparison2.png}
+    \caption{Large-scale total score comparison (seed~1, 32 tasks).}
+    \label{fig:large-score}
+\end{figure}
+
+\subsection{Analysis}
+
+\begin{itemize}[leftmargin=4em]
+    \item Most algorithms complete all 32 tasks; \textbf{Cluster Auction MAS} stops at 31/32 (96.9\% completion) with one timeout, yet still achieves the highest total score (3278.7) on this seed.
+    \item \textbf{SA Score Search} balances score (3221.3) with full completion and the joint-best on-time rate (96.9\%).
+    \item \textbf{Relay Handoff} scores lowest (2244.0) despite 100\% completion --- relay negotiation adds route overhead without sufficient cargo-rebalancing benefit on this instance.
+    \item Several batch-search variants (\textbf{RL Batch}, \textbf{DFS Score Search}, \textbf{Earliest Deadline First}) converge to identical scores (2907.9), indicating diminishing returns of search when the pending pool is small at each decision step.
+    \item Compared with medium scale, absolute scores drop because fewer tasks are settled before the generation cutoff, highlighting that scale configuration affects both difficulty and score magnitude.
+\end{itemize}
+
+\section{Comparison with Static Gurobi Solver}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{chapters/gurobi.png}
+    \caption{static result for gurobi.}
+    \label{fig:small-score}
+\end{figure}
+
+
+
+As an supplementary baseline, we also ran the static omniscient solver (Gurobi) on the same task-generation seeds. Table~\ref{tab:static-gurobi} summarizes those results.
+
+\begin{table}[H]
+    \centering
+    \caption{Static Omniscient Solver Results (Gurobi)}
+    \label{tab:static-gurobi}
+    \begin{reporttabular}{lccc}
+        \toprule
+        \textbf{Scale} & \textbf{Total Score} & \textbf{Completed / Total} & \textbf{Completion Rate} \\
+        \midrule
+        Small  & 877.9  & 10 / 10 & 100.0\% \\
+        Medium & 3003.6 & 20 / 20 & 100.0\% \\
+        Large  & 4407.0 & 38 / 39 & 97.4\%  \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+The static solver results differ substantially from the dynamic benchmark and do not consistently dominate:
+\begin{itemize}[leftmargin=4em]
+    \item At \textbf{small} and \textbf{medium} scales, the best dynamic strategies (\textbf{RL Batch} at 1262.4; \textbf{DFS Score Search} at 3824.3) \emph{exceed} the static scores (877.9 and 3003.6 respectively).
+    \item At \textbf{large} scale, the static total (4407.0) appears higher in absolute terms, but it covers a different settled task count (38/39 vs.\ 32/32 for most dynamic runs), so direct comparison is limited.
+    \item We suspect the gap is partly caused by \textbf{time-penalty modeling} in the MIP formulation: overdue and timing-related penalty terms may push the solver toward conservative routes that score poorly under our unified dynamic scoring function, and in some cases yield solutions worse than online heuristics.
+\end{itemize}
+
+\section{Cross-Scale Summary}
+
+Table~\ref{tab:cross-scale-best} highlights the best-performing dynamic strategy per scale.
+
+\begin{table}[H]
+    \centering
+    \caption{Best Dynamic Strategy per Scale}
+    \label{tab:cross-scale-best}
+    \reporttableset{0.98\textwidth}
+    \begin{reporttabular}{llcc>{\raggedright\arraybackslash}l}
+        \toprule
+        \textbf{Scale} & \textbf{Best Algorithm} & \textbf{Score} & \textbf{On-time} & \textbf{Notes} \\
+        \midrule
+        Small  & RL Batch            & 1262.4 & 73.3\% & Mean of 2 seeds; DFS best on-time (81.7\%) \\
+        Medium & DFS Score Search    & 3824.3 & 53.1\% & Search-based batching clearly wins \\
+        Large  & Cluster Auction MAS & 3278.7 & 96.8\% & One timeout; SA Score Search best balanced \\
+        \bottomrule
+    \end{reporttabular}
+\end{table}
+
+
+
+
+
+
+Key findings across all experiments:
+
+\begin{itemize}[leftmargin=4em]
+    \item \textbf{No single algorithm wins everywhere.} Search-based loaders excel at medium scale; auction-based coordination peaks at large scale; RL/SA variants are strong at small scale.
+    \item \textbf{Completion vs.\ quality.} All dynamic runs achieve near-perfect completion; on-time rate and total score are the primary discriminators, especially at medium scale where on-time drops below 60\%.
+    \item \textbf{Greedy baselines remain useful.} \textbf{Nearest Task First} stays in the upper tier at small and medium scales with minimal implementation cost.
+    \item \textbf{Cooperative strategies are scale-dependent.} \textbf{Relay Handoff} underperforms at all scales tested; \textbf{Cluster Auction MAS} becomes competitive only when the fleet and task pool are large enough.
+    \item \textbf{Static vs.\ dynamic.} Gurobi static planning does not reliably beat online dynamic policies under the same scoring rules, suggesting that model fidelity (especially time penalties) matters as much as optimality guarantees.
+\end{itemize}

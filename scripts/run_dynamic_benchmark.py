@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import csv
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -51,6 +52,7 @@ SCALE_CONFIGS: Dict[str, Dict[str, Any]] = {
 DYNAMIC_ALGORITHMS: List[str] = [cls.name for cls in DYNAMIC_SCHEDULERS]
 SEED_GENERATOR = "nearest_task"
 RESULTS_YAML_MARKER = "---- 完整结果（YAML） ----"
+_LOG_LINE_RE = re.compile(r"^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]")
 EXPERIMENT_ROOT = PROJECT_ROOT / "experiments" / "dynamic_benchmark"
 
 
@@ -117,12 +119,28 @@ def _run_dir(scale: str, seed_idx: int, algorithm: str) -> Path:
     return EXPERIMENT_ROOT / scale / f"seed_{seed_idx}" / "runs" / run_name
 
 
+def _extract_results_yaml_text(text: str) -> str:
+    if RESULTS_YAML_MARKER not in text:
+        raise ValueError("未在日志中找到结果段")
+    yaml_part = text.rsplit(RESULTS_YAML_MARKER, 1)[1]
+    lines: List[str] = []
+    for line in yaml_part.splitlines():
+        if _LOG_LINE_RE.match(line.strip()):
+            break
+        lines.append(line)
+    yaml_text = "\n".join(lines).strip()
+    if not yaml_text:
+        raise ValueError("结果 YAML 段为空")
+    return yaml_text
+
+
 def _parse_results_from_log(log_path: Path) -> Dict[str, Any]:
     text = log_path.read_text(encoding="utf-8")
-    if RESULTS_YAML_MARKER not in text:
-        raise ValueError(f"未在日志中找到结果段: {log_path}")
-    yaml_text = text.split(RESULTS_YAML_MARKER, 1)[1].strip()
-    data = yaml.safe_load(yaml_text) or {}
+    yaml_text = _extract_results_yaml_text(text)
+    try:
+        data = yaml.safe_load(yaml_text) or {}
+    except yaml.YAMLError as exc:
+        raise ValueError(f"结果 YAML 解析失败: {log_path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ValueError(f"结果 YAML 解析失败: {log_path}")
     return data
@@ -213,31 +231,64 @@ def _plot_comparison(rows: List[Dict[str, Any]], png_path: Path, *, title: str) 
 
     algorithms = [r["algorithm"] for r in rows]
     scores = [float(r["total_score"]) for r in rows]
-    completion = [float(r["completion_rate"]) * 100.0 for r in rows]
+    n = len(algorithms)
 
-    fig, axes = plt.subplots(1, 2, figsize=(max(10, len(algorithms) * 0.9), 5))
+    fig_w = max(11.0, n * 1.35)
+    fig, ax = plt.subplots(figsize=(fig_w, 6.0))
+    x = list(range(n))
+    bars = ax.bar(x, scores, width=0.62, color="#4C72B0", edgecolor="white", linewidth=0.8)
 
-    axes[0].bar(algorithms, scores, color="#4C72B0")
-    axes[0].set_title("Total Score")
-    axes[0].set_ylabel("Score")
-    axes[0].tick_params(axis="x", rotation=45)
-    for idx, val in enumerate(scores):
-        axes[0].text(idx, val, f"{val:.1f}", ha="center", va="bottom", fontsize=8)
+    ax.set_title("Total Score", fontsize=13, pad=12)
+    ax.set_ylabel("Score", fontsize=11)
+    ax.set_xticks(x)
+    ax.set_xticklabels(
+        [name.replace("_", "\n") for name in algorithms],
+        fontsize=9,
+        ha="center",
+        rotation=0,
+    )
+    ax.set_xlim(-0.6, n - 0.4)
+    ax.grid(axis="y", linestyle="--", alpha=0.35)
+    ax.set_axisbelow(True)
 
-    axes[1].bar(algorithms, completion, color="#55A868")
-    axes[1].set_title("Completion Rate")
-    axes[1].set_ylabel("Percent (%)")
-    axes[1].set_ylim(0, 105)
-    axes[1].tick_params(axis="x", rotation=45)
-    for idx, val in enumerate(completion):
-        axes[1].text(idx, val, f"{val:.1f}%", ha="center", va="bottom", fontsize=8)
+    ymax = max(scores) if scores else 1.0
+    ax.set_ylim(0, ymax * 1.12)
 
-    fig.suptitle(title)
-    fig.tight_layout()
+    for bar, val in zip(bars, scores):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height(),
+            f"{val:.1f}",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            rotation=0,
+        )
+
+    fig.suptitle(title, fontsize=14, y=0.98)
+    fig.tight_layout(rect=(0, 0.03, 1, 0.94))
     png_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(png_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"[Plot] {png_path}")
+
+
+def _replot_all_seeds() -> None:
+    """从已有 results.csv 重新绘制各 seed 的 comparison.png。"""
+    for scale, meta in SCALE_CONFIGS.items():
+        seed_count = int(meta["seed_count"])
+        for seed_idx in range(1, seed_count + 1):
+            csv_path = EXPERIMENT_ROOT / scale / f"seed_{seed_idx}" / "results.csv"
+            if not csv_path.exists():
+                continue
+            with csv_path.open("r", encoding="utf-8-sig", newline="") as f:
+                rows = list(csv.DictReader(f))
+            png_path = EXPERIMENT_ROOT / scale / f"seed_{seed_idx}" / "comparison.png"
+            _plot_comparison(
+                rows,
+                png_path,
+                title=f"{scale} / seed {seed_idx} — dynamic algorithms",
+            )
 
 
 def _seed_is_complete(scale: str, seed_idx: int) -> bool:
@@ -246,15 +297,75 @@ def _seed_is_complete(scale: str, seed_idx: int) -> bool:
     return csv_path.exists() and png_path.exists()
 
 
-def _algorithms_from(from_algorithm: Optional[str]) -> List[str]:
+def _algorithms_from(from_algorithm: Optional[str], *, reverse: bool = False) -> List[str]:
     if not from_algorithm:
-        return list(DYNAMIC_ALGORITHMS)
+        order = list(reversed(DYNAMIC_ALGORITHMS)) if reverse else list(DYNAMIC_ALGORITHMS)
+        return order
     if from_algorithm not in DYNAMIC_ALGORITHMS:
         raise ValueError(
             f"未知算法: {from_algorithm}，可选: {', '.join(DYNAMIC_ALGORITHMS)}"
         )
-    start = DYNAMIC_ALGORITHMS.index(from_algorithm)
-    return DYNAMIC_ALGORITHMS[start:]
+    idx = DYNAMIC_ALGORITHMS.index(from_algorithm)
+    if reverse:
+        return list(reversed(DYNAMIC_ALGORITHMS[: idx + 1]))
+    return DYNAMIC_ALGORITHMS[idx:]
+
+
+def _seed_logs_complete(scale: str, seed_idx: int) -> bool:
+    for algorithm in DYNAMIC_ALGORITHMS:
+        log_path = _run_dir(scale, seed_idx, algorithm) / "log.txt"
+        if not log_path.exists():
+            return False
+        try:
+            _parse_results_from_log(log_path)
+        except ValueError:
+            return False
+    return True
+
+
+def _parse_scale_seed(value: str) -> tuple[str, int]:
+    parts = value.split(":")
+    if len(parts) != 2:
+        raise ValueError(f"格式应为 scale:seed，例如 large:1，收到: {value}")
+    scale, seed_raw = parts
+    if scale not in SCALE_CONFIGS:
+        raise ValueError(f"未知规模: {scale}")
+    seed_idx = int(seed_raw)
+    if seed_idx < 1:
+        raise ValueError(f"seed 必须 >= 1，收到: {seed_raw}")
+    return scale, seed_idx
+
+
+def _finalize_seed_batch(*, scale: str, seed_idx: int) -> List[Dict[str, Any]]:
+    if not _seed_logs_complete(scale, seed_idx):
+        missing = [
+            algo
+            for algo in DYNAMIC_ALGORITHMS
+            if not (_run_dir(scale, seed_idx, algo) / "log.txt").exists()
+            or not _log_is_complete(_run_dir(scale, seed_idx, algo) / "log.txt")
+        ]
+        raise RuntimeError(
+            f"{scale} seed {seed_idx} 尚未齐套，缺少或未完成的算法: {', '.join(missing)}"
+        )
+    seed_dir = EXPERIMENT_ROOT / scale / f"seed_{seed_idx}"
+    rows = _collect_seed_result_rows(scale=scale, seed_idx=seed_idx)
+    csv_path = seed_dir / "results.csv"
+    png_path = seed_dir / "comparison.png"
+    _save_csv(rows, csv_path)
+    _plot_comparison(
+        rows,
+        png_path,
+        title=f"{scale} / seed {seed_idx} — dynamic algorithms",
+    )
+    return rows
+
+
+def _log_is_complete(log_path: Path) -> bool:
+    try:
+        _parse_results_from_log(log_path)
+        return True
+    except ValueError:
+        return False
 
 
 def _collect_seed_result_rows(
@@ -388,21 +499,24 @@ def _run_seed_batch(
     skip_existing: bool,
     reuse_seed: bool = False,
     from_algorithm: Optional[str] = None,
+    reverse: bool = False,
 ) -> List[Dict[str, Any]]:
     seed_dir = EXPERIMENT_ROOT / scale / f"seed_{seed_idx}"
     seed_dir.mkdir(parents=True, exist_ok=True)
     shared_seed_path = seed_dir / "task_generation_seed.yaml"
-    algorithms_to_run = _algorithms_from(from_algorithm)
+    algorithms_to_run = _algorithms_from(from_algorithm, reverse=reverse)
 
     print(f"\n{'=' * 72}")
     print(f"规模={scale}  seed={seed_idx}")
+    if reverse:
+        print("运行顺序: 倒序（从 relay_handoff → … → priority_task）")
     if from_algorithm:
         print(f"续跑起点: {from_algorithm}（含）")
-    if reuse_seed:
+    if reuse_seed or reverse:
         print("复用已有 task_generation_seed.yaml")
     print(f"{'=' * 72}")
 
-    if skip_existing and shared_seed_path.exists() and _seed_is_complete(scale, seed_idx):
+    if skip_existing and _seed_is_complete(scale, seed_idx):
         print("[Skip] 该 seed 已全部完成，直接读取 CSV")
         csv_path = seed_dir / "results.csv"
         rows: List[Dict[str, Any]] = []
@@ -412,13 +526,21 @@ def _run_seed_batch(
                 rows.append(row)
         return rows
 
-    if reuse_seed:
+    if reverse:
+        if not shared_seed_path.exists() and not dry_run:
+            raise FileNotFoundError(
+                f"倒序模式需要已有 seed 文件: {shared_seed_path}\n"
+                "请先在另一台机器正序跑完 nearest_task，或复制 task_generation_seed.yaml 过来。"
+            )
+        reuse_seed = True
+        algorithms_to_run = [a for a in algorithms_to_run if a != SEED_GENERATOR]
+    elif reuse_seed:
         if not shared_seed_path.exists() and not dry_run:
             raise FileNotFoundError(
                 f"续跑需要已有 seed 文件，但未找到: {shared_seed_path}"
             )
     else:
-        # 1) nearest_task 生成 seed（generation_seed_file = null）
+        # 正序：nearest_task 生成 seed
         _run_single_algorithm(
             base_cfg=base_cfg,
             scale=scale,
@@ -436,8 +558,9 @@ def _run_seed_batch(
             shutil.copy2(generated_seed, shared_seed_path)
             print(f"[Seed] 已保存共享 seed: {shared_seed_path}")
 
-        # seed 已由 nearest_task 生成，避免在后续循环中再跑一遍
         algorithms_to_run = [a for a in algorithms_to_run if a != SEED_GENERATOR]
+
+    print(f"本批算法 ({len(algorithms_to_run)}): {', '.join(algorithms_to_run)}")
 
     for algorithm in algorithms_to_run:
         seed_file = None
@@ -458,16 +581,29 @@ def _run_seed_batch(
     if dry_run:
         return []
 
-    rows = _collect_seed_result_rows(scale=scale, seed_idx=seed_idx)
-    csv_path = seed_dir / "results.csv"
-    png_path = seed_dir / "comparison.png"
-    _save_csv(rows, csv_path)
-    _plot_comparison(
-        rows,
-        png_path,
-        title=f"{scale} / seed {seed_idx} — dynamic algorithms",
+    if _seed_logs_complete(scale, seed_idx):
+        rows = _collect_seed_result_rows(scale=scale, seed_idx=seed_idx)
+        csv_path = seed_dir / "results.csv"
+        png_path = seed_dir / "comparison.png"
+        _save_csv(rows, csv_path)
+        _plot_comparison(
+            rows,
+            png_path,
+            title=f"{scale} / seed {seed_idx} — dynamic algorithms",
+        )
+        return rows
+
+    done = sum(
+        1
+        for algo in DYNAMIC_ALGORITHMS
+        if _log_is_complete(_run_dir(scale, seed_idx, algo) / "log.txt")
     )
-    return rows
+    print(
+        f"[Partial] 已完成 {done}/{len(DYNAMIC_ALGORITHMS)} 个算法。"
+        f"两台机器都跑完后执行: python scripts/run_dynamic_benchmark.py "
+        f"--finalize-seed {scale}:{seed_idx}"
+    )
+    return []
 
 
 def run_benchmark(
@@ -476,6 +612,7 @@ def run_benchmark(
     dry_run: bool = False,
     skip_existing: bool = False,
     resume_from: Optional[tuple[str, int, str]] = None,
+    reverse: bool = False,
 ) -> None:
     all_rows: List[Dict[str, Any]] = []
     resume_applied = False
@@ -491,7 +628,7 @@ def run_benchmark(
         print(f"\n>>> 规模 {scale}: {cfg_path}  (seeds={seed_count})")
 
         for seed_idx in range(1, seed_count + 1):
-            reuse_seed = False
+            reuse_seed = reverse
             from_algorithm: Optional[str] = None
             if (
                 resume_from
@@ -515,13 +652,27 @@ def run_benchmark(
                 skip_existing=skip_existing,
                 reuse_seed=reuse_seed,
                 from_algorithm=from_algorithm,
+                reverse=reverse,
             )
             all_rows.extend(rows)
 
     if not dry_run:
         summary_csv = EXPERIMENT_ROOT / "all_results.csv"
-        _save_csv(all_rows, summary_csv)
-        print(f"\n[Done] 全部实验完成，汇总 CSV: {summary_csv}")
+        merged: List[Dict[str, Any]] = []
+        for scale, meta in SCALE_CONFIGS.items():
+            for seed_idx in range(1, int(meta["seed_count"]) + 1):
+                csv_path = EXPERIMENT_ROOT / scale / f"seed_{seed_idx}" / "results.csv"
+                if csv_path.exists():
+                    with csv_path.open("r", encoding="utf-8-sig", newline="") as f:
+                        merged.extend(list(csv.DictReader(f)))
+        if merged:
+            _save_csv(merged, summary_csv)
+            print(f"\n[Done] 汇总 CSV: {summary_csv}")
+        elif all_rows:
+            _save_csv(all_rows, summary_csv)
+            print(f"\n[Done] 汇总 CSV: {summary_csv}")
+        else:
+            print("\n[Done] 本批为部分运行，全部完成后请 --finalize-seed")
     else:
         print("\n[Done] dry-run 完成（未写入 CSV/图表）")
 
@@ -550,13 +701,41 @@ def main() -> None:
         metavar="SCALE:SEED:ALGORITHM",
         help="断点续跑，例如 medium:1:cluster_auction_mas（复用已有 seed，从该算法起跑）",
     )
+    parser.add_argument(
+        "--reverse",
+        action="store_true",
+        help="倒序跑算法（relay_handoff → … → priority_task），需已有 task_generation_seed.yaml",
+    )
+    parser.add_argument(
+        "--finalize-seed",
+        metavar="SCALE:SEED",
+        help="10 个算法 log 齐套后汇总 CSV + 柱状图，例如 large:1",
+    )
+    parser.add_argument(
+        "--replot",
+        action="store_true",
+        help="从已有 results.csv 重新生成所有 comparison.png（不跑仿真）",
+    )
     args = parser.parse_args()
+
+    if args.replot:
+        _replot_all_seeds()
+        print("[Done] 已重新绘制所有 comparison.png")
+        return
+
+    if args.finalize_seed:
+        scale, seed_idx = _parse_scale_seed(args.finalize_seed)
+        _finalize_seed_batch(scale=scale, seed_idx=seed_idx)
+        print(f"[Done] 已汇总 {scale} seed {seed_idx}")
+        return
 
     resume_from = None
     if args.resume_from:
         resume_from = _parse_resume_from(args.resume_from)
 
     print("Dynamic algorithms:", ", ".join(DYNAMIC_ALGORITHMS))
+    if args.reverse:
+        print("Reverse order:", ", ".join(reversed(DYNAMIC_ALGORITHMS)))
     print("Seed generator:", SEED_GENERATOR)
     print("Output root:", EXPERIMENT_ROOT)
 
@@ -565,6 +744,7 @@ def main() -> None:
         dry_run=args.dry_run,
         skip_existing=args.skip_existing,
         resume_from=resume_from,
+        reverse=args.reverse,
     )
 
 
