@@ -1,0 +1,31 @@
+charging_station:
+  default_capacity: 2
+experiment:
+  log_dir: D:/Environment/homework/DaStProj/1NEFT(Updating)/log/benchmarks/static/small/seed_1
+  name: static_exact_solver
+fleet:
+  large_count: 0
+  medium_count: 1
+  small_count: 2
+  station_count: 1
+optimization:
+  mode: static
+  static:
+    strategy: static_exact_solver
+    solver: gurobi
+    strict_global_optimum: true
+    mip_gap_threshold: 0.0
+    time_limit_s: null
+scheduling:
+  strategy: static_exact_solver
+simulation:
+  max_sim_seconds: 3600
+task:
+  generation_batch_max: 4
+  generation_batch_min: 2
+  generation_interval_sec_max: 15
+  generation_interval_sec_min: 5
+  initial_tasks: 3
+  max_pending_tasks: 5
+  total_task_budget: 20
+  generation_seed_file: D:/Environment/homework/DaStProj/1NEFT(Updating)/log/benchmarks/dynamic/small/seed_1/nearest_task/task_generation_seed.yaml

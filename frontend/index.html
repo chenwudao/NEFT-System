@@ -57,6 +57,16 @@
         <header>
             <h1>车辆调度算法仿真可视化</h1>
             <div class="controls">
+                <label for="scaleSelect">规模：</label>
+                <select id="scaleSelect">
+                    <option value="small">小规模</option>
+                    <option value="medium">中规模</option>
+                    <option value="large">大规模</option>
+                </select>
+                <label for="strategySelect">策略：</label>
+                <select id="strategySelect">
+                    <option value="nearest_task">最近任务优先</option>
+                </select>
                 <button id="startButton">启动模拟</button>
                 <button id="stopButton" disabled>暂停模拟</button>
                 <button id="resetButton" style="background-color: #ff9800; color: white;">重置仿真</button>

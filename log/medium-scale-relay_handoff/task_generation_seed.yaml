@@ -1,403 +1,106 @@
 version: 1
-mode: replay
-source_path: F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-regional_planning/task_generation_seed.yaml
-base_seed: 1044119456
-event_count: 44
-note: replay source
+mode: record
+source_path: null
+base_seed: 1591434278
+event_count: 11
+note: recorded during this run
 events:
 - task_id: 1
   phase: initial
   sim_seconds: 0.0
   position:
-    x: 113.3901968
-    y: 23.0187506
-  weight: 990.8647521434988
+    x: 113.3030099
+    y: 23.01856
+  weight: 251.57300733883994
   priority: 1
-  deadline_offset: 3718
+  deadline_offset: 3839
 - task_id: 2
   phase: initial
   sim_seconds: 0.0
   position:
-    x: 113.3355764
-    y: 23.0104836
-  weight: 1372.8218358963047
+    x: 113.2920071
+    y: 23.0301882
+  weight: 1354.0548306101875
   priority: 4
-  deadline_offset: 3358
+  deadline_offset: 5887
 - task_id: 3
   phase: initial
   sim_seconds: 0.0
   position:
-    x: 113.2843351
-    y: 22.9554424
-  weight: 401.16061426359
-  priority: 5
-  deadline_offset: 4263
+    x: 113.4140268
+    y: 23.0330589
+  weight: 820.9574059637036
+  priority: 1
+  deadline_offset: 4227
 - task_id: 4
   phase: initial
   sim_seconds: 0.0
   position:
-    x: 113.3455739
-    y: 23.0096767
-  weight: 353.4831738939114
-  priority: 3
-  deadline_offset: 4107
+    x: 113.3013003
+    y: 23.0500464
+  weight: 1378.5011119031722
+  priority: 5
+  deadline_offset: 5144
 - task_id: 5
   phase: initial
   sim_seconds: 0.0
   position:
-    x: 113.425696
-    y: 23.0412473
-  weight: 1043.4808191437503
-  priority: 2
-  deadline_offset: 7137
+    x: 113.4357403
+    y: 22.9618299
+  weight: 1496.6062814261875
+  priority: 5
+  deadline_offset: 1973
 - task_id: 1001
   phase: runtime
-  sim_seconds: 720.0
+  sim_seconds: 1800.0
   position:
-    x: 113.3025692
-    y: 22.9744346
-  weight: 221.96976248464833
-  priority: 2
-  deadline_offset: 4693
+    x: 113.4228992
+    y: 23.0275147
+  weight: 1240.162124734059
+  priority: 3
+  deadline_offset: 7158
 - task_id: 1002
   phase: runtime
-  sim_seconds: 720.0
+  sim_seconds: 1800.0
   position:
-    x: 113.3691296
-    y: 22.971525
-  weight: 670.1112615639981
-  priority: 4
-  deadline_offset: 6491
+    x: 113.2816494
+    y: 22.9719983
+  weight: 1410.935012971946
+  priority: 2
+  deadline_offset: 3958
 - task_id: 1003
   phase: runtime
-  sim_seconds: 720.0
+  sim_seconds: 1800.0
   position:
-    x: 113.545267
-    y: 22.8857843
-  weight: 1005.3471313950214
-  priority: 4
-  deadline_offset: 2322
+    x: 113.4423699
+    y: 22.911545
+  weight: 1220.2476369027843
+  priority: 1
+  deadline_offset: 3306
 - task_id: 1004
   phase: runtime
-  sim_seconds: 720.0
+  sim_seconds: 3240.0
   position:
-    x: 113.323559
-    y: 23.0132334
-  weight: 169.35743146717368
-  priority: 2
-  deadline_offset: 5054
+    x: 113.3557135
+    y: 22.9272766
+  weight: 158.66307940272935
+  priority: 5
+  deadline_offset: 6603
 - task_id: 1005
   phase: runtime
-  sim_seconds: 720.0
+  sim_seconds: 3240.0
   position:
-    x: 113.2952839
-    y: 22.9078738
-  weight: 655.2150677466211
-  priority: 4
-  deadline_offset: 3040
+    x: 113.3374105
+    y: 22.919861
+  weight: 1487.8893410395528
+  priority: 1
+  deadline_offset: 1985
 - task_id: 1006
   phase: runtime
-  sim_seconds: 720.0
-  position:
-    x: 113.3994608
-    y: 22.9554958
-  weight: 111.828434843945
-  priority: 5
-  deadline_offset: 6962
-- task_id: 1007
-  phase: runtime
-  sim_seconds: 720.0
-  position:
-    x: 113.3910606
-    y: 22.9186826
-  weight: 863.7733274214555
-  priority: 2
-  deadline_offset: 4194
-- task_id: 1008
-  phase: runtime
-  sim_seconds: 720.0
-  position:
-    x: 113.3862021
-    y: 22.9339304
-  weight: 345.606032645055
-  priority: 3
-  deadline_offset: 2705
-- task_id: 1009
-  phase: runtime
-  sim_seconds: 1440.0
-  position:
-    x: 113.4394585
-    y: 23.0152189
-  weight: 643.6834963320481
-  priority: 2
-  deadline_offset: 5820
-- task_id: 1010
-  phase: runtime
-  sim_seconds: 1440.0
-  position:
-    x: 113.5509324
-    y: 22.8800846
-  weight: 869.7779050722748
-  priority: 2
-  deadline_offset: 2235
-- task_id: 1011
-  phase: runtime
-  sim_seconds: 1440.0
-  position:
-    x: 113.4923562
-    y: 23.0201151
-  weight: 508.32621459555986
-  priority: 3
-  deadline_offset: 3196
-- task_id: 1012
-  phase: runtime
-  sim_seconds: 1440.0
-  position:
-    x: 113.5129494
-    y: 22.9213186
-  weight: 1194.7961760882238
-  priority: 3
-  deadline_offset: 4336
-- task_id: 1013
-  phase: runtime
-  sim_seconds: 1440.0
-  position:
-    x: 113.3002183
-    y: 23.0283234
-  weight: 257.61487584823556
-  priority: 5
-  deadline_offset: 1936
-- task_id: 1014
-  phase: runtime
-  sim_seconds: 1440.0
-  position:
-    x: 113.3506329
-    y: 23.0087672
-  weight: 1218.6058480690824
-  priority: 4
-  deadline_offset: 4031
-- task_id: 1015
-  phase: runtime
-  sim_seconds: 1920.0
-  position:
-    x: 113.3638007
-    y: 22.9255786
-  weight: 927.4075523765549
-  priority: 1
-  deadline_offset: 4623
-- task_id: 1016
-  phase: runtime
-  sim_seconds: 1920.0
-  position:
-    x: 113.3253457
-    y: 22.97053
-  weight: 1126.7695642068174
-  priority: 1
-  deadline_offset: 6583
-- task_id: 1017
-  phase: runtime
-  sim_seconds: 1920.0
-  position:
-    x: 113.4114415
-    y: 23.041737
-  weight: 1440.0880052836374
-  priority: 4
-  deadline_offset: 3221
-- task_id: 1018
-  phase: runtime
-  sim_seconds: 1920.0
-  position:
-    x: 113.3487041
-    y: 22.9382731
-  weight: 327.8089583365743
-  priority: 3
-  deadline_offset: 5181
-- task_id: 1019
-  phase: runtime
-  sim_seconds: 1920.0
-  position:
-    x: 113.3985546
-    y: 23.0390403
-  weight: 696.0244525879166
-  priority: 4
-  deadline_offset: 3673
-- task_id: 1020
-  phase: runtime
-  sim_seconds: 1920.0
-  position:
-    x: 113.423252
-    y: 23.0278521
-  weight: 204.34616044082065
-  priority: 4
-  deadline_offset: 6892
-- task_id: 1021
-  phase: runtime
-  sim_seconds: 1920.0
-  position:
-    x: 113.3422951
-    y: 23.0186312
-  weight: 1324.6091765404935
-  priority: 3
-  deadline_offset: 6065
-- task_id: 1022
-  phase: runtime
-  sim_seconds: 1920.0
-  position:
-    x: 113.3485545
-    y: 22.9156121
-  weight: 1036.0526499579018
-  priority: 3
-  deadline_offset: 4278
-- task_id: 1023
-  phase: runtime
-  sim_seconds: 1920.0
-  position:
-    x: 113.292665
-    y: 23.0120441
-  weight: 608.044027444884
-  priority: 5
-  deadline_offset: 5146
-- task_id: 1024
-  phase: runtime
-  sim_seconds: 2280.0
-  position:
-    x: 113.5078989
-    y: 22.9607611
-  weight: 1259.7242173282125
-  priority: 4
-  deadline_offset: 3503
-- task_id: 1025
-  phase: runtime
-  sim_seconds: 2280.0
-  position:
-    x: 113.3591918
-    y: 22.9575758
-  weight: 890.0177279473429
-  priority: 1
-  deadline_offset: 2117
-- task_id: 1026
-  phase: runtime
-  sim_seconds: 2280.0
-  position:
-    x: 113.3664293
-    y: 22.9256924
-  weight: 1090.8393498609923
-  priority: 4
-  deadline_offset: 2387
-- task_id: 1027
-  phase: runtime
   sim_seconds: 3240.0
   position:
-    x: 113.3966613
-    y: 22.9122131
-  weight: 416.2708729512581
-  priority: 1
-  deadline_offset: 2975
-- task_id: 1028
-  phase: runtime
-  sim_seconds: 3240.0
-  position:
-    x: 113.4037776
-    y: 23.0051946
-  weight: 136.35416203925928
+    x: 113.3491423
+    y: 22.9360722
+  weight: 1227.6488244888785
   priority: 4
-  deadline_offset: 4504
-- task_id: 1029
-  phase: runtime
-  sim_seconds: 3240.0
-  position:
-    x: 113.3075812
-    y: 23.0246388
-  weight: 1292.2909293030884
-  priority: 5
-  deadline_offset: 6596
-- task_id: 1030
-  phase: runtime
-  sim_seconds: 3240.0
-  position:
-    x: 113.4737542
-    y: 22.9506379
-  weight: 906.102103506892
-  priority: 2
-  deadline_offset: 2719
-- task_id: 1031
-  phase: runtime
-  sim_seconds: 3240.0
-  position:
-    x: 113.4893656
-    y: 22.9425326
-  weight: 276.2163397513972
-  priority: 5
-  deadline_offset: 3411
-- task_id: 1032
-  phase: runtime
-  sim_seconds: 3960.0
-  position:
-    x: 113.3348621
-    y: 22.9525471
-  weight: 1363.560106237947
-  priority: 1
-  deadline_offset: 3481
-- task_id: 1033
-  phase: runtime
-  sim_seconds: 4320.0
-  position:
-    x: 113.3447583
-    y: 22.9385411
-  weight: 936.3902074504911
-  priority: 4
-  deadline_offset: 6802
-- task_id: 1034
-  phase: runtime
-  sim_seconds: 4320.0
-  position:
-    x: 113.271313
-    y: 22.9805182
-  weight: 697.0480886505077
-  priority: 3
-  deadline_offset: 4935
-- task_id: 1035
-  phase: runtime
-  sim_seconds: 4800.0
-  position:
-    x: 113.4619635
-    y: 22.9185504
-  weight: 1089.5463171719532
-  priority: 4
-  deadline_offset: 3204
-- task_id: 1036
-  phase: runtime
-  sim_seconds: 4800.0
-  position:
-    x: 113.3489301
-    y: 22.9618095
-  weight: 652.4581549403835
-  priority: 3
-  deadline_offset: 1862
-- task_id: 1037
-  phase: runtime
-  sim_seconds: 5520.0
-  position:
-    x: 113.480247
-    y: 23.0488723
-  weight: 1031.4844184861695
-  priority: 2
-  deadline_offset: 5947
-- task_id: 1038
-  phase: runtime
-  sim_seconds: 5520.0
-  position:
-    x: 113.3299828
-    y: 23.0244603
-  weight: 158.97787678129114
-  priority: 3
-  deadline_offset: 5652
-- task_id: 1039
-  phase: runtime
-  sim_seconds: 5520.0
-  position:
-    x: 113.4035724
-    y: 22.9948234
-  weight: 1428.3903527880595
-  priority: 3
-  deadline_offset: 6362
+  deadline_offset: 4764

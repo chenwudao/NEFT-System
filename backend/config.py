@@ -377,5 +377,70 @@ class Config:
             "config_file":         cls.get_config_file_path(),
         }
 
+    @classmethod
+    def reload_from_yaml(cls, yaml_path: str) -> None:
+        """运行期重新从 yaml 加载所有配置 section，用于切换规模。"""
+        import os, copy
+        # 解析路径：支持相对项目根的路径
+        if not os.path.isabs(yaml_path):
+            yaml_path = os.path.join(_project_root(), yaml_path)
+        if not os.path.exists(yaml_path):
+            raise FileNotFoundError(f"Config yaml not found: {yaml_path}")
+        if _yaml is None:
+            raise RuntimeError("pyyaml not installed")
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            overrides = _yaml.safe_load(f) or {}
+        if not isinstance(overrides, dict):
+            raise ValueError("YAML must be a mapping")
+        # 重新生成所有 section
+        cls.EXPERIMENT_CONFIG       = _deep_merge(_DEFAULT_EXPERIMENT, overrides.get("experiment", {}))
+        cls.SCHEDULING_CONFIG       = _deep_merge(_DEFAULT_SCHEDULING, overrides.get("scheduling", {}))
+        cls.VEHICLE_CONFIG          = _deep_merge(_DEFAULT_VEHICLE, overrides.get("vehicle", {}))
+        cls.FLEET_CONFIG            = _deep_merge(_DEFAULT_FLEET, overrides.get("fleet", {}))
+        cls.CHARGING_STATION_CONFIG = _deep_merge(_DEFAULT_CHARGING, overrides.get("charging_station", {}))
+        cls.TASK_CONFIG             = _deep_merge(_DEFAULT_TASK, overrides.get("task", {}))
+        cls.SIMULATION_CONFIG       = _deep_merge(_DEFAULT_SIMULATION, overrides.get("simulation", {}))
+        cls.ROUTING_CONFIG          = _deep_merge(_DEFAULT_ROUTING, overrides.get("routing", {}))
+        cls.PERFORMANCE_METRICS     = _deep_merge(_DEFAULT_PERF, overrides.get("performance_metrics", {}))
+        cls.SCORING_CONFIG          = _deep_merge(_DEFAULT_SCORING, overrides.get("scoring", {}))
+        cls.OPTIMIZATION_CONFIG     = _deep_merge(_DEFAULT_OPTIMIZATION, overrides.get("optimization", {}))
+        print(f"[Config] Reloaded from: {yaml_path}")
+
+    @classmethod
+    def override_strategy(cls, strategy_name: str) -> None:
+        """覆盖调度策略（不重新加载 yaml，只改单个字段）。"""
+        cls.SCHEDULING_CONFIG = dict(cls.SCHEDULING_CONFIG)
+        cls.SCHEDULING_CONFIG["strategy"] = strategy_name
+        print(f"[Config] Strategy overridden to: {strategy_name}")
+        
+    @classmethod
+    def set_optimization_static(cls, solver: str = "gurobi", strategy: str = "static_exact_solver") -> None:
+        """启用静态优化模式。"""
+        cls.OPTIMIZATION_CONFIG = dict(cls.OPTIMIZATION_CONFIG)
+        cls.OPTIMIZATION_CONFIG["mode"] = "static"
+        cls.OPTIMIZATION_CONFIG["static"] = dict(cls.OPTIMIZATION_CONFIG.get("static", {}))
+        cls.OPTIMIZATION_CONFIG["static"]["strategy"] = strategy
+        cls.OPTIMIZATION_CONFIG["static"]["solver"] = solver
+        
+    @classmethod
+    def set_optimization_dynamic(cls) -> None:
+        """启用动态优化模式。"""
+        cls.OPTIMIZATION_CONFIG = dict(cls.OPTIMIZATION_CONFIG)
+        cls.OPTIMIZATION_CONFIG["mode"] = "dynamic"
+        
+    @classmethod
+    def set_generation_seed_file(cls, seed_file: Optional[str]) -> None:
+        cls.TASK_CONFIG = dict(cls.TASK_CONFIG)
+        if seed_file is None:
+            cls.TASK_CONFIG.pop("generation_seed_file", None)
+        else:
+            cls.TASK_CONFIG["generation_seed_file"] = seed_file
+            
+    @classmethod
+    def set_total_task_budget(cls, budget: int) -> None:
+        cls.TASK_CONFIG = dict(cls.TASK_CONFIG)
+        cls.TASK_CONFIG["total_task_budget"] = budget
+
 
 config = Config()
+

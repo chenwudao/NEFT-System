@@ -18,7 +18,7 @@ charging_station:
   default_capacity: 2
 
 task:
-  generation_seed_file: "F:/Data Structure/NEFT-System-main/NEFT-System/log/benchmarks/dynamic/small/seed_1/nearest_task/task_generation_seed.yaml"
+
   initial_tasks:               3
   generation_interval_sec_min: 5
   generation_interval_sec_max: 15

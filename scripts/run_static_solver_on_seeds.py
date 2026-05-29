@@ -65,6 +65,19 @@ def main():
         choices=["gurobi", "or-tools", "ortools"],
         help="MIP solver to use (default: gurobi)"
     )
+    parser.add_argument(
+        "--time-limit-s",
+        type=int,
+        default=None,
+        help="Gurobi time limit in seconds (default: None, representing unlimited)"
+    )
+    parser.add_argument(
+        "--no-strict",
+        action="store_false",
+        dest="strict",
+        help="Disable strict mathematical optimality (allow default gap)"
+    )
+    parser.set_defaults(strict=True)
     args = parser.parse_args()
     
     # 标准的 seed_1 种子路径
@@ -104,10 +117,10 @@ def main():
         static_opt = opt.setdefault("static", {})
         static_opt["strategy"] = "static_exact_solver"
         static_opt["solver"] = "or-tools" if args.solver in ("or-tools", "ortools") else "gurobi"
-        # 调优参数，保证中大规模可解
-        static_opt["strict_global_optimum"] = False
-        static_opt["mip_gap_threshold"] = 0.05
-        static_opt["time_limit_s"] = 300  # 增加时间限制，防止大规模算例卡死
+        # 调优参数，默认解除限制以运行最优解模式
+        static_opt["strict_global_optimum"] = args.strict
+        static_opt["mip_gap_threshold"] = 0.0 if args.strict else 0.05
+        static_opt["time_limit_s"] = args.time_limit_s
         
         # 指定调度算法
         sched = cfg.setdefault("scheduling", {})

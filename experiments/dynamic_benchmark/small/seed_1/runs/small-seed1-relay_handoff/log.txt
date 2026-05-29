@@ -1,0 +1,127 @@
+# NEFT 仿真实验日志
+实验名 (experiment.name): small-seed1-relay_handoff
+启动时间:                 2026-05-28 23:52:42
+日志目录:                 D:\Environment\homework\DaStProj\1NEFT(Updating)\experiments/dynamic_benchmark/small/seed_1/runs\small-seed1-relay_handoff
+配置文件:                 D:\Environment\homework\DaStProj\1NEFT(Updating)\neft_benchmark_9y4lrkos.yaml
+
+---- 事件日志 ----
+[2026-05-28 23:52:42] [START] Experiment 'small-seed1-relay_handoff' started.
+[2026-05-28 23:52:42] [INFO] [HEADLESS] mode=dynamic, strategy=relay_handoff, fleet_size=3, stations=1, initial_tasks=3, task_budget=20, max_sim_seconds=3600, task_seed=replay=D:/Environment/homework/DaStProj/1NEFT(Updating)/log/benchmarks/dynamic/small/seed_1/nearest_task/task_generation_seed.yaml, seed_file=D:\Environment\homework\DaStProj\1NEFT(Updating)\experiments/dynamic_benchmark/small/seed_1/runs\small-seed1-relay_handoff\task_generation_seed.yaml
+[2026-05-28 23:52:45] [PROGRESS] sim_elapsed=360s strategy=relay_handoff tasks total=3 completed=0 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 23:52:48] [PROGRESS] sim_elapsed=720s strategy=relay_handoff tasks total=3 completed=0 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 23:52:51] [PROGRESS] sim_elapsed=1080s strategy=relay_handoff tasks total=3 completed=2 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=0 charging=0
+[2026-05-28 23:52:54] [PROGRESS] sim_elapsed=1440s strategy=relay_handoff tasks total=3 completed=2 pending=0 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 23:52:58] [PROGRESS] sim_elapsed=1800s strategy=relay_handoff tasks total=6 completed=2 pending=2 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 23:53:01] [PROGRESS] sim_elapsed=2160s strategy=relay_handoff tasks total=6 completed=3 pending=1 in_progress=2 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 23:53:05] [PROGRESS] sim_elapsed=2520s strategy=relay_handoff tasks total=6 completed=3 pending=1 in_progress=2 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 23:53:08] [PROGRESS] sim_elapsed=2880s strategy=relay_handoff tasks total=10 completed=5 pending=4 in_progress=1 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 23:53:12] [PROGRESS] sim_elapsed=3240s strategy=relay_handoff tasks total=10 completed=5 pending=4 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 23:53:16] [PROGRESS] sim_elapsed=3600s strategy=relay_handoff tasks total=10 completed=6 pending=4 in_progress=0 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 23:53:20] [PROGRESS] sim_elapsed=3960s strategy=relay_handoff tasks total=10 completed=6 pending=3 in_progress=1 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 23:53:24] [PROGRESS] sim_elapsed=4320s strategy=relay_handoff tasks total=10 completed=6 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 23:53:28] [PROGRESS] sim_elapsed=4680s strategy=relay_handoff tasks total=10 completed=6 pending=0 in_progress=4 timeout=0 vehicles idle=0 moving=3 charging=0
+[2026-05-28 23:53:32] [PROGRESS] sim_elapsed=5040s strategy=relay_handoff tasks total=10 completed=7 pending=0 in_progress=3 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 23:53:35] [PROGRESS] sim_elapsed=5400s strategy=relay_handoff tasks total=10 completed=8 pending=0 in_progress=2 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 23:53:39] [PROGRESS] sim_elapsed=5760s strategy=relay_handoff tasks total=10 completed=8 pending=0 in_progress=2 timeout=0 vehicles idle=0 moving=2 charging=1
+[2026-05-28 23:53:42] [PROGRESS] sim_elapsed=6120s strategy=relay_handoff tasks total=10 completed=8 pending=0 in_progress=2 timeout=0 vehicles idle=1 moving=0 charging=2
+[2026-05-28 23:53:45] [PROGRESS] sim_elapsed=6480s strategy=relay_handoff tasks total=10 completed=8 pending=0 in_progress=2 timeout=0 vehicles idle=2 moving=0 charging=1
+[2026-05-28 23:53:48] [PROGRESS] sim_elapsed=6840s strategy=relay_handoff tasks total=10 completed=8 pending=0 in_progress=2 timeout=0 vehicles idle=2 moving=1 charging=0
+[2026-05-28 23:53:52] [PROGRESS] sim_elapsed=7200s strategy=relay_handoff tasks total=10 completed=8 pending=0 in_progress=2 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 23:53:55] [PROGRESS] sim_elapsed=7560s strategy=relay_handoff tasks total=10 completed=8 pending=0 in_progress=2 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 23:53:58] [PROGRESS] sim_elapsed=7920s strategy=relay_handoff tasks total=10 completed=9 pending=0 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+[2026-05-28 23:54:01] [PROGRESS] sim_elapsed=8280s strategy=relay_handoff tasks total=10 completed=9 pending=0 in_progress=1 timeout=0 vehicles idle=1 moving=2 charging=0
+
+[2026-05-28 23:54:02] [STOP] reason=all_tasks_done
+
+---- 最终结果 ----
+实验名: small-seed1-relay_handoff
+停止原因: all_tasks_done
+仿真时长: 8400 仿真秒 / 80.0 现实秒
+
+[ 任务 ]
+  总数=10 完成=10 按时=5 超时=0 进行中=0 待派=0
+  完成率=100.00% 按时率=50.00% 超时率=0.00%
+
+[ 得分 ]
+  总分=452.3 每任务平均=45.23 按时平均=90.46
+
+[ 时效 ]
+  平均完成时长=2640.0s 平均超时=30.91min 吞吐=4.29 任务/小时
+
+[ 距离 / 能耗 ]
+  车队总里程=178446m 任务腿均长=14012m 里程方差(车均衡)=14979
+  总能耗=213.22kWh 单任务能耗=21.322kWh
+
+[ 车队 ]
+  总车数=3 抛锚=0 抛锚ID=[]
+
+---- 完整结果（YAML） ----
+experiment_name: small-seed1-relay_handoff
+stop_reason: all_tasks_done
+sim_seconds_elapsed: 8400.0
+wall_seconds_elapsed: 80.048176
+tasks:
+  total: 10
+  completed: 10
+  on_time: 5
+  timeout: 0
+  pending: 0
+  in_progress: 0
+  completion_rate: 1.0
+  on_time_rate: 0.5
+  timeout_rate: 0.0
+scores:
+  total: 452.3248200000219
+  per_task_average: 45.232482000002186
+  per_task_on_time_average: 90.46496400000437
+  average: 45.232482000002186
+timing:
+  avg_completion_duration_sec: 2640.0
+  avg_overdue_minutes: 30.910000000000004
+  throughput_tasks_per_hour: 4.285714285714286
+distance_meters:
+  total_fleet_traveled: 178446.28600000002
+  average_completed_task_leg: 14012.290700000021
+  fleet_distance_stdev: 14979.045876321945
+energy:
+  total_energy: 213.2243994999987
+  energy_per_completed: 21.32243994999987
+vehicles_summary:
+  total: 3
+  stranded: 0
+  stranded_ids: []
+  completed_per_vehicle:
+    '1': 0
+    '2': 0
+    '3': 0
+fleet:
+- id: 1
+  type: small
+  battery_final: 41.37893999999611
+  battery_percentage: 68.96489999999352
+  total_distance_traveled: 66621.06000000394
+  energy_consumption_trip: 29.585242000000456
+  final_status: moving_to_warehouse
+  completed_tasks: 0
+- id: 2
+  type: small
+  battery_final: 17.73100100000136
+  battery_percentage: 29.551668333335602
+  total_distance_traveled: 42268.99899999866
+  energy_consumption_trip: 0.0
+  final_status: idle
+  completed_tasks: 0
+- id: 3
+  type: medium
+  battery_final: 77.96018050000015
+  battery_percentage: 77.96018050000015
+  total_distance_traveled: 69556.22699999741
+  energy_consumption_trip: 45.74767650000057
+  final_status: idle
+  completed_tasks: 0
+charging_stations:
+- id: cs1
+  capacity: 2
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0

@@ -83,34 +83,55 @@ class StaticExactSolverScheduler(Scheduler):
             tid
             for tids in self._vehicle_routes.values()
             for tid in tids
+            if tid in task_by_id_all
         }
+        assigned_this_tick = set()
         for v in wh_vehicles:
-            route_ids = [tid for tid in self._vehicle_routes.get(v.id, []) if tid in task_by_id_all]
-            if not route_ids:
+            route_ids = self._vehicle_routes.get(v.id, [])
+            has_tasks = any(tid in task_by_id_all for tid in route_ids)
+            if not has_tasks:
                 # 兜底：若全局路由缺失，至少从当前可释放任务中拿一单，避免“回仓-充电-不分配”循环。
                 available_now = [
                     t for t in pending
                     if int(getattr(t, "create_time", 0)) <= int(snapshot.timestamp)
                     and t.id not in planned_global
+                    and t.id not in assigned_this_tick
                 ]
                 if available_now:
                     available_now.sort(key=lambda t: snapshot.distance(v.position, t.position))
                     fallback = available_now[0]
                     commands.append(utils.make_deliver_command(v, fallback, assigned_tasks=[fallback.id]))
+                    assigned_this_tick.add(fallback.id)
                 else:
                     commands.append(utils.make_idle_command(v))
                 continue
-            # 仅执行“已释放”的任务，未来任务只参与规划不提前执行
+
+            # 扫描序列，获取当前 trip 的 pending 任务（在遇到下一个仓库节点前截止）
+            released_tids = []
+            for tid in route_ids:
+                if tid in task_by_id_all:
+                    t = task_by_id_all[tid]
+                    # 跳过已完成或进行中的任务
+                    if str(getattr(t.status, "value", "")) in ("completed", "in_progress"):
+                        continue
+                    # 收集待分配任务
+                    if str(getattr(t.status, "value", "")) == "pending":
+                        released_tids.append(tid)
+                else:
+                    # 遇到虚拟仓库或起终点节点：如果当前已经收集到了任务，则在此截止（当前 trip 结束）
+                    if released_tids:
+                        break
+
+            # 仅执行已释放的任务
             released = [
                 task_by_id_all[tid]
-                for tid in route_ids
+                for tid in released_tids
                 if int(getattr(task_by_id_all[tid], "create_time", 0)) <= int(snapshot.timestamp)
-                and str(getattr(task_by_id_all[tid].status, "value", "")) == "pending"
             ]
             if not released:
                 commands.append(utils.make_idle_command(v))
                 continue
-            # 静态计划里，车辆在仓库时一次性装载自己后续要送的任务序列。
+            # 静态计划里，车辆在仓库时装载当前 trip 的任务序列
             commands.append(
                 utils.make_deliver_command(
                     v,
@@ -135,6 +156,15 @@ class StaticExactSolverScheduler(Scheduler):
         full_exact_enabled = bool(static_cfg.get("full_exact_global", True))
         full_exact_max_tasks = int(static_cfg.get("full_exact_max_tasks", max_exact_tasks))
         sim_exact_max_tasks = int(static_cfg.get("simulation_exact_max_tasks", 12))
+
+        if solver == "gurobi":
+            route_plan = self._try_vrptw_solver(solver, vehicles, tasks, snapshot)
+            if route_plan is not None:
+                return route_plan
+            raise RuntimeError(
+                f"[STATIC] Gurobi static solver failed to find an accepted solution. "
+                f"Reason: {self._vrptw_disabled_reason}"
+            )
 
         if force_gurobi_only and solver != "gurobi":
             raise RuntimeError(
@@ -179,7 +209,8 @@ class StaticExactSolverScheduler(Scheduler):
         # 1) 优先尝试“一体化 VRPTW MIP”。
         route_plan = self._try_vrptw_solver(solver, vehicles, tasks, snapshot)
         if route_plan is not None:
-            return self._repair_plan_with_energy(vehicles, tasks, route_plan, snapshot)
+            # Gurobi 多阶段多往返规划结果中包含虚拟仓库节点标识，直接返回，绕过单trip的电量修复
+            return route_plan
         if force_gurobi_only:
             msg = self._vrptw_disabled_reason or "Gurobi did not return an accepted VRPTW result."
             print(f"[STATIC] force_gurobi_only enabled but no accepted VRPTW plan: {msg}. continue with fallback assignment.")
@@ -861,7 +892,7 @@ class StaticExactSolverScheduler(Scheduler):
         return None
 
     def _try_gurobi_vrptw(self, vehicles, tasks, snapshot: Snapshot):
-        """一体化 VRPTW MIP：x(k,i,j), 到达时刻 t(k,i), 迟到变量 tard(i)。"""
+        """一体化 MTVRPTW MIP：支持中途多次回仓装货。"""
         try:
             import gurobipy as gp  # type: ignore
             from gurobipy import GRB  # type: ignore
@@ -871,13 +902,21 @@ class StaticExactSolverScheduler(Scheduler):
         if not vehicles or not tasks:
             return {v.id: [] for v in vehicles}
 
-        # 节点编码：
-        # 0: start depot, 1..N: tasks, N+1: end depot
+        # N 个任务点，中间复制 R 个虚拟仓库节点
         N = len(tasks)
+        if N <= 10:
+            max_trips_per_vehicle = 4
+        elif N <= 25:
+            max_trips_per_vehicle = 3
+        else:
+            max_trips_per_vehicle = 2
+        R = max(1, len(vehicles) * max_trips_per_vehicle)
         start = 0
-        end = N + 1
         task_nodes = list(range(1, N + 1))
-        nodes = [start] + task_nodes + [end]
+        warehouse_nodes = list(range(N + 1, N + R + 1))
+        end = N + R + 1
+        nodes = [start] + task_nodes + warehouse_nodes + [end]
+
         task_by_node = {i + 1: tasks[i] for i in range(N)}
         node_by_tid = {tasks[i].id: i + 1 for i in range(N)}
 
@@ -894,16 +933,23 @@ class StaticExactSolverScheduler(Scheduler):
                     continue
                 if i == end or j == start:
                     continue
-                if i == start:
+                # 禁止在起点、终点和虚拟仓库节点之间直接穿行（必须至少服务一个任务点）
+                depot_nodes = [start] + warehouse_nodes + [end]
+                if i in depot_nodes and j in depot_nodes:
+                    continue
+
+                if i in depot_nodes:
                     a = wh
                 else:
                     ti = task_by_node[i]
                     a = (ti.position.x, ti.position.y)
-                if j == end:
+
+                if j in depot_nodes:
                     b = wh
                 else:
                     tj = task_by_node[j]
                     b = (tj.position.x, tj.position.y)
+
                 d = snapshot.distance(a, b)
                 if d == float("inf"):
                     d = 1e9
@@ -923,7 +969,7 @@ class StaticExactSolverScheduler(Scheduler):
             latest[n] = deadline[n] + max_lateness_s
             weight[n] = float(t.weight)
 
-        m = gp.Model("neft_static_vrptw")
+        m = gp.Model("neft_static_mtvrptw")
         m.Params.OutputFlag = 1 if bool(static_cfg.get("live_gap_log", True)) else 0
         strict = bool(static_cfg.get("strict_global_optimum", True))
         gap_th = float(static_cfg.get("mip_gap_threshold", 0.02))
@@ -980,25 +1026,53 @@ class StaticExactSolverScheduler(Scheduler):
                 for j in nodes:
                     if i == j or i == end or j == start:
                         continue
+                    # 禁止 depot 间穿行
+                    depot_nodes = [start] + warehouse_nodes + [end]
+                    if i in depot_nodes and j in depot_nodes:
+                        continue
                     x[(k, i, j)] = m.addVar(vtype=GRB.BINARY, name=f"x_{k}_{i}_{j}")
 
         # y[k,n] 车辆k是否服务任务n
         y = {(k, n): m.addVar(vtype=GRB.BINARY, name=f"y_{k}_{n}") for k in K for n in task_nodes}
 
-        # t[k,n] 车辆k到达节点n的时刻（仿真秒）
-        tvar = {(k, n): m.addVar(lb=0.0, ub=latest[n], vtype=GRB.CONTINUOUS, name=f"t_{k}_{n}")
-                for k in K for n in task_nodes}
+        # unserved[n] 任务n是否未被服务 (软化服务约束)
+        unserved = {n: m.addVar(vtype=GRB.BINARY, name=f"unserved_{n}") for n in task_nodes}
 
-        # 每个任务的完成时刻 c[n] 与迟到 tard[n]
-        c = {n: m.addVar(lb=0.0, ub=latest[n], vtype=GRB.CONTINUOUS, name=f"c_{n}") for n in task_nodes}
-        tard = {n: m.addVar(lb=0.0, ub=max_lateness_s, vtype=GRB.CONTINUOUS, name=f"tard_{n}") for n in task_nodes}
+        # dvar[k,n] 自上一次回仓起算的累计行驶距离
+        dvar = {}
+        max_trip_dist = 150000.0  # 150km, 安全上限
+        for k in K:
+            dvar[(k, start)] = 0.0
+            for w in warehouse_nodes:
+                dvar[(k, w)] = 0.0
+            for n in task_nodes:
+                dvar[(k, n)] = m.addVar(lb=0.0, ub=max_trip_dist, vtype=GRB.CONTINUOUS, name=f"d_{k}_{n}")
+
+        # t[k,n] 车辆k到达节点n的时刻（包含任务点和虚拟仓库）
+        tvar = {}
+        for k in K:
+            for n in task_nodes:
+                tvar[(k, n)] = m.addVar(lb=0.0, ub=max_route_time, vtype=GRB.CONTINUOUS, name=f"t_{k}_{n}")
+            for w in warehouse_nodes:
+                tvar[(k, w)] = m.addVar(lb=0.0, ub=max_route_time, vtype=GRB.CONTINUOUS, name=f"t_{k}_{w}")
+
+        # 车辆在各点的累计载重 u[k,i] (起点和虚拟仓重载时置 0)
+        u = {}
+        for k in K:
+            cap_k = float(v_by_id[k].get_remaining_load())
+            for i in [start] + task_nodes + warehouse_nodes:
+                u[(k, i)] = m.addVar(lb=0.0, ub=cap_k, vtype=GRB.CONTINUOUS, name=f"u_{k}_{i}")
+
+        # 每个任务的完成时刻 c[n] 与迟到 tard[n]、提前 early[n]
+        c = {n: m.addVar(lb=0.0, ub=max_route_time, vtype=GRB.CONTINUOUS, name=f"c_{n}") for n in task_nodes}
+        tard = {n: m.addVar(lb=0.0, ub=max_route_time, vtype=GRB.CONTINUOUS, name=f"tard_{n}") for n in task_nodes}
+        early = {n: m.addVar(lb=0.0, ub=max_route_time, vtype=GRB.CONTINUOUS, name=f"early_{n}") for n in task_nodes}
+        diff_c = {n: m.addVar(lb=-max_route_time, ub=max_route_time, vtype=GRB.CONTINUOUS, name=f"diff_c_{n}") for n in task_nodes}
 
         # start / end 是否启用
         use_k = {k: m.addVar(vtype=GRB.BINARY, name=f"use_{k}") for k in K}
 
-        # 线性化充电变量：
-        # charge_energy[k] = 车辆k在本规划中补充的总电量；
-        # charge_events[k] = 车辆k充电次数（整数，近似）
+        # 线性化充电变量
         charge_energy = {
             k: m.addVar(lb=0.0, ub=max(0.0, float(v_by_id[k].max_battery) * len(task_nodes)),
                         vtype=GRB.CONTINUOUS, name=f"charge_energy_{k}")
@@ -1010,36 +1084,61 @@ class StaticExactSolverScheduler(Scheduler):
         }
 
         # ---- 约束 ----
-        # 每任务恰好由一辆车服务一次
+        # 每任务恰好由一辆车服务一次，或者标记为未服务
         for n in task_nodes:
-            m.addConstr(gp.quicksum(y[(k, n)] for k in K) == 1, name=f"serve_once_{n}")
+            m.addConstr(gp.quicksum(y[(k, n)] for k in K) + unserved[n] == 1, name=f"serve_once_{n}")
+
+        # 虚拟仓库的全局独占访问
+        for w in warehouse_nodes:
+            m.addConstr(
+                gp.quicksum(x[(k, i, w)] for k in K for i in [start] + task_nodes if (k, i, w) in x) <= 1,
+                name=f"visit_wh_once_{w}"
+            )
 
         # 车辆流平衡
         for k in K:
             # 起点/终点
             m.addConstr(
-                gp.quicksum(x[(k, start, j)] for j in task_nodes) == use_k[k],
+                gp.quicksum(x[(k, start, j)] for j in task_nodes + warehouse_nodes if (k, start, j) in x) == use_k[k],
                 name=f"start_out_{k}",
             )
             m.addConstr(
-                gp.quicksum(x[(k, i, end)] for i in task_nodes) == use_k[k],
+                gp.quicksum(x[(k, i, end)] for i in task_nodes + warehouse_nodes if (k, i, end) in x) == use_k[k],
                 name=f"end_in_{k}",
             )
             # 任务点入=出=是否服务
             for n in task_nodes:
                 m.addConstr(
-                    gp.quicksum(x[(k, i, n)] for i in [start] + task_nodes if i != n) == y[(k, n)],
+                    gp.quicksum(x[(k, i, n)] for i in [start] + task_nodes + warehouse_nodes if (k, i, n) in x) == y[(k, n)],
                     name=f"in_{k}_{n}",
                 )
                 m.addConstr(
-                    gp.quicksum(x[(k, n, j)] for j in task_nodes + [end] if j != n) == y[(k, n)],
+                    gp.quicksum(x[(k, n, j)] for j in task_nodes + warehouse_nodes + [end] if (k, n, j) in x) == y[(k, n)],
                     name=f"out_{k}_{n}",
                 )
-            # 载重约束（总分配重量）
-            m.addConstr(
-                gp.quicksum(weight[n] * y[(k, n)] for n in task_nodes) <= float(v_by_id[k].get_remaining_load()),
-                name=f"cap_{k}",
-            )
+            # 虚拟仓库流平衡
+            for w in warehouse_nodes:
+                m.addConstr(
+                    gp.quicksum(x[(k, i, w)] for i in [start] + task_nodes if (k, i, w) in x) ==
+                    gp.quicksum(x[(k, w, j)] for j in task_nodes + [end] if (k, w, j) in x),
+                    name=f"flow_wh_{k}_{w}",
+                )
+
+            # 载重归零约束
+            m.addConstr(u[(k, start)] == 0, name=f"u_start_{k}")
+            for w in warehouse_nodes:
+                m.addConstr(u[(k, w)] == 0, name=f"u_wh_{k}_{w}")
+
+            # 载重累加约束 (MTZ-like)
+            cap_k = float(v_by_id[k].get_remaining_load())
+            for i in [start] + task_nodes + warehouse_nodes:
+                for j in task_nodes:
+                    if (k, i, j) in x:
+                        M = cap_k + weight[j]
+                        m.addConstr(
+                            u[(k, j)] >= u[(k, i)] + weight[j] - M * (1 - x[(k, i, j)]),
+                            name=f"load_accum_{k}_{i}_{j}"
+                        )
 
             # ---------- 电量与充电线性近似 ----------
             # 服务总距离（含每个任务点的“到最近充电站”安全缓冲）
@@ -1052,24 +1151,23 @@ class StaticExactSolverScheduler(Scheduler):
                 for j in nodes
                 if (k, i, j) in x
             )
-            # 充电绕行距离（每次充电增加平均绕行）
+            # 充电绕行距离
             detour_dist_expr = float(avg_charge_detour_m) * charge_events[k]
             unit_cons = max(1e-9, float(getattr(v_by_id[k], "unit_energy_consumption", 0.0)))
             init_batt = max(0.0, float(getattr(v_by_id[k], "battery", 0.0)))
             max_batt = max(1e-9, float(getattr(v_by_id[k], "max_battery", 1.0)))
             power = max(1e-9, float(getattr(v_by_id[k], "charging_power", 0.022)))
 
-            # 能量守恒：消耗 <= 初始电量 + 充电补入
+            # 能量守恒
             m.addConstr(
                 unit_cons * (service_dist_expr + detour_dist_expr) <= init_batt + charge_energy[k],
                 name=f"energy_budget_{k}",
             )
-            # 充电能量由充电次数上限控制（每次最多补一块 max_battery）
             m.addConstr(
                 charge_energy[k] <= max_batt * charge_events[k],
                 name=f"charge_event_link_{k}",
             )
-            # 粗时间可行：行驶时间 + 充电时间 不超过规划时域上界
+            # 粗时间可行
             m.addConstr(
                 (service_dist_expr + detour_dist_expr) / max(1e-9, float(getattr(v_by_id[k], "speed", 10.0)))
                 + charge_energy[k] / power
@@ -1077,43 +1175,63 @@ class StaticExactSolverScheduler(Scheduler):
                 name=f"time_energy_budget_{k}",
             )
 
-        # 时间窗与弧时序（使用更紧的弧级大M）
+        # 时间窗、时序与累计距离约束
         for k in K:
+            # 车辆k特异性的时空及充电耗时常数
+            vk = v_by_id[k]
+            speed_k = max(1e-6, float(getattr(vk, "speed", 10.0)))
+            power_k = max(1e-6, float(getattr(vk, "charging_power", 0.022)))
+            cons_k = max(0.0, float(getattr(vk, "unit_energy_consumption", 0.001)))
+            charge_time_factor_k = cons_k / power_k
+
             for n in task_nodes:
                 # release
-                m.addConstr(tvar[(k, n)] >= release[n] - latest[n] * (1 - y[(k, n)]), name=f"rel_{k}_{n}")
+                m.addConstr(tvar[(k, n)] >= release[n] - max_route_time * (1 - y[(k, n)]), name=f"rel_{k}_{n}")
                 # 关联 c[n]
-                m.addConstr(c[n] >= tvar[(k, n)] - latest[n] * (1 - y[(k, n)]), name=f"c_lb_{k}_{n}")
-                m.addConstr(c[n] <= tvar[(k, n)] + latest[n] * (1 - y[(k, n)]), name=f"c_ub_{k}_{n}")
+                m.addConstr(c[n] >= tvar[(k, n)] - max_route_time * (1 - y[(k, n)]), name=f"c_lb_{k}_{n}")
+                m.addConstr(c[n] <= tvar[(k, n)] + max_route_time * (1 - y[(k, n)]), name=f"c_ub_{k}_{n}")
+                # 车辆k没有服务任务n时，dvar必须为 0
+                m.addConstr(dvar[(k, n)] <= max_trip_dist * y[(k, n)], name=f"dvar_limit_{k}_{n}")
 
-            # start->j
-            for j in task_nodes:
-                m_start_j = max(0.0, travel[(start, j)] - release[j])
-                m.addConstr(
-                    tvar[(k, j)] >= travel[(start, j)] - m_start_j * (1 - x[(k, start, j)]),
-                    name=f"time_start_{k}_{j}",
-                )
-            # i->j
-            for i in task_nodes:
-                for j in task_nodes:
-                    if i == j:
-                        continue
-                    m_ij = max(0.0, latest[i] + travel[(i, j)] - release[j])
+            # start->j / i->j 的时刻 tvar 递推
+            for j in task_nodes + warehouse_nodes:
+                if (k, start, j) in x:
+                    travel_time = dist[(start, j)] / speed_k + dist[(start, j)] * charge_time_factor_k
                     m.addConstr(
-                        tvar[(k, j)] >= tvar[(k, i)] + travel[(i, j)] - m_ij * (1 - x[(k, i, j)]),
-                        name=f"time_{k}_{i}_{j}",
+                        tvar[(k, j)] >= travel_time - max_route_time * (1 - x[(k, start, j)]),
+                        name=f"time_start_{k}_{j}",
                     )
+            for i in task_nodes + warehouse_nodes:
+                for j in task_nodes + warehouse_nodes:
+                    if (k, i, j) in x:
+                        travel_time = dist[(i, j)] / speed_k + dist[(i, j)] * charge_time_factor_k
+                        m.addConstr(
+                            tvar[(k, j)] >= tvar[(k, i)] + travel_time - max_route_time * (1 - x[(k, i, j)]),
+                            name=f"time_{k}_{i}_{j}",
+                        )
 
-        # tardiness
+            # dvar 递推 (仅需累计自上次回仓起至任务点 j 的累计行驶距离)
+            for i in [start] + task_nodes + warehouse_nodes:
+                for j in task_nodes:
+                    if (k, i, j) in x:
+                        m.addConstr(
+                            dvar[(k, j)] >= dvar[(k, i)] + dist[(i, j)] - max_trip_dist * (1 - x[(k, i, j)]),
+                            name=f"dist_{k}_{i}_{j}",
+                        )
+
+        # tardiness & early
         for n in task_nodes:
             m.addConstr(tard[n] >= c[n] - deadline[n], name=f"tard_lb_{n}")
             m.addConstr(tard[n] >= 0.0, name=f"tard_nonneg_{n}")
+            
+            m.addConstr(diff_c[n] == deadline[n] - c[n], name=f"diff_c_eq_{n}")
+            m.addGenConstrMax(early[n], [diff_c[n]], 0.0, name=f"early_max_{n}")
 
-        # ---- 目标函数 ----
-        # 用与系统评分一致的线性代理：
-        # maximize [priority + early(等价为-completion) - overdue - distance]
-        # 常数项省略，只优化可变部分。
-        total_distance = gp.quicksum(
+        # 任务级累计行驶距离与罚分
+        total_task_distance = gp.quicksum(dvar[(k, n)] for k in K for n in task_nodes)
+        
+        # 车辆物理行驶里程（作为微小的 Tie-breaker）
+        total_physical_distance = gp.quicksum(
             dist[(i, j)] * x[(k, i, j)]
             for k in K
             for i in nodes
@@ -1132,11 +1250,18 @@ class StaticExactSolverScheduler(Scheduler):
             for n in task_nodes
         )
         assign_term = float(TASK_ASSIGN_REWARD) * len(task_nodes)
-
+        total_early = gp.quicksum(early[n] for n in task_nodes)
+        
+        unserved_penalty = float(static_cfg.get("unserved_penalty", 420.0))
+        total_unserved = gp.quicksum(unserved[n] for n in task_nodes)
+        
         obj = (
             assign_term
             + priority_term
-            - float(DISTANCE_PENALTY) * total_distance
+            - float(DISTANCE_PENALTY) * total_task_distance
+            - 1e-5 * total_physical_distance
+            - unserved_penalty * total_unserved
+            + float(EARLY_COMPLETION_REWARD_PER_MIN) / 60.0 * total_early
             - float(OVERDUE_PENALTY_PER_MIN) / 60.0 * total_tard
             - float(charge_time_penalty_per_s) * total_charge_time
             - float(charge_event_penalty) * total_charge_events
@@ -1144,25 +1269,70 @@ class StaticExactSolverScheduler(Scheduler):
         )
         m.setObjective(obj, GRB.MAXIMIZE)
 
+        # ---- 启发式热启动 (MIP Start) ----
+        try:
+            # 1. 快速计算启发式分配与排序，作为 Warm Start
+            max_exact_tasks_heur = int(static_cfg.get("max_exact_tasks", 10))
+            if len(tasks) <= max_exact_tasks_heur:
+                assign_heur = self._exact_assignment(vehicles, tasks, snapshot)
+            else:
+                assign_heur = self._greedy_assignment(vehicles, tasks, snapshot)
+                
+            route_map_heur = {v.id: [] for v in vehicles}
+            for v in vehicles:
+                local = assign_heur.get(v.id, [])
+                ordered = self._best_order_for_vehicle(v, local, snapshot)
+                route_map_heur[v.id] = [t.id for t in ordered]
+                
+            route_map_heur = self._repair_plan_with_energy(vehicles, tasks, route_map_heur, snapshot)
+            
+            # 2. 映射并注入到 Gurobi 变量的 Start 属性
+            for k in K:
+                tids = route_map_heur.get(k, [])
+                seq = [start] + [node_by_tid[tid] for tid in tids if tid in node_by_tid] + [end]
+                visited_nodes = set(seq[1:-1])
+                
+                # 设置 y[(k, n)]
+                for n in task_nodes:
+                    y[(k, n)].Start = 1.0 if n in visited_nodes else 0.0
+                    
+                # 设置 x[(k, i, j)]
+                for i in nodes:
+                    for j in nodes:
+                        if (k, i, j) in x:
+                            x[(k, i, j)].Start = 0.0
+                for idx in range(len(seq) - 1):
+                    i, j = seq[idx], seq[idx+1]
+                    if (k, i, j) in x:
+                        x[(k, i, j)].Start = 1.0
+            
+            # 设置 unserved[n]
+            all_visited = set(
+                node_by_tid[tid]
+                for route in route_map_heur.values()
+                for tid in route
+                if tid in node_by_tid
+            )
+            for n in task_nodes:
+                unserved[n].Start = 0.0 if n in all_visited else 1.0
+                
+            m.update()
+        except Exception as e:
+            print(f"[STATIC][GUROBI] Failed to generate or set heuristic MIP Start: {e}")
+
         try:
             m.optimize()
         except Exception as exc:
-            # 典型情况：size-limited license 模型过大
             self._vrptw_disabled_reason = str(exc)
             return None
 
         strict = bool(((config.get_optimization_config().get("static") or {}).get("strict_global_optimum", True)))
         gap_th = float(((config.get_optimization_config().get("static") or {}).get("mip_gap_threshold", 0.02)))
-        force_gurobi_only = bool(((config.get_optimization_config().get("static") or {}).get("force_gurobi_only", False)))
-        accept_feasible_force_only = bool(
-            ((config.get_optimization_config().get("static") or {}).get("accept_feasible_when_force_gurobi_only", True))
-        )
         if strict:
             if m.status != GRB.OPTIMAL:
                 self._vrptw_disabled_reason = f"Gurobi status={int(m.status)} (STRICT requires OPTIMAL)."
                 return None
         else:
-            # 非严格：允许 time_limit/suboptimal，但必须有可行解且 MIPGap 在阈值内
             if m.status not in (GRB.OPTIMAL, GRB.TIME_LIMIT, GRB.SUBOPTIMAL):
                 self._vrptw_disabled_reason = f"Gurobi status={int(m.status)} (accepted: OPTIMAL/TIME_LIMIT/SUBOPTIMAL)."
                 return None
@@ -1170,26 +1340,15 @@ class StaticExactSolverScheduler(Scheduler):
                 self._vrptw_disabled_reason = "No feasible incumbent solution."
                 return None
             mip_gap = float(getattr(m, "MIPGap", 1.0))
-            if (
-                force_gurobi_only
-                and accept_feasible_force_only
-                and m.status in (GRB.TIME_LIMIT, GRB.SUBOPTIMAL, GRB.OPTIMAL)
-            ):
-                if m.status != GRB.OPTIMAL and mip_gap > gap_th + 1e-9:
-                    print(
-                        "[STATIC][GUROBI] force mode accepted feasible incumbent "
-                        f"with large gap={mip_gap:.6f} (threshold={gap_th:.6f})."
-                    )
-            elif m.status != GRB.OPTIMAL and mip_gap > gap_th + 1e-9:
-                self._vrptw_disabled_reason = (
-                    f"MIPGap={mip_gap:.6f} exceeds threshold={gap_th:.6f}."
+            if mip_gap > gap_th + 1e-9:
+                print(
+                    "[STATIC][GUROBI] Accepted feasible incumbent solution "
+                    f"with large gap={mip_gap:.6f} (threshold={gap_th:.6f})."
                 )
-                return None
 
-        # 提取每车任务顺序
+        # 提取每车任务顺序（包含虚拟仓节点以划分 trip 边界）
         out: Dict[int, List[int]] = {k: [] for k in K}
         for k in K:
-            # follow arcs from start to end
             succ = {}
             for i in nodes:
                 for j in nodes:
@@ -1202,15 +1361,29 @@ class StaticExactSolverScheduler(Scheduler):
                 if nxt == end or nxt in seen:
                     break
                 seen.add(nxt)
-                tid = task_by_node[nxt].id
-                out[k].append(tid)
+                if nxt in task_nodes:
+                    tid = task_by_node[nxt].id
+                    out[k].append(tid)
+                else:
+                    out[k].append(int(nxt))
                 cur = nxt
 
             # 若出现提取异常，按时刻变量兜底
             if not out[k]:
-                visited = [n for n in task_nodes if y[(k, n)].X > 0.5]
+                visited = []
+                for n in task_nodes:
+                    if y[(k, n)].X > 0.5:
+                        visited.append(n)
+                for w in warehouse_nodes:
+                    visited_w = False
+                    for i in [start] + task_nodes:
+                        if (k, i, w) in x and x[(k, i, w)].X > 0.5:
+                            visited_w = True
+                            break
+                    if visited_w:
+                        visited.append(w)
                 visited.sort(key=lambda n: tvar[(k, n)].X)
-                out[k] = [task_by_node[n].id for n in visited]
+                out[k] = [task_by_node[n].id if n in task_nodes else int(n) for n in visited]
 
         return out
 
@@ -1257,11 +1430,17 @@ class StaticExactSolverScheduler(Scheduler):
                     m.addConstr(x[(v.id, t.id)] == 0)
                     continue
                 urgency = 1.0 / max(60.0, float(t.deadline) - float(now_ts))
+                estimated_time = d / max(1e-6, float(getattr(v, "speed", 10.0)))
+                expected_finish = float(now_ts) + estimated_time
+                early_minutes = max(0.0, float(t.deadline) - expected_finish) / 60.0
+                overdue_minutes = max(0.0, expected_finish - float(t.deadline)) / 60.0
                 utility = (
                     float(TASK_ASSIGN_REWARD)
                     + float(t.priority) * float(PRIORITY_REWARD)
                     + urgency * 5000.0
                     - float(d) * float(DISTANCE_PENALTY)
+                    + early_minutes * float(EARLY_COMPLETION_REWARD_PER_MIN)
+                    - overdue_minutes * float(OVERDUE_PENALTY_PER_MIN)
                 )
                 obj.append(utility * x[(v.id, t.id)])
         m.setObjective(gp.quicksum(obj), GRB.MAXIMIZE)

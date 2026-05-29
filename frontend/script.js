@@ -4,6 +4,7 @@ let timestampDisplay, totalScoreDisplay, taskCompletionRateDisplay, vehicleUtili
 let vehicleStatusList, taskList, stationList;
 let currentStrategyDisplay, strategyReasonDisplay;
 let simulationStatusDisplay;
+let scaleSelect, strategySelect;
 
 // 地图相关
 let map = null;
@@ -945,6 +946,8 @@ function initializeApp() {
 	currentStrategyDisplay = document.getElementById('currentStrategy');
 	strategyReasonDisplay = document.getElementById('strategyReason');
     simulationStatusDisplay = document.getElementById('simulationStatus');
+    scaleSelect = document.getElementById('scaleSelect');
+    strategySelect = document.getElementById('strategySelect');
     
     // 添加Canvas拖动事件
     canvas.addEventListener('mousedown', handleMouseDown);
@@ -984,6 +987,8 @@ function initializeApp() {
                 websocket = null;
                 resetSimulationEndedState();
                 startButton.disabled = false;
+                if (scaleSelect) scaleSelect.disabled = false;
+                if (strategySelect) strategySelect.disabled = false;
                 stopButton.disabled = true;
                 
                 // 更新状态显示
@@ -1021,6 +1026,27 @@ function initializeApp() {
         // 初始化地图
         initMap();
     });
+    // 从后端获取配置选项并填充下拉框
+    apiRequest('/config/options')
+        .then(data => {
+            // 填充策略下拉
+            if (strategySelect && data.strategies) {
+                strategySelect.innerHTML = '';
+                data.strategies.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.value;
+                    opt.textContent = s.label;
+                    if (s.value === data.current_strategy) opt.selected = true;
+                    strategySelect.appendChild(opt);
+                });
+            }
+            // 设置当前规模
+            if (scaleSelect && data.current_scale) {
+                scaleSelect.value = data.current_scale;
+            }
+        })
+        .catch(e => console.warn('获取配置选项失败:', e));
+
     refreshSimulationStatus();
 }
 
@@ -1055,6 +1081,10 @@ function toggleMapMode() {
         canvas.style.display = 'none';
         toggleMapButton.textContent = '切换到Canvas模式';
         stopCanvasRenderLoop();
+        // 修复：地图容器从 display:none 恢复后，必须调用 resize() 让高德重新计算尺寸
+        if (map) {
+            setTimeout(() => { map.resize(); }, 50);
+        }
         if (currentSimulationState) {
             drawScene(currentSimulationState);
         }
@@ -1123,9 +1153,13 @@ async function connect() {
     
     console.log('Starting simulation...');
 
+    const startPayload = {};
+    if (strategySelect && strategySelect.value) startPayload.strategy = strategySelect.value;
+    if (scaleSelect && scaleSelect.value) startPayload.scale = scaleSelect.value;
+
     const startResult = await apiRequest('/simulation/start', {
         method: 'POST',
-        body: JSON.stringify({})
+        body: JSON.stringify(startPayload)
     });
 
     console.log('Start simulation result:', startResult);
@@ -1136,12 +1170,15 @@ async function connect() {
 
     if (simulationStatusDisplay) {
         const strat = startResult.strategy || 'nearest_task';
+        const scale = (scaleSelect && scaleSelect.value) || 'small';
         const tcount = startResult.tasks_count || 0;
         const vcount = startResult.vehicles_count || 0;
-        simulationStatusDisplay.textContent = `运行中 [${strat}] 车辆 ${vcount} 辆 / 初始任务 ${tcount}`;
+        simulationStatusDisplay.textContent = `运行中 [${strat}] 规模:${scale} 车辆 ${vcount} 辆 / 初始任务 ${tcount}`;
     }
 	// 禁用启动按钮，防止重复点击
 	startButton.disabled = true;
+    if (scaleSelect) scaleSelect.disabled = true;
+    if (strategySelect) strategySelect.disabled = true;
 	console.log('Creating WebSocket connection to:', WS_URL);
 	try {
 		websocket = new WebSocket(WS_URL);
@@ -1303,6 +1340,8 @@ async function connect() {
 		websocket.onclose = (event) => {
 			console.log('WebSocket连接已关闭:', event.code, event.reason);
 			startButton.disabled = false;
+            if (scaleSelect) scaleSelect.disabled = false;
+            if (strategySelect) strategySelect.disabled = false;
 			stopButton.disabled = true;
 			websocket = null;
 			if (animationFrameId) {
@@ -1315,6 +1354,8 @@ async function connect() {
 			alert('服务器未启动或无法连接到服务器，请检查后端是否已启动');
 			// 恢复按钮状态
 			startButton.disabled = false;
+            if (scaleSelect) scaleSelect.disabled = false;
+            if (strategySelect) strategySelect.disabled = false;
 			websocket = null;
 		};
 	} catch (e) {

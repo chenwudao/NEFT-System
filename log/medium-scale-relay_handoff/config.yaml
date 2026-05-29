@@ -73,7 +73,6 @@ task:
   min_deadline_offset: 1800
   max_deadline_offset: 7200
   total_task_budget: 80
-  generation_seed_file: F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-regional_planning/task_generation_seed.yaml
 simulation:
   speed_factor: 120
   tick_interval: 1.0
@@ -118,4 +117,4 @@ performance_metrics:
   completion_weight: 0.5
   time_weight: 0.3
   distance_weight: 0.2
-config_file: F:\Data Structure\NEFT-System-main\NEFT-System\configs\dynamic\medium.yaml
+config_file: null

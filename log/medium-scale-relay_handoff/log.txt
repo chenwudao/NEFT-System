@@ -1,197 +1,85 @@
 # NEFT 仿真实验日志
 实验名 (experiment.name): medium-scale-relay_handoff
-启动时间:                 2026-05-28 18:20:02
-日志目录:                 F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-relay_handoff
-配置文件:                 F:\Data Structure\NEFT-System-main\NEFT-System\configs\dynamic\medium.yaml
+启动时间:                 2026-05-28 20:58:41
+日志目录:                 D:\Environment\homework\DaStProj\1NEFT(Updating)\log\medium-scale-relay_handoff
+配置文件:                 (默认内置)
 
 ---- 事件日志 ----
-[2026-05-28 18:20:02] [START] Experiment 'medium-scale-relay_handoff' started.
-[2026-05-28 18:20:02] [INFO] mode=dynamic, strategy=relay_handoff, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=replay=F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-regional_planning/task_generation_seed.yaml, seed_file=F:\Data Structure\NEFT-System-main\NEFT-System\log\medium-scale-relay_handoff\task_generation_seed.yaml
-[2026-05-28 18:20:05] [PROGRESS] sim_elapsed=360s strategy=relay_handoff tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-28 18:20:09] [PROGRESS] sim_elapsed=720s strategy=relay_handoff tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-28 18:20:09] [TASK] replay task t1001 weight=222.0 prio=2 deadline=5413 pending=1/20
-[2026-05-28 18:20:09] [TASK] replay task t1002 weight=670.1 prio=4 deadline=7211 pending=2/20
-[2026-05-28 18:20:09] [TASK] replay task t1003 weight=1005.3 prio=4 deadline=3042 pending=3/20
-[2026-05-28 18:20:09] [TASK] replay task t1004 weight=169.4 prio=2 deadline=5774 pending=4/20
-[2026-05-28 18:20:09] [TASK] replay task t1005 weight=655.2 prio=4 deadline=3760 pending=5/20
-[2026-05-28 18:20:09] [TASK] replay task t1006 weight=111.8 prio=5 deadline=7682 pending=6/20
-[2026-05-28 18:20:09] [TASK] replay task t1007 weight=863.8 prio=2 deadline=4914 pending=7/20
-[2026-05-28 18:20:09] [TASK] replay task t1008 weight=345.6 prio=3 deadline=3425 pending=8/20
-[2026-05-28 18:20:15] [PROGRESS] sim_elapsed=1080s strategy=relay_handoff tasks total=13 completed=4 pending=0 in_progress=9 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-28 18:20:20] [PROGRESS] sim_elapsed=1440s strategy=relay_handoff tasks total=13 completed=6 pending=0 in_progress=7 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-28 18:20:21] [TASK] replay task t1009 weight=643.7 prio=2 deadline=7260 pending=1/20
-[2026-05-28 18:20:21] [TASK] replay task t1010 weight=869.8 prio=2 deadline=3675 pending=2/20
-[2026-05-28 18:20:21] [TASK] replay task t1011 weight=508.3 prio=3 deadline=4636 pending=3/20
-[2026-05-28 18:20:21] [TASK] replay task t1012 weight=1194.8 prio=3 deadline=5776 pending=4/20
-[2026-05-28 18:20:21] [TASK] replay task t1013 weight=257.6 prio=5 deadline=3376 pending=5/20
-[2026-05-28 18:20:21] [TASK] replay task t1014 weight=1218.6 prio=4 deadline=5471 pending=6/20
-[2026-05-28 18:20:25] [PROGRESS] sim_elapsed=1800s strategy=relay_handoff tasks total=19 completed=7 pending=4 in_progress=8 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:20:28] [TASK] replay task t1015 weight=927.4 prio=1 deadline=6543 pending=3/20
-[2026-05-28 18:20:28] [TASK] replay task t1016 weight=1126.8 prio=1 deadline=8503 pending=4/20
-[2026-05-28 18:20:28] [TASK] replay task t1017 weight=1440.1 prio=4 deadline=5141 pending=5/20
-[2026-05-28 18:20:28] [TASK] replay task t1018 weight=327.8 prio=3 deadline=7101 pending=6/20
-[2026-05-28 18:20:28] [TASK] replay task t1019 weight=696.0 prio=4 deadline=5593 pending=7/20
-[2026-05-28 18:20:28] [TASK] replay task t1020 weight=204.3 prio=4 deadline=8812 pending=8/20
-[2026-05-28 18:20:28] [TASK] replay task t1021 weight=1324.6 prio=3 deadline=7985 pending=9/20
-[2026-05-28 18:20:28] [TASK] replay task t1022 weight=1036.1 prio=3 deadline=6198 pending=10/20
-[2026-05-28 18:20:28] [TASK] replay task t1023 weight=608.0 prio=5 deadline=7066 pending=11/20
-[2026-05-28 18:20:31] [PROGRESS] sim_elapsed=2160s strategy=relay_handoff tasks total=28 completed=8 pending=10 in_progress=10 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-28 18:20:36] [TASK] replay task t1024 weight=1259.7 prio=4 deadline=5783 pending=9/20
-[2026-05-28 18:20:37] [TASK] replay task t1025 weight=890.0 prio=1 deadline=4397 pending=10/20
-[2026-05-28 18:20:37] [TASK] replay task t1026 weight=1090.8 prio=4 deadline=4667 pending=11/20
-[2026-05-28 18:20:40] [PROGRESS] sim_elapsed=2520s strategy=relay_handoff tasks total=31 completed=10 pending=11 in_progress=10 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-28 18:20:46] [PROGRESS] sim_elapsed=2880s strategy=relay_handoff tasks total=31 completed=12 pending=11 in_progress=8 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-28 18:20:53] [PROGRESS] sim_elapsed=3240s strategy=relay_handoff tasks total=31 completed=14 pending=11 in_progress=6 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:20:53] [TASK] replay task t1027 weight=416.3 prio=1 deadline=6215 pending=12/20
-[2026-05-28 18:20:53] [TASK] replay task t1028 weight=136.4 prio=4 deadline=7744 pending=13/20
-[2026-05-28 18:20:53] [TASK] replay task t1029 weight=1292.3 prio=5 deadline=9836 pending=14/20
-[2026-05-28 18:20:53] [TASK] replay task t1030 weight=906.1 prio=2 deadline=5959 pending=15/20
-[2026-05-28 18:20:53] [TASK] replay task t1031 weight=276.2 prio=5 deadline=6651 pending=16/20
-[2026-05-28 18:21:01] [PROGRESS] sim_elapsed=3600s strategy=relay_handoff tasks total=36 completed=14 pending=13 in_progress=9 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-28 18:21:09] [PROGRESS] sim_elapsed=3960s strategy=relay_handoff tasks total=36 completed=17 pending=13 in_progress=6 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:21:10] [TASK] replay task t1032 weight=1363.6 prio=1 deadline=7441 pending=14/20
-[2026-05-28 18:21:18] [PROGRESS] sim_elapsed=4320s strategy=relay_handoff tasks total=37 completed=18 pending=14 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-28 18:21:18] [TASK] replay task t1033 weight=936.4 prio=4 deadline=11122 pending=15/20
-[2026-05-28 18:21:18] [TASK] replay task t1034 weight=697.0 prio=3 deadline=9255 pending=16/20
-[2026-05-28 18:21:32] [PROGRESS] sim_elapsed=4680s strategy=relay_handoff tasks total=39 completed=20 pending=14 in_progress=5 timeout=0 vehicles idle=3 moving=3 charging=0
-[2026-05-28 18:21:35] [TASK] replay task t1035 weight=1089.5 prio=4 deadline=8004 pending=15/20
-[2026-05-28 18:21:35] [TASK] replay task t1036 weight=652.5 prio=3 deadline=6662 pending=16/20
-[2026-05-28 18:21:39] [PROGRESS] sim_elapsed=5040s strategy=relay_handoff tasks total=41 completed=21 pending=16 in_progress=4 timeout=0 vehicles idle=1 moving=4 charging=1
-[2026-05-28 18:21:44] [PROGRESS] sim_elapsed=5400s strategy=relay_handoff tasks total=41 completed=21 pending=16 in_progress=4 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:21:51] [TASK] replay task t1037 weight=1031.5 prio=2 deadline=11467 pending=15/20
-[2026-05-28 18:21:51] [TASK] replay task t1038 weight=159.0 prio=3 deadline=11172 pending=16/20
-[2026-05-28 18:21:51] [TASK] replay task t1039 weight=1428.4 prio=3 deadline=11882 pending=17/20
-[2026-05-28 18:21:53] [INFO] task generation stopped at sim_elapsed=5640s (reason: budget/max_sim_seconds reached). continuing until all tasks settle.
-[2026-05-28 18:21:56] [PROGRESS] sim_elapsed=5760s strategy=relay_handoff tasks total=44 completed=21 pending=17 in_progress=6 timeout=0 vehicles idle=0 moving=5 charging=1
-[2026-05-28 18:22:02] [PROGRESS] sim_elapsed=6120s strategy=relay_handoff tasks total=44 completed=23 pending=17 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:22:10] [PROGRESS] sim_elapsed=6480s strategy=relay_handoff tasks total=44 completed=23 pending=17 in_progress=4 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-28 18:22:16] [PROGRESS] sim_elapsed=6840s strategy=relay_handoff tasks total=44 completed=23 pending=16 in_progress=5 timeout=0 vehicles idle=0 moving=4 charging=2
-[2026-05-28 18:22:21] [PROGRESS] sim_elapsed=7200s strategy=relay_handoff tasks total=44 completed=23 pending=16 in_progress=5 timeout=0 vehicles idle=0 moving=3 charging=3
-[2026-05-28 18:22:25] [PROGRESS] sim_elapsed=7560s strategy=relay_handoff tasks total=44 completed=24 pending=16 in_progress=4 timeout=0 vehicles idle=1 moving=2 charging=3
-[2026-05-28 18:22:30] [PROGRESS] sim_elapsed=7920s strategy=relay_handoff tasks total=44 completed=25 pending=16 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:22:36] [PROGRESS] sim_elapsed=8280s strategy=relay_handoff tasks total=44 completed=25 pending=16 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-28 18:22:42] [PROGRESS] sim_elapsed=8640s strategy=relay_handoff tasks total=44 completed=25 pending=16 in_progress=3 timeout=0 vehicles idle=0 moving=6 charging=0
-[2026-05-28 18:22:47] [PROGRESS] sim_elapsed=9000s strategy=relay_handoff tasks total=44 completed=25 pending=16 in_progress=3 timeout=0 vehicles idle=1 moving=5 charging=0
-[2026-05-28 18:22:58] [PROGRESS] sim_elapsed=9360s strategy=relay_handoff tasks total=44 completed=25 pending=15 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:23:03] [PROGRESS] sim_elapsed=9720s strategy=relay_handoff tasks total=44 completed=27 pending=15 in_progress=2 timeout=0 vehicles idle=4 moving=2 charging=0
-[2026-05-28 18:23:07] [PROGRESS] sim_elapsed=10080s strategy=relay_handoff tasks total=44 completed=27 pending=15 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:23:17] [PROGRESS] sim_elapsed=10440s strategy=relay_handoff tasks total=44 completed=27 pending=14 in_progress=3 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:23:21] [PROGRESS] sim_elapsed=10800s strategy=relay_handoff tasks total=44 completed=27 pending=14 in_progress=3 timeout=0 vehicles idle=4 moving=2 charging=0
-[2026-05-28 18:23:31] [PROGRESS] sim_elapsed=11160s strategy=relay_handoff tasks total=44 completed=28 pending=13 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:23:35] [PROGRESS] sim_elapsed=11520s strategy=relay_handoff tasks total=44 completed=29 pending=13 in_progress=2 timeout=0 vehicles idle=3 moving=3 charging=0
-[2026-05-28 18:23:45] [PROGRESS] sim_elapsed=11880s strategy=relay_handoff tasks total=44 completed=29 pending=12 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:23:49] [PROGRESS] sim_elapsed=12240s strategy=relay_handoff tasks total=44 completed=29 pending=12 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:23:57] [PROGRESS] sim_elapsed=12600s strategy=relay_handoff tasks total=44 completed=29 pending=11 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:24:01] [PROGRESS] sim_elapsed=12960s strategy=relay_handoff tasks total=44 completed=29 pending=11 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:24:06] [PROGRESS] sim_elapsed=13320s strategy=relay_handoff tasks total=44 completed=31 pending=11 in_progress=2 timeout=0 vehicles idle=3 moving=2 charging=1
-[2026-05-28 18:24:10] [PROGRESS] sim_elapsed=13680s strategy=relay_handoff tasks total=44 completed=31 pending=11 in_progress=2 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:24:14] [PROGRESS] sim_elapsed=14040s strategy=relay_handoff tasks total=44 completed=31 pending=11 in_progress=2 timeout=0 vehicles idle=3 moving=3 charging=0
-[2026-05-28 18:24:18] [PROGRESS] sim_elapsed=14400s strategy=relay_handoff tasks total=44 completed=31 pending=11 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:24:22] [PROGRESS] sim_elapsed=14760s strategy=relay_handoff tasks total=44 completed=31 pending=11 in_progress=2 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:24:26] [PROGRESS] sim_elapsed=15120s strategy=relay_handoff tasks total=44 completed=31 pending=11 in_progress=2 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:24:31] [PROGRESS] sim_elapsed=15480s strategy=relay_handoff tasks total=44 completed=32 pending=11 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:24:35] [PROGRESS] sim_elapsed=15840s strategy=relay_handoff tasks total=44 completed=32 pending=11 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:24:44] [PROGRESS] sim_elapsed=16200s strategy=relay_handoff tasks total=44 completed=32 pending=10 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:24:49] [PROGRESS] sim_elapsed=16560s strategy=relay_handoff tasks total=44 completed=32 pending=10 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:24:57] [PROGRESS] sim_elapsed=16920s strategy=relay_handoff tasks total=44 completed=32 pending=9 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:25:03] [PROGRESS] sim_elapsed=17280s strategy=relay_handoff tasks total=44 completed=33 pending=9 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:25:08] [PROGRESS] sim_elapsed=17640s strategy=relay_handoff tasks total=44 completed=34 pending=9 in_progress=1 timeout=0 vehicles idle=3 moving=2 charging=1
-[2026-05-28 18:25:13] [PROGRESS] sim_elapsed=18000s strategy=relay_handoff tasks total=44 completed=34 pending=9 in_progress=1 timeout=0 vehicles idle=3 moving=2 charging=1
-[2026-05-28 18:25:22] [PROGRESS] sim_elapsed=18360s strategy=relay_handoff tasks total=44 completed=34 pending=8 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:25:29] [PROGRESS] sim_elapsed=18720s strategy=relay_handoff tasks total=44 completed=34 pending=7 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:25:34] [PROGRESS] sim_elapsed=19080s strategy=relay_handoff tasks total=44 completed=35 pending=7 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:25:40] [PROGRESS] sim_elapsed=19440s strategy=relay_handoff tasks total=44 completed=35 pending=7 in_progress=2 timeout=0 vehicles idle=3 moving=3 charging=0
-[2026-05-28 18:25:46] [PROGRESS] sim_elapsed=19800s strategy=relay_handoff tasks total=44 completed=36 pending=2 in_progress=6 timeout=0 vehicles idle=3 moving=2 charging=1
-[2026-05-28 18:25:51] [PROGRESS] sim_elapsed=20160s strategy=relay_handoff tasks total=44 completed=36 pending=2 in_progress=6 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:25:56] [PROGRESS] sim_elapsed=20520s strategy=relay_handoff tasks total=44 completed=36 pending=2 in_progress=6 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:26:00] [PROGRESS] sim_elapsed=20880s strategy=relay_handoff tasks total=44 completed=37 pending=2 in_progress=5 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:26:05] [PROGRESS] sim_elapsed=21240s strategy=relay_handoff tasks total=44 completed=37 pending=2 in_progress=5 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:26:11] [PROGRESS] sim_elapsed=21600s strategy=relay_handoff tasks total=44 completed=38 pending=2 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:26:18] [PROGRESS] sim_elapsed=21960s strategy=relay_handoff tasks total=44 completed=38 pending=2 in_progress=4 timeout=0 vehicles idle=4 moving=2 charging=0
-[2026-05-28 18:26:23] [PROGRESS] sim_elapsed=22320s strategy=relay_handoff tasks total=44 completed=39 pending=2 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:26:27] [PROGRESS] sim_elapsed=22680s strategy=relay_handoff tasks total=44 completed=39 pending=2 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:26:32] [PROGRESS] sim_elapsed=23040s strategy=relay_handoff tasks total=44 completed=40 pending=1 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:26:37] [PROGRESS] sim_elapsed=23400s strategy=relay_handoff tasks total=44 completed=40 pending=1 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:26:42] [PROGRESS] sim_elapsed=23760s strategy=relay_handoff tasks total=44 completed=40 pending=1 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:26:46] [PROGRESS] sim_elapsed=24120s strategy=relay_handoff tasks total=44 completed=40 pending=1 in_progress=3 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:26:51] [PROGRESS] sim_elapsed=24480s strategy=relay_handoff tasks total=44 completed=41 pending=1 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:26:56] [PROGRESS] sim_elapsed=24840s strategy=relay_handoff tasks total=44 completed=42 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:27:00] [PROGRESS] sim_elapsed=25200s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:27:05] [PROGRESS] sim_elapsed=25560s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:27:09] [PROGRESS] sim_elapsed=25920s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:27:14] [PROGRESS] sim_elapsed=26280s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:27:19] [PROGRESS] sim_elapsed=26640s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=3 moving=3 charging=0
-[2026-05-28 18:27:24] [PROGRESS] sim_elapsed=27000s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=3 charging=1
-[2026-05-28 18:27:28] [PROGRESS] sim_elapsed=27360s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=2 charging=2
-[2026-05-28 18:27:32] [PROGRESS] sim_elapsed=27720s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=3 moving=2 charging=1
-[2026-05-28 18:27:35] [PROGRESS] sim_elapsed=28080s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=3 moving=2 charging=1
-[2026-05-28 18:27:40] [PROGRESS] sim_elapsed=28440s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:27:45] [PROGRESS] sim_elapsed=28800s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:27:54] [PROGRESS] sim_elapsed=29160s strategy=relay_handoff tasks total=44 completed=43 pending=1 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
-[2026-05-28 18:28:00] [PROGRESS] sim_elapsed=29520s strategy=relay_handoff tasks total=44 completed=43 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
-[2026-05-28 18:28:06] [PROGRESS] sim_elapsed=29880s strategy=relay_handoff tasks total=44 completed=43 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
-[2026-05-28 18:28:10] [PROGRESS] sim_elapsed=30240s strategy=relay_handoff tasks total=44 completed=43 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=2 charging=1
-[2026-05-28 18:28:15] [PROGRESS] sim_elapsed=30600s strategy=relay_handoff tasks total=44 completed=43 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
-[2026-05-28 18:28:19] [PROGRESS] sim_elapsed=30960s strategy=relay_handoff tasks total=44 completed=43 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
-[2026-05-28 18:28:24] [PROGRESS] sim_elapsed=31320s strategy=relay_handoff tasks total=44 completed=43 pending=0 in_progress=1 timeout=0 vehicles idle=3 moving=3 charging=0
-[2026-05-28 18:28:28] [PROGRESS] sim_elapsed=31680s strategy=relay_handoff tasks total=44 completed=43 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
-[2026-05-28 18:28:31] [PROGRESS] sim_elapsed=32040s strategy=relay_handoff tasks total=44 completed=43 pending=0 in_progress=1 timeout=0 vehicles idle=4 moving=2 charging=0
+[2026-05-28 20:58:41] [START] Experiment 'medium-scale-relay_handoff' started.
+[2026-05-28 20:58:41] [INFO] mode=dynamic, strategy=relay_handoff, fleet_size=6, stations=2, initial_tasks=5, task_budget=80, max_sim_seconds=7200, task_seed=record(base_seed=1591434278), seed_file=D:\Environment\homework\DaStProj\1NEFT(Updating)\log\medium-scale-relay_handoff\task_generation_seed.yaml
+[2026-05-28 20:58:44] [PROGRESS] sim_elapsed=360s strategy=relay_handoff tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:58:48] [PROGRESS] sim_elapsed=720s strategy=relay_handoff tasks total=5 completed=0 pending=0 in_progress=5 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:58:52] [PROGRESS] sim_elapsed=1080s strategy=relay_handoff tasks total=5 completed=1 pending=0 in_progress=4 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:58:56] [PROGRESS] sim_elapsed=1440s strategy=relay_handoff tasks total=5 completed=3 pending=0 in_progress=2 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:59:01] [PROGRESS] sim_elapsed=1800s strategy=relay_handoff tasks total=5 completed=5 pending=0 in_progress=0 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:59:01] [TASK] new task t1001 weight=1240.2 prio=3 deadline=8958 pending=1/20
+[2026-05-28 20:59:01] [TASK] new task t1002 weight=1410.9 prio=2 deadline=5758 pending=2/20
+[2026-05-28 20:59:01] [TASK] new task t1003 weight=1220.2 prio=1 deadline=5106 pending=3/20
+[2026-05-28 20:59:06] [PROGRESS] sim_elapsed=2160s strategy=relay_handoff tasks total=8 completed=5 pending=2 in_progress=1 timeout=0 vehicles idle=1 moving=5 charging=0
+[2026-05-28 20:59:11] [PROGRESS] sim_elapsed=2520s strategy=relay_handoff tasks total=8 completed=5 pending=1 in_progress=2 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:59:15] [PROGRESS] sim_elapsed=2880s strategy=relay_handoff tasks total=8 completed=6 pending=1 in_progress=1 timeout=0 vehicles idle=2 moving=4 charging=0
+[2026-05-28 20:59:21] [PROGRESS] sim_elapsed=3240s strategy=relay_handoff tasks total=8 completed=6 pending=0 in_progress=2 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:59:22] [TASK] new task t1004 weight=158.7 prio=5 deadline=9843 pending=1/20
+[2026-05-28 20:59:22] [TASK] new task t1005 weight=1487.9 prio=1 deadline=5225 pending=2/20
+[2026-05-28 20:59:23] [TASK] new task t1006 weight=1227.6 prio=4 deadline=8004 pending=3/20
+[2026-05-28 20:59:28] [PROGRESS] sim_elapsed=3600s strategy=relay_handoff tasks total=11 completed=7 pending=0 in_progress=4 timeout=0 vehicles idle=3 moving=3 charging=0
+[2026-05-28 20:59:35] [PROGRESS] sim_elapsed=3960s strategy=relay_handoff tasks total=11 completed=7 pending=0 in_progress=4 timeout=0 vehicles idle=2 moving=4 charging=0
 
-[2026-05-28 18:28:34] [STOP] reason=all_tasks_done
+[2026-05-28 20:59:39] [STOP] reason=manual_stop
 
 ---- 最终结果 ----
 实验名: medium-scale-relay_handoff
-停止原因: all_tasks_done
-仿真时长: 32280 仿真秒 / 511.8 现实秒
+停止原因: manual_stop
+仿真时长: 4080 仿真秒 / 57.8 现实秒
 
 [ 任务 ]
-  总数=44 完成=44 按时=24 超时=0 进行中=0 待派=0
-  完成率=100.00% 按时率=54.55% 超时率=0.00%
+  总数=11 完成=8 按时=8 超时=0 进行中=3 待派=0
+  完成率=72.73% 按时率=100.00% 超时率=0.00%
 
 [ 得分 ]
-  总分=3131.1 每任务平均=71.16 按时平均=130.46
+  总分=952.8 每任务平均=119.10 按时平均=119.10
 
 [ 时效 ]
-  平均完成时长=8501.5s 平均超时=182.35min 吞吐=4.91 任务/小时
+  平均完成时长=1040.0s 平均超时=0.00min 吞吐=7.06 任务/小时
 
 [ 距离 / 能耗 ]
-  车队总里程=955554m 任务腿均长=18124m 里程方差(车均衡)=108166
-  总能耗=1500.34kWh 单任务能耗=34.099kWh
+  车队总里程=172919m 任务腿均长=10545m 里程方差(车均衡)=14523
+  总能耗=261.91kWh 单任务能耗=32.739kWh
 
 [ 车队 ]
   总车数=6 抛锚=0 抛锚ID=[]
 
 ---- 完整结果（YAML） ----
 experiment_name: medium-scale-relay_handoff
-stop_reason: all_tasks_done
-sim_seconds_elapsed: 32280.0
-wall_seconds_elapsed: 511.847884
+stop_reason: manual_stop
+sim_seconds_elapsed: 4080.0
+wall_seconds_elapsed: 57.835485
 tasks:
-  total: 44
-  completed: 44
-  on_time: 24
+  total: 11
+  completed: 8
+  on_time: 8
   timeout: 0
   pending: 0
-  in_progress: 0
-  completion_rate: 1.0
-  on_time_rate: 0.5454545454545454
+  in_progress: 3
+  completion_rate: 0.7272727272727273
+  on_time_rate: 1.0
   timeout_rate: 0.0
 scores:
-  total: 3131.1025333333737
-  per_task_average: 71.16142121212214
-  per_task_on_time_average: 130.46260555555725
-  average: 71.16142121212214
+  total: 952.7990333332771
+  per_task_average: 119.09987916665963
+  per_task_on_time_average: 119.09987916665963
+  average: 119.09987916665963
 timing:
-  avg_completion_duration_sec: 8501.538461538461
-  avg_overdue_minutes: 182.35416666666666
-  throughput_tasks_per_hour: 4.907063197026022
+  avg_completion_duration_sec: 1040.0
+  avg_overdue_minutes: 0.0
+  throughput_tasks_per_hour: 7.0588235294117645
 distance_meters:
-  total_fleet_traveled: 955554.2359999991
-  average_completed_task_leg: 18124.2428409089
-  fleet_distance_stdev: 108166.19536523231
+  total_fleet_traveled: 172918.87900000284
+  average_completed_task_leg: 10544.926125000098
+  fleet_distance_stdev: 14523.13150349275
 energy:
-  total_energy: 1500.3382345000016
-  energy_per_completed: 34.0985962386364
+  total_energy: 261.9111410000049
+  energy_per_completed: 32.73889262500061
 vehicles_summary:
   total: 6
   stranded: 0
@@ -206,61 +94,62 @@ vehicles_summary:
 fleet:
 - id: 1
   type: small
-  battery_final: 43.925844000000595
-  battery_percentage: 73.20974000000099
-  total_distance_traveled: 70074.1559999995
-  energy_consumption_trip: 0.0
-  final_status: idle
+  battery_final: 30.11203799999881
+  battery_percentage: 50.186729999998015
+  total_distance_traveled: 29887.962000001196
+  energy_consumption_trip: 7.2
+  final_status: moving_to_task
   completed_tasks: 0
 - id: 2
   type: small
-  battery_final: 26.498840000001486
-  battery_percentage: 44.16473333333581
-  total_distance_traveled: 69501.15999999852
+  battery_final: 60.0
+  battery_percentage: 100.0
+  total_distance_traveled: 0.0
   energy_consumption_trip: 0.0
   final_status: idle
   completed_tasks: 0
 - id: 3
   type: medium
-  battery_final: 74.01031899999853
-  battery_percentage: 74.01031899999853
-  total_distance_traveled: 256206.76899999962
+  battery_final: 52.600579000001204
+  battery_percentage: 52.600579000001204
+  total_distance_traveled: 31599.613999999223
   energy_consumption_trip: 0.0
   final_status: idle
   completed_tasks: 0
 - id: 4
   type: medium
-  battery_final: 33.46144300000227
-  battery_percentage: 33.46144300000227
-  total_distance_traveled: 44359.037999998516
-  energy_consumption_trip: 43.31612999999662
-  final_status: moving_to_charge
+  battery_final: 42.97209700000203
+  battery_percentage: 42.97209700000203
+  total_distance_traveled: 38018.60199999866
+  energy_consumption_trip: 26.569040999996982
+  final_status: moving_to_warehouse
   completed_tasks: 0
 - id: 5
   type: medium
-  battery_final: 83.29567899999896
-  battery_percentage: 83.29567899999896
-  total_distance_traveled: 241824.0359999993
-  energy_consumption_trip: 0.0
-  final_status: idle
+  battery_final: 42.31135899999798
+  battery_percentage: 42.31135899999798
+  total_distance_traveled: 38459.094000001336
+  energy_consumption_trip: 16.199999999999996
+  final_status: moving_to_task
   completed_tasks: 0
 - id: 6
   type: large
-  battery_final: 67.9998940000005
-  battery_percentage: 45.333262666667
-  total_distance_traveled: 273589.07700000366
-  energy_consumption_trip: 59.727677999998306
-  final_status: idle
+  battery_final: 80.09278599999517
+  battery_percentage: 53.39519066666345
+  total_distance_traveled: 34953.60700000243
+  energy_consumption_trip: 13.974235999999241
+  final_status: moving_to_task
   completed_tasks: 0
 charging_stations:
 - id: cs1
   capacity: 3
-  final_load: 0.16666666666666666
-  charging_vehicles:
-  - 4
-  queue_count: 1
+  final_load: 0.0
+  charging_vehicles: []
+  queue_count: 0
 - id: cs2
   capacity: 3
   final_load: 0.0
   charging_vehicles: []
   queue_count: 0
+[2026-05-28 20:59:46] [TASK] new task t1007 weight=1096.2 prio=3 deadline=7594 pending=1/20
+[2026-05-28 20:59:46] [TASK] new task t1008 weight=413.4 prio=3 deadline=9537 pending=2/20

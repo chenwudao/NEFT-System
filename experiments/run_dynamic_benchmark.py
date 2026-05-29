@@ -50,7 +50,7 @@ OUTPUT_ROOT = PROJECT_ROOT / "experiments" / "dynamic_benchmark"
 MAIN_SCRIPT = PROJECT_ROOT / "backend" / "main.py"
 
 SCALE_SEED_COUNTS: Dict[str, int] = {
-    "small": 2,
+    "small": 1,
     "medium": 1,
     "large": 1,
 }
@@ -408,40 +408,32 @@ def run_seed_batch(
     algorithms: Sequence[str],
     dry_run: bool = False,
 ) -> List[Dict[str, Any]]:
-    """跑完一个规模下的单个 seed：先录制 seed，再回放其余算法。"""
+    """跑完一个规模下的单个 seed：直接使用已有的 seed_1 种子进行回放。"""
     seed_dir = OUTPUT_ROOT / scale / f"seed_{seed_index}"
     runs_log_dir = seed_dir / "runs"
-    shared_seed_path = seed_dir / "task_generation_seed.yaml"
+    
+    # 动态算法已存的 seed_1 路径
+    existing_seed_rel = f"log/benchmarks/dynamic/{scale}/seed_{seed_index}/nearest_task/task_generation_seed.yaml"
+    shared_seed_path = PROJECT_ROOT / existing_seed_rel
 
     print(f"\n{'=' * 60}")
     print(f"规模={scale}  seed={seed_index}  算法数={len(algorithms)}")
+    print(f"使用种子文件: {existing_seed_rel}")
     print(f"输出目录: {seed_dir}")
     print(f"{'=' * 60}")
 
+    if not dry_run and not shared_seed_path.exists():
+        raise FileNotFoundError(f"找不到已有的种子文件: {shared_seed_path}")
+
+    # 把已有的种子文件拷贝到输出目录，方便查看
+    if not dry_run:
+        seed_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(shared_seed_path, seed_dir / "task_generation_seed.yaml")
+
     rows: List[Dict[str, Any]] = []
 
-    # 1) nearest_task 录制 seed（也是 baseline 结果）
-    if SEED_GENERATOR not in algorithms:
-        raise ValueError(f"算法列表必须包含 {SEED_GENERATOR}")
-
-    print(f"\n[1/{len(algorithms)}] 录制 seed: {SEED_GENERATOR}")
-    row_seed = _run_single_algorithm(
-        scale=scale,
-        seed_index=seed_index,
-        algorithm=SEED_GENERATOR,
-        seed_file=None,
-        runs_log_dir=runs_log_dir,
-        dry_run=dry_run,
-    )
-    rows.append(row_seed)
-
-    if not dry_run:
-        log_dir = Path(str(row_seed["log_dir"]))
-        _copy_seed_artifact(log_dir, shared_seed_path)
-
-    # 2) 其余算法读取同一份 seed
-    replay_algorithms = [a for a in algorithms if a != SEED_GENERATOR]
-    for idx, algorithm in enumerate(replay_algorithms, start=2):
+    # 所有算法，包括 nearest_task，都通过同一份已有种子回放运行
+    for idx, algorithm in enumerate(algorithms, start=1):
         print(f"\n[{idx}/{len(algorithms)}] 回放 seed: {algorithm}")
         row = _run_single_algorithm(
             scale=scale,

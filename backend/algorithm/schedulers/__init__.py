@@ -12,8 +12,9 @@ from .dynamic import (
     NearestTaskScheduler,
     PriorityTaskScheduler,
 )
+from .static import StaticExactSolverScheduler, STATIC_SCHEDULERS
 
-EXPORTED_SCHEDULERS = list(DYNAMIC_SCHEDULERS)
+EXPORTED_SCHEDULERS = list(DYNAMIC_SCHEDULERS) + list(STATIC_SCHEDULERS)
 
 __all__ = [
     "NearestTaskScheduler",
@@ -25,6 +26,8 @@ __all__ = [
     "RegionalPlanningScheduler",
     "ClusterAuctionMasScheduler",
     "RelayHandoffScheduler",
+    "StaticExactSolverScheduler",
     "DYNAMIC_SCHEDULERS",
+    "STATIC_SCHEDULERS",
     "EXPORTED_SCHEDULERS",
 ]

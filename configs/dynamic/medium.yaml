@@ -14,7 +14,7 @@ fleet:
   station_count: 2
 
 task:
-  generation_seed_file: "F:/Data Structure/NEFT-System-main/NEFT-System/log/medium-scale-regional_planning/task_generation_seed.yaml"
+
   initial_tasks:               5
   generation_interval_sec_min: 5
   generation_interval_sec_max: 15
