@@ -2,644 +2,461 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109.0-009688.svg)](https://fastapi.tiangolo.com/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-> 一个基于图结构的新能源物流车队智能调度系统，支持实时动态调度与静态全局优化。
+面向新能源物流车队的协同调度仿真系统。车辆在 OpenStreetMap 路网上配送动态出现的任务，同时受电量、载重和充电站排队约束。系统提供多种在线调度策略，以及任务全集已知时的静态精确求解，并用 Web 地图实时展示。
 
-## 📋 项目简介
+## 项目简介
 
-NEFT（New Energy Fleet Transportation）是一个面向新能源物流车队的协同调度系统。系统模拟中央仓库管理场景，面对城市中动态出现的配送任务，智能规划新能源车辆的路径，同时考虑电量约束、载重限制、充电站调度等多维度因素。
+NEFT（New Energy Fleet Transportation）模拟中央仓库管理一支新能源车队的场景。任务在仿真过程中持续产生，调度器为每辆需要决策的车辆选择下一步：配送、充电、回仓、交接或待命。路径由路网最短路计算，算法只决定去哪里。
 
-### 核心特性
+动态模式按时间接收新任务。静态模式在仿真开始时已知全部任务，先生成全局计划再按计划执行，便于和在线策略对比。
 
-- 🚗 **多车型支持**：小型、中型、大型新能源车，各具不同的电量、载重和能耗特性
-- 🗺️ **图结构道路网络**：基于真实地图数据（OpenStreetMap）构建图结构道路网络
-- ⚡ **智能充电调度**：电量不足时自动寻找最优充电站，支持排队与负荷管理
-- 🎯 **多策略调度**：最近任务优先、最大载重优先、优先级调度、复合评分策略等
-- 📊 **静态全局优化**：使用 OR-Tools/MIP 求解器计算全局最优方案作为对比基准
-- 🌐 **实时可视化**：WebSocket 实时推送 + 高德地图可视化展示
-- 📈 **统一评分机制**：静态规划、实时调度、任务完成评估使用一致的评分标准
+## 核心特性
 
-## 🏗️ 系统架构
+- **多车型**：小型、中型、大型车辆具有不同的电量、载重、能耗、速度和充电功率。
+- **路网图**：基于 OpenStreetMap 构建道路网络，用最短路计算行驶距离。
+- **充电调度**：电量不足或后续行程不可达时，按距离、负荷和排队选择充电站。
+- **多种动态策略**：贪心、评分搜索、元启发式、强化学习、超启发式与多智能体方法，共 15 种。
+- **静态全局优化**：`static_exact_solver` 用 Gurobi 做全局求解；求解器不可用时回退到内置搜索。
+- **实时可视化**：FastAPI 与 WebSocket 推送状态，前端用高德地图展示。
+- **统一评分**：任务完成得分使用同一套奖励与惩罚，便于横向比较策略。
+
+一次仿真使用配置或启动请求中指定的策略。
+
+## 系统架构
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                           前端层                                 │
-│  • Web 界面展示 (HTML/CSS/JS)                                   │
-│  • 高德地图集成                                                 │
-│  • WebSocket 实时数据推送                                       │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓ WebSocket/REST API
-┌─────────────────────────────────────────────────────────────────┤
-│                           接口层                                 │
-│  • FastAPI Web 服务                                             │
-│  • WebSocket 实时通信                                           │
-│  • RESTful API                                                  │
-└─────────────────────────────────────────────────────────────────┤
-                              ↓
-┌─────────────────────────────────────────────────────────────────┤
-│                        调度决策层                                │
-│  • 静态规划模块（OR-Tools/MIP 全局优化）                         │
-│  • 动态调度模块（实时响应）                                      │
-│  • 策略选择器（自动策略切换）                                    │
-└─────────────────────────────────────────────────────────────────┤
-                              ↓
-┌─────────────────────────────────────────────────────────────────┤
-│                          算法层                                  │
-│  • OR-Tools 求解器（开源免费）                                   │
-│  • MIP 求解器（Gurobi）                                         │
-│  • 遗传算法（启发式优化）                                        │
-│  • 实时调度策略（多策略支持）                                    │
-└─────────────────────────────────────────────────────────────────┤
-                              ↓
-┌─────────────────────────────────────────────────────────────────┤
-│                          数据层                                  │
-│  • 任务管理（动态生成与状态跟踪）                                │
-│  • 车辆管理（位置、电量、载重）                                  │
-│  • 充电站管理（排队、负荷）                                      │
-│  • 路径计算（图最短路径）                                        │
-└─────────────────────────────────────────────────────────────────┘
+前端层
+  Web 界面（HTML / CSS / JavaScript）
+  高德地图、WebSocket 状态更新
+        │  REST / WebSocket
+接口层
+  FastAPI、仿真控制与查询接口
+        │
+调度决策层
+  动态调度主循环
+  静态模式下的一次性全局规划
+        │
+算法层
+  Scheduler：Snapshot → Command 列表
+  15 种动态策略 + static_exact_solver
+        │
+数据层
+  任务、车辆、充电站、路网最短路
 ```
 
-## 🚀 快速开始
+## 快速开始
 
 ### 环境要求
 
 - Python 3.12+
 - Conda（推荐）或 pip
-- 高德地图 API Key（用于地图展示）
+- 高德地图 API Key（仅地图展示需要）
+- PyYAML（读取 `configs/` 时需要）
+- 静态求解可选安装 Gurobi
 
-### 安装步骤
+### 安装与启动
 
-1. **克隆仓库**
+1. 克隆仓库
 
 ```bash
 git clone https://github.com/chenwudao/NEFT-System.git
 cd NEFT-System
 ```
 
-2. **创建 Conda 环境**
+2. 创建环境并安装依赖
 
 ```bash
 conda create -n neft python=3.12 -y
 conda activate neft
-```
-
-3. **安装依赖**
-
-```bash
 pip install -r backend/requirements.txt
+pip install pyyaml
 ```
 
-4. **配置高德地图 API Key**
+3. 配置高德地图 Key
 
-在 `frontend/index.html` 中替换你的高德地图 API Key：
+在 `frontend/index.html` 中替换 Key：
 
 ```html
 <script src="https://webapi.amap.com/maps?v=2.0&key=YOUR_AMAP_KEY"></script>
 ```
 
-5. **启动后端服务**
+4. 启动后端
+
+在仓库根目录执行：
 
 ```bash
-cd backend
-python main.py
+python backend/main.py --cfg configs/dynamic/small.yaml
 ```
 
-服务将在 `http://localhost:8000` 启动。
+服务监听 `http://localhost:8000`。不传 `--cfg` 时使用 `backend/config.py` 中的默认值。
 
-6. **打开前端页面**
+5. 打开前端
 
-直接在浏览器中打开 `frontend/index.html`，或使用 Live Server 等工具。
+用浏览器直接打开 `frontend/index.html`，或通过本地静态服务器访问。
 
-## 📖 使用指南
+## 使用指南
 
-### 1. 启动模拟
+### 启动模拟
 
-1. 打开 Web 界面
-2. 在控制面板的下拉选择器中配置：
-   - **规模**：小规模、中规模、大规模（选项及车辆/任务配置将由后端 `configs/dynamic/{scale}.yaml` 动态加载）
-   - **策略**：从下拉菜单中选择您想测试的调度策略（如“最近任务优先”、“最高优先级优先”、“合同网协议”、“Q-Learning强化学习”等，共支持15种动态或协同调度算法）
-3. 点击 **"启动模拟"** 按钮，系统会动态将配置传入后端并即时生效运行。
+1. 打开 Web 界面。
+2. 在控制面板中选择：
+   - **规模**：`small`、`medium`、`large`。后端会加载 `configs/dynamic/{scale}.yaml`。
+   - **策略**：下拉列表来自 `GET /api/config/options`，对应下方 15 种动态策略。
+3. 点击 **启动模拟**。请求体中的 `scale` 与 `strategy` 会在本次运行开始前生效。
 
-### 2. 调度策略
+静态对比请使用 `configs/static/` 下的配置，并将 `optimization.mode` 设为 `static`。静态策略默认为 `static_exact_solver`，不在动态策略下拉列表中。
 
-系统支持多种实时调度策略：
+### 调度策略
 
-| 策略名称 | 描述 | 适用场景 |
-|---------|------|---------|
-| `nearest_task` | 最近任务优先（贪心基线） | 快速响应、短距离配送 |
-| `priority_task` | 优先级 + 距离 | 紧急任务优先 |
-| `heaviest_task` | 最大载重优先 | 高载重利用率 |
-| `deadline_earliest` | 最早截止时间优先（EDF） | 时间敏感任务 |
-| `composite_score` | 优先级 + 紧迫度 + 重量 + 距离 综合打分 | 综合多因素决策 |
-| `mst_batch` | 批量装载 + MST/DFS 排序 | 任务点密集，一趟多单 |
-| `insertion_heuristic` | 贪心插入启发式 | 任务点密集，一趟多单，更精细 |
-| `simulated_annealing` | 模拟退火元启发式 | 离线全局优化、动态批量重排 |
-| `random_baseline` | 随机基线 | 仅用于性能下界对比 |
+| 策略名 | 说明 |
+| --- | --- |
+| `nearest_task` | 按距离贪心组批，用作基线 |
+| `priority_task` | 优先级优先，同优先级再看距离 |
+| `heaviest_task` | 按货物重量从大到小装车 |
+| `deadline_earliest` | 最早截止时间优先 |
+| `composite_score` | 综合优先级、紧迫度、载重与距离后搜索 |
+| `dfs_score_search` | 在可行任务子集上做 DFS 评分搜索 |
+| `insertion_heuristic` | 按后悔值插入任务，并做轻量局部优化 |
+| `simulated_annealing` | 模拟退火，用于批量重排 |
+| `tabu_search` | 禁忌搜索 |
+| `q_learning` | 在线表格型 Q-learning |
+| `hyper_heuristic_eps` | 在基础启发式算子之间做 ε-greedy 选择 |
+| `relay_handoff` | 车辆之间接力交接货物 |
+| `region_partition` | 按任务区域划分车辆责任范围 |
+| `multi_agent_auction` | 多车拍卖分配 |
+| `multi_agent_contract_net` | 合同网协议分配 |
+| `static_exact_solver` | 静态模式全局求解（优先 Gurobi，不可用时回退内置搜索） |
 
-所有策略统一通过 `algorithm/utils.py` 中的 `decide_at_warehouse` /
-`decide_en_route` 决策模板做电量预判，即：
-- 阈值充电（`low_battery_pct`）
-- 路径电量预判：若当前电量不足以走完"下一站 → 其余未送 → 回仓"，自动改派
-  最优充电站（`best_charging_station`，综合距离 + 负荷压力 + 排队长度）
+名称也接受类名、去掉 `Scheduler` 后缀的类名，以及大小写或连字符变体，例如 `DeadlineEarliest`、`DEADLINE-EARLIEST`。无法识别时回退到 `nearest_task`。
 
-这保证不论选哪个算法，**车辆都不会因没电瘫在路上**（除非完全没有可用充电站）。
+仓库内与途中的通用决策由 `backend/algorithm/utils.py` 的 `decide_at_warehouse` 和 `decide_en_route` 承担，包括：
 
-### 3. 监控面板
+- 电量低于 `low_battery_pct`（百分数，代码默认 20）时先去充电；
+- 去下一目标后若无法再到达充电站，则改为充电；
+- 充电站按距离、负荷压力和排队长度综合选择。
 
-- **任务监控**：实时显示任务状态（待处理/进行中/已完成/超时）
-- **车辆监控**：位置、电量、载重、状态实时更新
-- **充电站监控**：充电桩使用情况、排队车辆
-- **性能指标**：总分、完成率、车辆利用率
+没有可用充电站时，车辆仍可能因电量耗尽而抛锚。该结果会记入实验日志。
 
-### 4. API 接口
+### 监控面板
 
-系统提供完整的 RESTful API：
+- **任务**：待处理、进行中、已完成、超时
+- **车辆**：位置、电量、载重、状态
+- **充电站**：桩位占用与排队
+- **指标**：得分、完成率、车辆利用率
+
+### 主要接口
 
 ```bash
-# 获取可用配置选项及当前状态（策略列表、规模列表、当前生效策略及规模）
+# 策略与规模选项，以及当前生效值
 GET /api/config/options
 
-# 启动模拟（支持在 Body 中传入 scale 和 strategy 进行运行期动态切换配置）
-# 示例 Body: { "scale": "medium", "strategy": "relay_handoff" }
+# 启动仿真。示例：{ "scale": "medium", "strategy": "relay_handoff" }
 POST /api/simulation/start
 
-# 停止模拟
 POST /api/simulation/stop
-
-# 重置模拟
 POST /api/simulation/reset
+GET  /api/simulation/status
 
-# 获取系统状态
-GET /api/state
-
-# 执行静态规划
-POST /api/scheduling/static
-
-# 获取任务列表
+# 当前仿真状态、任务与车辆
+GET /api/system/state
 GET /api/tasks
-
-# 获取车辆列表
 GET /api/vehicles
+
+# 已注册策略；手动触发一轮调度（body 可带 strategy）
+GET  /api/strategies
+POST /api/scheduling
 ```
 
-## 🧪 测试
+实时状态通过 WebSocket `/ws` 推送。
 
-运行测试套件：
+## 测试
 
 ```bash
 cd test
 pytest -v
 ```
 
-运行特定测试：
+## 评分机制
 
-```bash
-pytest test_ortools_solver.py -v
-pytest test_dynamic_scheduling.py -v
-```
-
-## 📊 评分机制
-
-系统采用统一的评分机制，确保静态规划与实时调度的可比性：
+任务完成得分由 `backend/algorithm/scoring_config.py` 统一计算。未在 YAML 中覆盖时，默认公式为：
 
 ```
-任务得分 = 120                    # 基础分配奖励
-         + 30 × priority         # 优先级奖励
-         - 0.02 × 距离(米)       # 距离惩罚
-         - 0.2 × 能耗            # 能耗惩罚
-         - 50 × 逾期分钟         # 逾期惩罚
+得分 = 120
+     + 30 × priority
+     - 0.02 × 实际路径距离（米）
+     + 2 × 提前完成分钟数
+     - 50 × 逾期分钟数
 ```
 
-## 🛠️ 技术栈
+结果低于 0 时记为 0。能耗不进入该公式，单独记录在实验日志中。
+
+## 技术栈
 
 ### 后端
-- **FastAPI**: 高性能 Web 框架
-- **WebSocket**: 实时双向通信
-- **OR-Tools**: Google 开源优化求解器
-- **Gurobi**: 商业 MIP 求解器（可选）
-- **NetworkX**: 图算法库
-- **OSMnx**: OpenStreetMap 数据处理
+
+- **FastAPI / WebSocket**：服务与实时推送
+- **NetworkX / OSMnx**：路网与最短路
+- **Gurobi**（可选）：静态 MIP。`solver: cplex` 目前只探测依赖，不会建模求解
+- **PyYAML**：外部配置
 
 ### 前端
-- **原生 JavaScript**: 无框架依赖
-- **高德地图 API**: 地图展示与路径绘制
-- **WebSocket**: 实时数据接收
+
+- 原生 HTML / CSS / JavaScript
+- 高德地图 API
 
 ### 算法
-- **静态规划**: OR-Tools + CBC 求解器（开源免费）
-- **动态调度**: 多策略启发式算法
-- **路径规划**: Dijkstra / A* 最短路径
-- **聚类分析**: K-means 任务分组
 
-## 📁 项目结构
+- 动态调度：启发式、元启发式、强化学习、超启发式、多智能体
+- 静态规划：Gurobi 求解带时间窗的车辆路径模型；不可用时使用内置搜索
+- 路径：Dijkstra 最短路
+
+## 项目结构
 
 ```
 NEFT-System/
-├── backend/                    # 后端代码
-│   ├── algorithm/              # 算法实现
-│   │   ├── ortools_solver.py   # OR-Tools 求解器
-│   │   ├── mip_solver.py       # MIP 求解器
-│   │   ├── genetic_algorithm.py # 遗传算法
-│   │   ├── scheduling_strategy.py # 调度策略基类
-│   │   ├── shortest_task_first.py # 最近任务优先
-│   │   ├── composite_score_strategy.py # 复合评分策略
-│   │   └── scoring_config.py   # 统一评分配置
-│   ├── data/                   # 数据管理
-│   │   ├── data_manager.py     # 数据管理器
-│   │   ├── task.py             # 任务模型
-│   │   ├── vehicle.py          # 车辆模型
-│   │   ├── charging_station.py # 充电站模型
-│   │   └── path_calculator.py  # 路径计算
-│   ├── decision/               # 调度决策
-│   │   ├── static_planning_module.py  # 静态规划
-│   │   ├── dynamic_scheduling_module.py # 动态调度
-│   │   └── decision_manager.py # 决策管理器
-│   ├── interface/              # 接口层
-│   │   ├── api_controller.py   # API 控制器
-│   │   └── websocket_handler.py # WebSocket 处理器
-│   ├── main.py                 # 服务入口
-│   └── requirements.txt        # 依赖列表
-├── frontend/                   # 前端代码
-│   ├── index.html              # 主页面
-│   ├── script.js               # 前端逻辑
-│   └── style.css               # 样式文件
-├── test/                       # 测试代码
-├── docs/                       # 文档
-└── README.md                   # 项目说明
+├── backend/
+│   ├── main.py                 # 服务入口与仿真主循环
+│   ├── config.py               # 默认配置，可被 YAML 覆盖
+│   ├── experiment_logger.py    # 实验日志
+│   ├── algorithm/              # Snapshot、Command、策略实现
+│   ├── data/                   # 任务、车辆、充电站、路网
+│   ├── decision/               # 调度执行
+│   └── interface/              # REST 与 WebSocket
+├── configs/
+│   ├── dynamic/                # small、medium、large
+│   └── static/
+├── frontend/                   # index.html、script.js、style.css
+├── docs/                       # 架构与策略说明
+├── test/
+└── README.md
 ```
 
-## 🔧 配置说明
+## 配置说明
 
-### 通过 YAML 切换规模与运行期动态切换
+未出现在 YAML 中的字段沿用 `backend/config.py`。相对路径相对于仓库根目录。加载 YAML 需要已安装 PyYAML。
 
-系统目前支持**三档标准规模**，并可以通过以下三种方式进行切换：
+### 选择规模与策略
 
-#### 1. 前端 UI / API 运行期动态切换（推荐）
-系统支持在仿真启动时动态重载整个 YAML 配置。当您在前端下拉框选择规模和策略并点击“启动模拟”时，前端会发送包含选择参数的请求：
+推荐在界面或启动请求里指定。`scale` 只接受 `small`、`medium`、`large`，并重新加载 `configs/dynamic/{scale}.yaml`。请求中的 `strategy` 在规模加载之后生效，因此会覆盖该 YAML 里的策略名。
+
 ```json
-// POST /api/simulation/start 的请求体示例
 {
   "scale": "medium",
   "strategy": "relay_handoff"
 }
 ```
-后端在收到请求后，会自动从 `configs/dynamic/{scale}.yaml` 重新加载所有配置字段（如车队、任务、仿真参数），并覆盖生效指定的调度策略。
 
-#### 2. 命令行参数选择（启动时指定）
-您仍可以在启动后端服务时，通过 `--cfg` 指定要加载的默认配置文件：
+也可以在启动进程时指定默认配置：
 
-```powershell
-python backend\main.py --cfg "configs\medium.yaml"
-```
-
-也可以传绝对路径：
-
-```powershell
-python backend\main.py --cfg "F:\Data Structure\NEFT-System-main\NEFT-System\configs\medium.yaml"
-```
-
-仍然兼容环境变量方式：
-
-```powershell
-# PowerShell
-$env:NEFT_CONFIG_FILE = "configs\medium.yaml"; python backend\main.py
+```bash
+python backend/main.py --cfg configs/dynamic/medium.yaml
 ```
 
 ```bash
 # Bash
-NEFT_CONFIG_FILE=configs/medium.yaml python backend/main.py
+NEFT_CONFIG_FILE=configs/dynamic/medium.yaml python backend/main.py
 ```
 
-YAML 里没写到的字段会沿用 `backend/config.py` 里的默认值（参见各 yaml 文件示例）。
-
-### 实验日志目录
-
-每次 `POST /api/simulation/start` 都会建一个独立目录：
-
-```
-log/<YYYYMMDD_HHMMSS>/
-├── config.yaml   # 本次跑用的完整配置快照（含 yaml 来源、scheduling/fleet/task/sim 等）
-└── log.txt       # 人类可读日志，每行带时间戳：
-                  #   - 实验名（来自 yaml.experiment.name）
-                  #   - 启动信息（策略、车队规模、任务预算）
-                  #   - 任务生成 / 进度快照 / 抛锚等关键事件
-                  #   - 终止时追加：任务完成率、按时率、超时率、得分、吞吐、能耗、车队均衡度等指标
+```powershell
+# PowerShell
+$env:NEFT_CONFIG_FILE = "configs\dynamic\medium.yaml"; python backend\main.py
 ```
 
-目录名是纯时间戳（不会被同名实验覆盖）；**实验的"名字"写在 yaml 里、并打到 log.txt 顶部和结果区**，便于对比。
+`--cfg` 与 `--config` 等价。静态实验将 `--cfg` 指向 `configs/static/` 下的文件。
 
-仿真终止时机有三种：
-- 调用 `/api/simulation/stop`（`stop_reason=manual_stop`）
-- 所有任务都结算（`stop_reason=all_tasks_done`，需 `stop_when_all_tasks_done: true`）
+### 实验日志
 
-**注意 `max_sim_seconds` 的语义**：它表示"**任务生成截止时间**"（仿真秒）——
-到达后停止生成新任务，但仿真**继续推进**，直到所有现存任务进入终态
-（COMPLETED/TIMEOUT）后才自动停止。`total_task_budget` 也起同样作用：
-累计任务数达到预算后，立即停止生成新任务。
+每次 `POST /api/simulation/start` 使用 YAML 中的 `experiment.name` 建立目录：
 
-### 量化指标（log.txt 末尾的人类可读 + 完整 YAML）
+```
+log/<experiment.name>/
+├── config.yaml    # 本次配置快照
+└── log.txt        # 带时间戳的事件与结束指标
+```
 
-- **任务**：总数、完成、按时、超时、待派；完成率 / 按时率 / 超时率
+同名实验会复用该目录，并覆盖上一次的 `config.yaml` 与 `log.txt`。`experiment.log_dir` 可改日志根目录，默认是 `log`。
+
+仿真结束的常见原因：
+
+- `manual_stop`：调用 `/api/simulation/stop`
+- `reset`：运行中调用 `/api/simulation/reset`
+- `all_tasks_done`：任务生成已经停止，且现存任务均为完成或超时（需要 `stop_when_all_tasks_done: true`）
+- `no_feasible_tasks_left`：连续多轮无法继续派单
+
+`max_sim_seconds` 是任务生成截止时间（仿真秒）。到达后不再产生新任务，仿真继续，直到现存任务进入完成或超时。`total_task_budget` 同样只停止生成：累计任务数达到预算后不再新增任务。
+
+`log.txt` 末尾的指标包括：
+
+- **任务**：总数、完成、按时、超时、待派，以及完成率、按时率、超时率
 - **得分**：总分、每任务平均、按时任务平均
-- **时效**：平均完成时长、平均超时分钟数、吞吐（任务/小时）
-- **距离 / 能耗**：车队总里程、任务腿均长、**里程方差（车均衡度）**、总能耗、单任务能耗
-- **车队**：抛锚数 / 抛锚车 ID、每车完成任务数
+- **时效**：平均完成时长、平均超时分钟、吞吐（任务/小时）
+- **距离与能耗**：车队总里程、任务腿均长、里程标准差、总能耗、单任务能耗
+- **车队**：抛锚数量、抛锚车辆 ID、每车完成任务数
 
 ### 环境变量
 
-| 变量名 | 描述 | 默认值 |
-|-------|------|--------|
-| `NEFT_CONFIG_FILE` | 选择 YAML 配置（推荐做规模对比时） | 无（用 `config.py` 默认） |
-| `NEFT_STRATEGY` | 临时覆盖调度策略 | 见 yaml/`config.py` |
-| `NEFT_EXP_NAME` | 临时覆盖实验名 | 见 yaml/`config.py` |
-| `NEFT_LOG_DIR` | 临时覆盖日志根目录 | `log` |
-| `NEFT_SIM_SPEED` | 临时覆盖仿真加速倍率 | 见 yaml/`config.py` |
-| `NEFT_DYNAMIC_SCHEDULE_INTERVAL_SEC` | 动态调度触发间隔（现实秒） | `1` |
+环境变量先写入代码默认值。若 YAML 包含同一字段，以 YAML 为准。仿真启动请求里的 `strategy` 最后生效。
 
-### 车辆参数配置
+| 变量 | 作用 | 未设置时 |
+| --- | --- | --- |
+| `NEFT_CONFIG_FILE` | YAML 路径（相对仓库根目录或绝对路径） | 不加载 YAML |
+| `NEFT_STRATEGY` | 默认调度策略 | `nearest_task` |
+| `NEFT_EXP_NAME` | 默认实验名 | `default` |
+| `NEFT_LOG_DIR` | 默认日志根目录 | `log` |
+| `NEFT_SIM_SPEED` | 默认仿真加速倍率 | `120` |
+| `NEFT_DYNAMIC_SCHEDULE_INTERVAL_SEC` | 动态调度间隔（现实秒） | `1` |
 
-在 `backend/config.py` 中配置车辆参数：
+### 车辆默认参数
 
-```python
-VEHICLE_TYPES = {
-    "small": {
-        "max_battery": 50.0,      # kWh
-        "max_load": 500.0,        # kg
-        "unit_energy_consumption": 0.15,  # kWh/km
-        "speed": 8.0              # m/s
-    },
-    "medium": { ... },
-    "large": { ... }
-}
-```
+可在 `backend/config.py` 或 YAML 的 `vehicle` 段修改。下表是代码默认值；能耗系数乘以行驶距离（米）后得到能耗（kWh），速度单位为米/秒。
 
-## 🤝 贡献指南
+| 车型 | 电量 (kWh) | 载重 (kg) | 能耗系数 | 速度 (m/s) |
+| --- | ---: | ---: | ---: | ---: |
+| small | 60 | 500 | 0.00025 | 10 |
+| medium | 100 | 1500 | 0.0003 | 10 |
+| large | 150 | 5000 | 0.0004 | 8 |
 
-欢迎提交 Issue 和 Pull Request！
+## 算法接口
 
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 打开 Pull Request
+新增动态策略时，实现一个 `Scheduler`：输入只读 `Snapshot`，输出若干 `Command`。每个 `Command` 只描述一辆车的下一步目标；到达后再调度。未出现在列表中的车辆保持原状态。车辆沿 Dijkstra 最短路移动。
 
-## 📝 许可证
+主要约定：
 
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+- 车辆从中心仓库出发；常规装货在仓库完成。`relay_handoff` 可以在途中交接货物。
+- 到达任务点后，该任务记为完成。
+- 策略名由配置或启动参数指定。
 
-## 🙏 致谢
-
-- [FastAPI](https://fastapi.tiangolo.com/) - 高性能 Web 框架
-- [OR-Tools](https://developers.google.com/optimization) - Google 优化工具
-- [OSMnx](https://osmnx.readthedocs.io/) - OpenStreetMap 网络分析
-- [高德地图](https://lbs.amap.com/) - 地图服务
-
-## 📧 联系方式
-
-如有问题或建议，欢迎通过以下方式联系：
-
-- 提交 [GitHub Issue](https://github.com/chenwudao/NEFT-System/issues)
-- 发送邮件至项目维护者
-
----
-
-**NEFT - 让新能源物流更智能、更高效！** 🚛⚡
-
----
-
-# 📐 算法接口文档
-
-本节描述重构后的**统一调度算法接口**。目标：把"写一个新算法"压缩到一个文件、几十行代码；让算法与仿真主循环、数据层完全解耦。
-
-## 0. 心智模型
-
-整个系统被刻意收敛成一个函数：
-
-```
-schedule: Snapshot → List[Command]
-```
-
-* **Snapshot**：某一瞬间的世界状态（车辆、任务、充电站、仓库、地图、时间戳）。只读。
-* **Command**：对某辆车下达的**下一步动作**（去任务点 / 去充电站 / 回仓库 / 保持空闲）。
-* **单步语义**：每个 Command 只描述"下一个目标节点"。车辆到达该节点后，主循环会再次捕获 Snapshot、再次调度，得到下下步。
-* **不在列表里的车 = 保持原状态**：算法可以只给需要做决策的车发指令，其他车继续执行上一轮的动作。
-
-车辆在图上的运动使用 **Dijkstra 最短路径**（按边权）完成，算法只需要关心"下一步去哪"，不管"怎么走过去"。
-
-### 场景约束（刻意简化）
-
-1. 所有车从**中心仓库**出发。
-2. 只有回到仓库才能**装货 / 领取新任务**。
-3. 只有回到仓库才会把运输完成的任务标记为 `COMPLETED`（货物算"交付到任务点"后，载重减少，但任务要回仓之后才真正结算得分）。
-4. 如果快照刚好在车辆穿越一条边的中途捕获，**视为车辆已在下一个节点**——所有决策都基于那个节点。
-5. 调度策略在 `backend/config.py` 里显式配置，不做自动切换。
-
-## 1. 目录结构
+### 目录
 
 ```
 backend/algorithm/
-├── snapshot.py            # Snapshot 数据类（算法唯一输入）
-├── scheduler.py           # Scheduler 基类 + Command 数据类
-├── utils.py               # 度量 / 指令构造 / 决策模板（含电量预判 + 最优充电站）
-├── algorithm_manager.py   # 注册中心：按名字分发到 Scheduler
-├── scoring_config.py      # 评分常量（供 PathCalculator 用，不影响算法接口）
-└── schedulers/            # 算法实现全部放这里
-    ├── __init__.py             # 导出 + 注册点（EXPORTED_SCHEDULERS）
-    ├── nearest_task.py         # 贪心：最近任务优先（基线）
-    ├── priority_task.py        # 优先级 + 距离
-    ├── heaviest_task.py        # 最大载重优先
-    ├── deadline_earliest.py    # 最早截止时间优先（EDF）
-    ├── composite_score.py      # 复合评分（优先级/紧迫度/重量/距离）
-    ├── mst_batch.py            # 批量装载 + MST/DFS 排序
-    ├── insertion_heuristic.py  # 贪心插入启发式
-    ├── simulated_annealing.py  # 模拟退火（元启发式）
-    └── random_baseline.py      # 随机基线（仅用于下界对比）
+├── snapshot.py
+├── scheduler.py              # Scheduler、Command
+├── utils.py
+├── algorithm_manager.py      # 按名称分发
+├── scoring_config.py
+└── schedulers/
+    ├── __init__.py           # EXPORTED_SCHEDULERS
+    ├── dynamic/__init__.py   # 动态策略注册表
+    ├── static/static_exact_solver.py
+    └── *.py                  # 各动态策略实现
 ```
 
-## 2. 核心数据类
+### Snapshot 与 Command
 
-### 2.1 `Snapshot`
+`Snapshot` 包含车辆、任务、充电站、仓库坐标、时间戳和路径查询。常用方法：
 
-```python
-Snapshot(
-    vehicles,            # List[Vehicle]        所有车辆
-    tasks,               # List[Task]           所有任务
-    charging_stations,   # List[ChargingStation]
-    warehouse_xy,        # (x, y)               中心仓库坐标
-    timestamp,           # Unix 秒
-    path_calculator,     # 路径 / 距离查询入口
-)
-```
+| 方法 | 含义 |
+| --- | --- |
+| `vehicles_need_decision()` | 空闲且没有目标、等待新指令的车 |
+| `idle_vehicles_at_warehouse()` | 停在仓库、可以接单的车 |
+| `idle_vehicles_not_at_warehouse()` | 停在仓库外、等待下一步的车 |
+| `available_tasks()` | 已到释放时间的 `PENDING` 任务 |
+| `distance(a, b)` | 路网距离（米）；不可达为 `+inf` |
+| `path(a, b)` | 最短路节点序列；不可达为空列表 |
 
-算法里最常用的便捷方法：
+`Command.action` 取值为 `deliver`、`goto_node`、`charge`、`return`、`handoff`、`idle`。业务代码优先使用 `utils.py` 中的 `make_*_command`，避免手写字段。
 
-| 方法                              | 说明                                                         |
-| --------------------------------- | ------------------------------------------------------------ |
-| `vehicles_need_decision()`        | 需要下发新指令的车（空闲 / 刚到站 / 可以接新任务）           |
-| `idle_vehicles_at_warehouse()`    | 当前在仓库、可以立即装货出发的车                             |
-| `available_tasks()`               | 状态为 `PENDING` 的任务                                      |
-| `distance(a_xy, b_xy)`            | 两点间路网最短距离（米，不可达 → +inf）                      |
-| `path(a_xy, b_xy)`                | 最短路径节点序列                                             |
+### 常用工具
 
-### 2.2 `Command`
+| 函数 | 用途 |
+| --- | --- |
+| `feasible_tasks_for(vehicle, tasks)` | 按剩余载重筛选任务 |
+| `nearest_task(vehicle, tasks, snapshot)` | 最近且装得下的任务 |
+| `best_charging_station(vehicle, snapshot)` | 综合距离、负荷与排队 |
+| `greedy_chain(start_xy, points, snapshot)` | 贪心访问顺序 |
+| `mst_order(start_xy, points, snapshot)` | 最小生成树 DFS 顺序 |
+| `decide_at_warehouse(vehicle, snapshot, pick_tasks)` | 在仓：充电、接单或待命 |
+| `decide_en_route(vehicle, snapshot)` | 在途：继续配送、充电或回仓 |
 
-```python
-Command(
-    vehicle_id,         # 指向哪辆车
-    action,             # "deliver" | "charge" | "return" | "idle"
-    target_xy,          # 下一步要去的坐标 (x, y)
-    assigned_tasks=[],  # 仅 deliver 且车刚从仓库出发：这一趟要带走的所有任务 ID
-    task_id=None,       # 仅 deliver：当前这一段在送的具体任务 ID
-    station_id=None,    # 仅 charge：目标充电站 ID
-)
-```
+`pick_tasks(vehicle, tasks, snapshot)` 返回本趟要携带的任务列表。多数单车策略只需替换这个函数。
 
-使用者**不需要**手写 `Command(...)`，`utils.py` 里给了一整套 `make_*_command` 帮助函数。
+多车分配、批量拼单或接力交接可以直接在 `schedule()` 中读取 `snapshot`，再用 `make_deliver_command`、`make_goto_node_command` 或 `make_handoff_command` 下发。向正在行驶的车辆发送新命令会覆盖其当前路径。
 
-## 3. `utils` 工具函数
+### 新增一种策略
 
-| 类型       | 函数                                       | 用途                                                             |
-| ---------- | ------------------------------------------ | ---------------------------------------------------------------- |
-| 度量       | `distance_to(xy_a, xy_b, pc)`              | 两点路网距离（米；不可达 → +inf）                                |
-| 度量       | `needs_charge(vehicle)`                    | 是否低于 `low_battery_pct` 阈值                                  |
-| 度量       | `can_reach_with_battery(v, xy, pc)`        | 从车辆当前位置到 `xy` 的耗能是否小于剩余电量                     |
-| 查询       | `feasible_tasks_for(v, tasks)`             | 筛选这辆车还装得下的任务                                         |
-| 查询       | `nearest_task(v, tasks, pc)`               | 最近可承运任务                                                   |
-| 查询       | `nearest_station(v, stations, pc)`         | 最近充电站                                                       |
-| 序列化     | `greedy_chain(start_xy, tasks, pc)`        | 从起点开始的贪心链（依次挑最近的下一个任务）                     |
-| 序列化     | `mst_order(start_xy, tasks, pc)`           | 按最小生成树 DFS 访问顺序排列任务                                |
-| 指令构造   | `make_idle_command(v)`                     | 空闲指令                                                         |
-| 指令构造   | `make_return_command(v, warehouse_xy)`     | 回仓指令                                                         |
-| 指令构造   | `make_charge_command(v, station, pc)`      | 去充电站                                                         |
-| 指令构造   | `make_deliver_command(v, tasks)`           | 送货：`assigned_tasks` 整串 + `task_id` 指向第一个 + `target_xy` 为第一个任务点 |
-| 决策模板   | `decide_at_warehouse(v, snapshot, strategy_fn)` | 车在仓库时：先看电量是否需要充电，否则调 `strategy_fn` 选任务批次、构造 deliver Command；没任务则 idle |
-| 决策模板   | `decide_en_route(v, snapshot)`             | 车不在仓库时：有已接任务就继续送下一个，否则返回仓库             |
-
-`decide_at_warehouse` + `decide_en_route` 组合覆盖了绝大多数策略，只需要注入一个"怎么选任务"的函数即可。
-
-## 4. 写一个新算法（3 分钟模板）
-
-以"重任务优先"为例：
-
-1. **新建** `backend/algorithm/schedulers/heaviest_first.py`
+1. 在 `backend/algorithm/schedulers/` 新增文件：
 
 ```python
 from typing import List
-from ..scheduler import Command, Scheduler
-from ..snapshot import Snapshot
-from ..utils import decide_at_warehouse, decide_en_route
+
+from backend.algorithm import utils
+from backend.algorithm.scheduler import Command, Scheduler
+from backend.algorithm.snapshot import Snapshot
 
 
 class HeaviestFirstScheduler(Scheduler):
-    """重任务优先：按重量降序挑第一个能装下的任务。"""
+    """按重量降序挑选一件当前装得下的任务。"""
+
     name = "heaviest_first"
 
     def schedule(self, snapshot: Snapshot) -> List[Command]:
         commands: List[Command] = []
 
-        def pick_tasks(v, available):
-            candidates = [t for t in available if t.weight <= v.max_load]
+        for vehicle in snapshot.idle_vehicles_not_at_warehouse():
+            commands.append(utils.decide_en_route(vehicle, snapshot))
+
+        def pick_tasks(vehicle, tasks, snap):
+            candidates = utils.feasible_tasks_for(vehicle, tasks)
             if not candidates:
                 return []
-            candidates.sort(key=lambda t: -t.weight)
+            candidates.sort(
+                key=lambda task: (
+                    -task.weight,
+                    snap.distance(vehicle.position, task.position),
+                )
+            )
             return [candidates[0]]
 
-        for v in snapshot.vehicles_need_decision():
-            if v.position.to_tuple() == snapshot.warehouse_xy:
-                commands.append(decide_at_warehouse(v, snapshot, pick_tasks))
-            else:
-                commands.append(decide_en_route(v, snapshot))
+        for vehicle in snapshot.idle_vehicles_at_warehouse():
+            commands.append(
+                utils.decide_at_warehouse(vehicle, snapshot, pick_tasks)
+            )
         return commands
 ```
 
-2. **在 `schedulers/__init__.py` 导出并注册**
+2. 在 `backend/algorithm/schedulers/dynamic/__init__.py` 中导入该类，并加入 `DYNAMIC_SCHEDULERS`。`EXPORTED_SCHEDULERS` 会在启动时自动注册。
+
+3. 将 YAML 的 `scheduling.strategy` 设为 `heaviest_first`，或在启动请求里传入同名 `strategy`。
+
+### 调用入口
+
+- 主循环按 `NEFT_DYNAMIC_SCHEDULE_INTERVAL_SEC` 调用动态调度，策略读取当前配置。
+- `POST /api/scheduling` 可在 body 中用 `strategy` 覆盖一轮；省略则沿用配置。
+- `GET /api/strategies` 返回已注册名称。
+- 脚本或测试中可以直接调用：
 
 ```python
-from .heaviest_first import HeaviestFirstScheduler
+from backend.algorithm import AlgorithmManager, Snapshot
 
-EXPORTED_SCHEDULERS = [
-    NearestTaskScheduler,
-    PriorityTaskScheduler,
-    MstBatchScheduler,
-    HeaviestFirstScheduler,   # ← 新算法
-]
+snap = Snapshot.capture(data_manager)
+manager = AlgorithmManager(data_manager.path_calculator)
+commands = manager.schedule("nearest_task", snap)
 ```
 
-`AlgorithmManager` 会在启动时自动实例化并按 `.name` 注册。
+## 贡献
 
-3. **在 `config.py` 切换策略**
+欢迎提交 Issue 和 Pull Request。
 
-```python
-SCHEDULING_CONFIG = {
-    "strategy": "heaviest_first",
-    ...
-}
-```
+1. Fork 本仓库。
+2. 创建特性分支：`git checkout -b feature/your-feature`。
+3. 提交修改并推送到该分支。
+4. 打开 Pull Request。
 
-完成。重启后端即可生效。
+## 许可证
 
-## 5. 需要更强控制时
+本项目采用 MIT 许可证。
 
-模板 `decide_at_warehouse / decide_en_route` 覆盖的是"每车独立决策"的情况。如果要：
+## 致谢
 
-* **多车协同 / 分配优化**：直接在 `schedule()` 里自己遍历 `snapshot.idle_vehicles_at_warehouse()` 和 `snapshot.available_tasks()`，做匈牙利 / ILP 分配，再用 `make_deliver_command` 下发。
-* **批量拼单**：参考 `mst_batch.py`：一次给 `assigned_tasks` 塞多个任务 ID，车辆会按 MST 顺序一个接一个送过去。
-* **换单 / 抢占**：只要给某辆正在跑的车发新 Command，下层就会覆盖它当前路径。没给的车保持原样。
-* **考虑充电站排队压力**：`ChargingStation.load_pressure` 直接可用。
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [OSMnx](https://osmnx.readthedocs.io/)
+- [NetworkX](https://networkx.org/)
+- [高德地图](https://lbs.amap.com/)
+- [Gurobi](https://www.gurobi.com/)（可选求解器）
 
-## 6. 调用入口一览
+## 联系
 
-* **主循环自动触发**：`backend/main.py → background_tasks` 按 `DYNAMIC_SCHEDULE_INTERVAL_SEC` 调 `decision_manager.dynamic_scheduling()`，策略从 `config.SCHEDULING_CONFIG["strategy"]` 读取。
-* **HTTP 手动触发**：`POST /api/scheduling`，body 里可传 `{ "strategy": "xxx" }` 覆盖一次；不传则沿用 config。
-* **可用策略列表**：`GET /api/strategies`。
-* **直接调用**（脚本 / 单测）：
-
-  ```python
-  from backend.algorithm import AlgorithmManager, Snapshot
-  snap = Snapshot.capture(data_manager)
-  commands = algorithm_manager.schedule("nearest_task", snap)
-  ```
-
-## 7. 运行说明
-
-1. **配置策略与参数**：编辑 `backend/config.py`
-
-   ```python
-   SCHEDULING_CONFIG = {
-       "strategy": "nearest_task",   # 或 priority_task / mst_batch / 你自己的
-       "low_battery_pct": 0.2,       # 低于该比例主动去充电
-       "charge_until_pct": 0.9,      # 充到该比例出站
-   }
-   ```
-
-2. **启动后端**
-
-   ```bash
-   cd backend
-   python main.py
-   ```
-
-   服务监听 `http://localhost:8000`。
-
-3. **打开前端**：浏览器打开 `frontend/index.html`。
-   * 仓库 / 充电站 / 任务点 / 车辆会实时显示；
-   * 每辆车的目标节点（`current_target`）会作为标记出现；
-   * 连接线已移除，地图更清爽。
-
-4. **切换策略**：改 `config.py` 的 `strategy` 后重启，或通过 `POST /api/scheduling` 临时指定。
-
-## 8. 这次重构移除/保留的东西
-
-移除：
-
-* 旧的静态规划整条链（MIP / OR-Tools / GA / `StaticPlanningModule`）。
-* 旧的 `SchedulingStrategy` 基类及其所有子类。
-* `DecisionManager` 里的自动策略选择、主动低电量管理、充电离站情境评估等逻辑——已统一由 `config.py` 阈值 + 主循环 + 算法内部 `decide_at_warehouse` 处理。
-* Task 的 `complete_path` / `estimated_completion_time`，Vehicle 的 `current_path` / `complete_path` / `path_progress` 等冗余字段（内部以 `current_route` + `_route_index` 替代；对外 `to_dict()` 仍保留旧名以兼容前端）。
-
-保留：
-
-* `scoring_config.py` — `PathCalculator.calculate_task_score` 仍依赖它。
-* WebSocket 实时广播、前端地图可视化。
+- [GitHub Issues](https://github.com/chenwudao/NEFT-System/issues)
